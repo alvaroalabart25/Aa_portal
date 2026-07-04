@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { projectsApi, tasksApi } from './api';
-import { NotesBox, Progress, StatusBadge } from './components';
+import { KebabMenu, NotesBox, Progress, StatusBadge } from './components';
 import { AddTaskModal } from './modals';
 import TaskTable from './TaskTable';
 import type { Project, Task } from './types';
@@ -54,17 +54,22 @@ export default function ProjectPage() {
       <div className="page-head">
         <h1>{project.name}</h1>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button className="btn danger sm" onClick={removeProject}>
-            Eliminar proyecto
-          </button>
-          {project.status === 'active' && (
-            <button className="btn ghost sm" onClick={completeProject}>
-              ✓ Completar proyecto
-            </button>
-          )}
           <button className="btn sm" onClick={() => setAdding(true)}>
             + Añadir tarea
           </button>
+          <KebabMenu
+            items={[
+              ...(project.status === 'active'
+                ? [{ label: '✓ Completar proyecto', onClick: completeProject }]
+                : []),
+              {
+                label: 'Ver completadas',
+                checked: showCompleted,
+                onClick: () => setShowCompleted((v) => !v),
+              },
+              { label: 'Eliminar proyecto', danger: true, onClick: removeProject },
+            ]}
+          />
         </div>
       </div>
 
@@ -82,18 +87,7 @@ export default function ProjectPage() {
       />
 
       <section className="section">
-        <div className="page-head">
-          <h2>Tareas</h2>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
-            <input
-              type="checkbox"
-              checked={showCompleted}
-              onChange={(e) => setShowCompleted(e.target.checked)}
-            />
-            Ver completadas
-          </label>
-        </div>
-
+        <h2>Tareas</h2>
         <TaskTable tasks={tasks} showProject={false} onChanged={load} />
       </section>
 

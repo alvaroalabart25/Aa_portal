@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { projectsApi } from './api';
-import { DueDate, Progress, SpaceTag, StatusBadge } from './components';
+import { DueDate, KebabMenu, Progress, SpaceTag, StatusBadge } from './components';
 import { AddProjectModal } from './modals';
 import type { Project } from './types';
 
@@ -24,17 +24,23 @@ export default function ProjectsPage() {
     <div>
       <div className="page-head">
         <h1>Proyectos</h1>
-        <button className="btn sm" onClick={() => setAdding(true)}>
-          + Añadir proyecto
-        </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button className="btn sm" onClick={() => setAdding(true)}>
+            + Añadir proyecto
+          </button>
+          <KebabMenu
+            items={[
+              {
+                label: 'Ver completados',
+                checked: showClosed,
+                onClick: () => setShowClosed((v) => !v),
+              },
+            ]}
+          />
+        </div>
       </div>
 
-      <label style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '24px 0 0', paddingLeft: 10 }}>
-        <input type="checkbox" checked={showClosed} onChange={(e) => setShowClosed(e.target.checked)} />
-        Ver completados
-      </label>
-
-      <table className="table">
+      <table className="table" style={{ marginTop: 24 }}>
         <thead>
           <tr>
             <th style={{ width: 130 }}>Estado</th>

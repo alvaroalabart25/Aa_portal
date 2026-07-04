@@ -136,7 +136,7 @@ export function Progress({ done, total }: { done: number; total: number }) {
   );
 }
 
-// Notas en Markdown: render por defecto, clic en "Editar" para modificar.
+// Notas en Markdown: clic sobre el texto para editar directamente.
 export function NotesBox({
   value,
   onSave,
@@ -160,18 +160,12 @@ export function NotesBox({
 
   return (
     <div className="section notes-box">
-      <div className="page-head">
-        <h2>Notas</h2>
-        {!editing && (
-          <button className="btn ghost sm" onClick={() => { setDraft(value ?? ''); setEditing(true); }}>
-            Editar
-          </button>
-        )}
-      </div>
+      <h2>Notas</h2>
       {editing ? (
-        <div>
+        <div style={{ marginTop: 12 }}>
           <textarea
             rows={10}
+            autoFocus
             style={{ width: '100%' }}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -186,12 +180,94 @@ export function NotesBox({
             </button>
           </div>
         </div>
-      ) : value ? (
-        <div className="notes-render" dangerouslySetInnerHTML={{ __html: marked.parse(value) as string }} />
       ) : (
-        <p className="muted" style={{ fontSize: 14 }}>
-          Sin notas. Pulsa Editar para añadir (admite Markdown).
-        </p>
+        <div
+          className="notes-clickable"
+          role="button"
+          tabIndex={0}
+          onClick={() => {
+            setDraft(value ?? '');
+            setEditing(true);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              setDraft(value ?? '');
+              setEditing(true);
+            }
+          }}
+        >
+          {value ? (
+            <div className="notes-render" dangerouslySetInnerHTML={{ __html: marked.parse(value) as string }} />
+          ) : (
+            <p className="muted" style={{ fontSize: 14, margin: 0 }}>
+              Sin notas. Haz clic aquí para escribir (admite Markdown).
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Menú de tres puntos (⋯) con opciones y conmutadores.
+export interface KebabItem {
+  label: string;
+  onClick: () => void;
+  danger?: boolean;
+  checked?: boolean; // si se define, la opción es un conmutador con ✓
+}
+
+export function KebabMenu({ items }: { items: KebabItem[] }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, []);
+
+  return (
+    <div className="status-select" ref={ref}>
+      <button
+        type="button"
+        className="kebab-btn"
+        aria-label="Más opciones"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
+        ⋯
+      </button>
+      {open && (
+        <div className="status-menu" style={{ left: 'auto', right: 0 }} role="menu">
+          {items.map((it) => (
+            <button
+              key={it.label}
+              type="button"
+              role="menuitem"
+              className={`status-option${it.danger ? ' danger' : ''}`}
+              onClick={() => {
+                setOpen(false);
+                it.onClick();
+              }}
+            >
+              {it.checked !== undefined && (
+                <span style={{ width: 14, textAlign: 'center' }}>{it.checked ? '✓' : ''}</span>
+              )}
+              {it.label}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );

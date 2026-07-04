@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { ah } from '../../lib/async';
 import { and, asc, eq, inArray, isNull, not, sql } from 'drizzle-orm';
 import { db } from '../../db';
 import { projects, spaces, tasks } from '../../db/schema';
@@ -20,7 +21,7 @@ const taskCounts = {
 
 // GET /api/projects?spaceId=&status= — por defecto solo activos (los completados/cancelados se ocultan).
 // Se excluyen también los proyectos cuyo espacio esté archivado.
-projectsRouter.get('/', async (req: AuthedRequest, res) => {
+projectsRouter.get('/', ah(async (req: AuthedRequest, res) => {
   const conds = [eq(projects.userId, req.userId!), isNull(projects.archivedAt), isNull(spaces.archivedAt)];
   const spaceId = req.query.spaceId ? Number(req.query.spaceId) : undefined;
   if (spaceId) conds.push(eq(projects.spaceId, spaceId));
@@ -45,10 +46,10 @@ projectsRouter.get('/', async (req: AuthedRequest, res) => {
     .where(and(...conds))
     .orderBy(asc(projects.sortOrder), asc(projects.name));
   res.json(rows);
-});
+}));
 
 // GET /api/projects/:id — detalle (con nombre/color del espacio para migas de pan)
-projectsRouter.get('/:id', async (req: AuthedRequest, res) => {
+projectsRouter.get('/:id', ah(async (req: AuthedRequest, res) => {
   const id = Number(req.params.id);
   const [row] = await db
     .select({
@@ -69,10 +70,10 @@ projectsRouter.get('/:id', async (req: AuthedRequest, res) => {
     .where(and(eq(projects.id, id), eq(projects.userId, req.userId!)));
   if (!row) return res.status(404).json({ error: 'Proyecto no encontrado' });
   res.json(row);
-});
+}));
 
 // POST /api/projects
-projectsRouter.post('/', async (req: AuthedRequest, res) => {
+projectsRouter.post('/', ah(async (req: AuthedRequest, res) => {
   const parsed = projectInput.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
   const [space] = await db
@@ -83,10 +84,10 @@ projectsRouter.post('/', async (req: AuthedRequest, res) => {
   const [result] = await db.insert(projects).values({ ...parsed.data, userId: req.userId! });
   const [row] = await db.select().from(projects).where(eq(projects.id, result.insertId));
   res.status(201).json(row);
-});
+}));
 
 // PATCH /api/projects/:id — completar proyecto => completa y oculta sus tareas pendientes
-projectsRouter.patch('/:id', async (req: AuthedRequest, res) => {
+projectsRouter.patch('/:id', ah(async (req: AuthedRequest, res) => {
   const id = Number(req.params.id);
   const parsed = projectUpdate.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
@@ -116,10 +117,10 @@ projectsRouter.patch('/:id', async (req: AuthedRequest, res) => {
   }
   const [row] = await db.select().from(projects).where(eq(projects.id, id));
   res.json(row);
-});
+}));
 
 // DELETE /api/projects/:id — archiva, no borra
-projectsRouter.delete('/:id', async (req: AuthedRequest, res) => {
+projectsRouter.delete('/:id', ah(async (req: AuthedRequest, res) => {
   const id = Number(req.params.id);
   const [result] = await db
     .update(projects)
@@ -127,4 +128,4 @@ projectsRouter.delete('/:id', async (req: AuthedRequest, res) => {
     .where(and(eq(projects.id, id), eq(projects.userId, req.userId!), isNull(projects.archivedAt)));
   if (result.affectedRows === 0) return res.status(404).json({ error: 'Proyecto no encontrado' });
   res.json({ archived: true });
-});
+}));

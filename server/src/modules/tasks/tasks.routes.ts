@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { ah } from '../../lib/async';
 import { and, asc, eq, gt, gte, inArray, isNull, lt, sql } from 'drizzle-orm';
 import { db } from '../../db';
 import { projects, spaces, tasks } from '../../db/schema';
@@ -16,7 +17,7 @@ function today(): string {
 // GET /api/tasks?projectId=&spaceId=&status=&view=today|upcoming|overdue
 // Por defecto: solo tareas abiertas (backlog/en progreso/bloqueada).
 // status=completed => vista "Completadas" (recuperación). status=all => todo.
-tasksRouter.get('/', async (req: AuthedRequest, res) => {
+tasksRouter.get('/', ah(async (req: AuthedRequest, res) => {
   // Se excluyen tareas de proyectos o espacios archivados
   const conds = [
     eq(tasks.userId, req.userId!),
@@ -63,10 +64,10 @@ tasksRouter.get('/', async (req: AuthedRequest, res) => {
     .where(and(...conds))
     .orderBy(sql`${tasks.dueDate} is null`, asc(tasks.dueDate), asc(tasks.sortOrder));
   res.json(rows);
-});
+}));
 
 // GET /api/tasks/:id — detalle con migas de pan (espacio + proyecto)
-tasksRouter.get('/:id', async (req: AuthedRequest, res) => {
+tasksRouter.get('/:id', ah(async (req: AuthedRequest, res) => {
   const id = Number(req.params.id);
   const [row] = await db
     .select({
@@ -90,10 +91,10 @@ tasksRouter.get('/:id', async (req: AuthedRequest, res) => {
     .where(and(eq(tasks.id, id), eq(tasks.userId, req.userId!)));
   if (!row) return res.status(404).json({ error: 'Tarea no encontrada' });
   res.json(row);
-});
+}));
 
 // POST /api/tasks
-tasksRouter.post('/', async (req: AuthedRequest, res) => {
+tasksRouter.post('/', ah(async (req: AuthedRequest, res) => {
   const parsed = taskInput.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
   const [project] = await db
@@ -104,10 +105,10 @@ tasksRouter.post('/', async (req: AuthedRequest, res) => {
   const [result] = await db.insert(tasks).values({ ...parsed.data, userId: req.userId! });
   const [row] = await db.select().from(tasks).where(eq(tasks.id, result.insertId));
   res.status(201).json(row);
-});
+}));
 
 // PATCH /api/tasks/:id
-tasksRouter.patch('/:id', async (req: AuthedRequest, res) => {
+tasksRouter.patch('/:id', ah(async (req: AuthedRequest, res) => {
   const id = Number(req.params.id);
   const parsed = taskUpdate.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
@@ -123,10 +124,10 @@ tasksRouter.patch('/:id', async (req: AuthedRequest, res) => {
   if (result.affectedRows === 0) return res.status(404).json({ error: 'Tarea no encontrada' });
   const [row] = await db.select().from(tasks).where(eq(tasks.id, id));
   res.json(row);
-});
+}));
 
 // DELETE /api/tasks/:id — archiva, no borra
-tasksRouter.delete('/:id', async (req: AuthedRequest, res) => {
+tasksRouter.delete('/:id', ah(async (req: AuthedRequest, res) => {
   const id = Number(req.params.id);
   const [result] = await db
     .update(tasks)
@@ -134,4 +135,4 @@ tasksRouter.delete('/:id', async (req: AuthedRequest, res) => {
     .where(and(eq(tasks.id, id), eq(tasks.userId, req.userId!), isNull(tasks.archivedAt)));
   if (result.affectedRows === 0) return res.status(404).json({ error: 'Tarea no encontrada' });
   res.json({ archived: true });
-});
+}));

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { tasksApi } from './api';
-import { NotesBox, StatusSelect } from './components';
+import { KebabMenu, NotesBox, StatusSelect } from './components';
 import { PRIORITY_LABEL, type Priority, type Task } from './types';
 
 export default function TaskPage() {
@@ -51,9 +51,7 @@ export default function TaskPage() {
           onChange={(e) => setTitle(e.target.value)}
           onBlur={() => title.trim() && title !== task.title && update({ title: title.trim() })}
         />
-        <button className="btn danger sm" onClick={archive}>
-          Eliminar tarea
-        </button>
+        <KebabMenu items={[{ label: 'Eliminar tarea', danger: true, onClick: archive }]} />
       </div>
 
       <div className="form-grid" style={{ marginTop: 18 }}>

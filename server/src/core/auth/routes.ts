@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { ah } from '../../lib/async';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { eq } from 'drizzle-orm';
@@ -8,7 +9,7 @@ import { users } from '../../db/schema';
 export const authRouter = Router();
 
 // POST /api/auth/login  { username, password } -> { token }
-authRouter.post('/login', async (req, res) => {
+authRouter.post('/login', ah(async (req, res) => {
   const { username, password } = req.body ?? {};
   if (typeof username !== 'string' || typeof password !== 'string') {
     return res.status(400).json({ error: 'Faltan usuario o contraseña' });
@@ -21,4 +22,4 @@ authRouter.post('/login', async (req, res) => {
     expiresIn: '30d',
   });
   res.json({ token, username: user.username });
-});
+}));

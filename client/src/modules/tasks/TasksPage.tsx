@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { tasksApi } from './api';
+import { KebabMenu } from './components';
 import { AddTaskModal } from './modals';
 import TaskTable from './TaskTable';
 import type { Task } from './types';
@@ -22,17 +23,25 @@ export default function TasksPage() {
     <div>
       <div className="page-head">
         <h1>Tareas</h1>
-        <button className="btn sm" onClick={() => setAdding(true)}>
-          + Añadir tarea
-        </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button className="btn sm" onClick={() => setAdding(true)}>
+            + Añadir tarea
+          </button>
+          <KebabMenu
+            items={[
+              {
+                label: 'Ver completadas',
+                checked: showCompleted,
+                onClick: () => setShowCompleted((v) => !v),
+              },
+            ]}
+          />
+        </div>
       </div>
 
-      <label style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '24px 0 0', paddingLeft: 10 }}>
-        <input type="checkbox" checked={showCompleted} onChange={(e) => setShowCompleted(e.target.checked)} />
-        Ver completadas
-      </label>
-
-      <TaskTable tasks={tasks} onChanged={load} />
+      <div style={{ marginTop: 12 }}>
+        <TaskTable tasks={tasks} onChanged={load} />
+      </div>
 
       {adding && <AddTaskModal onClose={() => setAdding(false)} onCreated={load} />}
     </div>

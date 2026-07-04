@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { projectsApi, spacesApi } from './api';
-import { DueDate, NotesBox, Progress, StatusBadge } from './components';
+import { DueDate, KebabMenu, NotesBox, Progress, StatusBadge } from './components';
 import { AddProjectModal } from './modals';
 import type { Project, Space } from './types';
 
@@ -48,13 +48,20 @@ export default function SpacePage() {
           <span className="dot" style={{ background: space.color, display: 'inline-block', width: 12, height: 12, marginRight: 10 }} />
           {space.name}
         </h1>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn danger sm" onClick={removeSpace}>
-            Eliminar espacio
-          </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <button className="btn sm" onClick={() => setAdding(true)}>
             + Añadir proyecto
           </button>
+          <KebabMenu
+            items={[
+              {
+                label: 'Ver completados',
+                checked: showClosed,
+                onClick: () => setShowClosed((v) => !v),
+              },
+              { label: 'Eliminar espacio', danger: true, onClick: removeSpace },
+            ]}
+          />
         </div>
       </div>
 
@@ -67,17 +74,7 @@ export default function SpacePage() {
       />
 
       <section className="section">
-        <div className="page-head">
-          <h2>Proyectos</h2>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
-            <input
-              type="checkbox"
-              checked={showClosed}
-              onChange={(e) => setShowClosed(e.target.checked)}
-            />
-            Ver completados
-          </label>
-        </div>
+        <h2>Proyectos</h2>
 
         <table className="table">
           <thead>

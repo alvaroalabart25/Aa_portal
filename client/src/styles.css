@@ -168,6 +168,23 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 }
 .status-option:hover { background: var(--paper-soft); }
 .status-option.current { font-weight: 700; }
+.status-option.danger { color: var(--danger); }
+
+/* ---------- Menú de tres puntos ---------- */
+.kebab-btn {
+  width: 32px; height: 32px; border-radius: 99px;
+  border: 1px solid var(--line); background: var(--paper);
+  color: var(--ink-soft); font-size: 18px; font-weight: 700; line-height: 1;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.kebab-btn:hover { background: var(--paper-soft); border-color: var(--ink-muted); }
+
+/* ---------- Notas clicables ---------- */
+.notes-clickable {
+  margin-top: 10px; padding: 10px 12px; border-radius: 8px;
+  cursor: text; border: 1px solid transparent;
+}
+.notes-clickable:hover { background: var(--paper-soft); border-color: var(--line); }
 
 /* ---------- Modal ---------- */
 .modal-overlay {

@@ -1,0 +1,85 @@
+name: Deploy a Raiola
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build frontend
+        working-directory: client
+        run: |
+          npm ci
+          npm run build
+          cat > dist/.htaccess <<'EOF'
+          RewriteEngine On
+          RewriteBase /
+          RewriteCond %{REQUEST_URI} !^/api
+          RewriteCond %{REQUEST_FILENAME} !-f
+          RewriteCond %{REQUEST_FILENAME} !-d
+          RewriteRule . /index.html [L]
+          EOF
+
+      - name: Build API
+        working-directory: server
+        run: |
+          npm ci
+          npm run build
+          npm prune --omit=dev
+
+      - name: Ensamblar paquete API
+        run: |
+          mkdir -p staging-api/tmp
+          cp -r server/dist server/node_modules server/package.json staging-api/
+          cat > staging-api/.env <<EOF
+          DB_HOST=localhost
+          DB_PORT=3306
+          DB_NAME=${{ secrets.DB_NAME }}
+          DB_USER=${{ secrets.DB_USER }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          CORS_ORIGIN=https://portal.alvaroalabart.es
+          EOF
+          date > staging-api/tmp/restart.txt
+
+      - name: Subir frontend (FTPS)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: client/dist/
+          server-dir: portal.alvaroalabart.es/
+          state-name: .ftp-deploy-state.json
+
+      - name: Subir API (FTPS)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: staging-api/
+          server-dir: portal-api/
+          state-name: .ftp-deploy-state.json
+
+      - name: Verificar producción
+        run: |
+          sleep 8
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 https://portal.alvaroalabart.es/api/health || true)
+          echo "API /health -> HTTP $code"
+          curl -s --max-time 20 https://portal.alvaroalabart.es/api/health || true

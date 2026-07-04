@@ -29,7 +29,7 @@ export default function ProjectsPage() {
         </button>
       </div>
 
-      <label style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '24px 0 0' }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '24px 0 0', paddingLeft: 10 }}>
         <input type="checkbox" checked={showClosed} onChange={(e) => setShowClosed(e.target.checked)} />
         Ver completados
       </label>

@@ -1,14 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { tasksApi } from './api';
-import { NotesBox } from './components';
-import {
-  PRIORITY_LABEL,
-  TASK_STATUS_LABEL,
-  type Priority,
-  type Task,
-  type TaskStatus,
-} from './types';
+import { NotesBox, StatusSelect } from './components';
+import { PRIORITY_LABEL, type Priority, type Task } from './types';
 
 export default function TaskPage() {
   const { id } = useParams();
@@ -61,18 +55,8 @@ export default function TaskPage() {
 
       <div className="form-grid" style={{ marginTop: 18 }}>
         <div>
-          <label htmlFor="t-status">Estado</label>
-          <select
-            id="t-status"
-            value={task.status}
-            onChange={(e) => update({ status: e.target.value as TaskStatus })}
-          >
-            {Object.entries(TASK_STATUS_LABEL).map(([v, l]) => (
-              <option key={v} value={v}>
-                {l}
-              </option>
-            ))}
-          </select>
+          <label>Estado</label>
+          <StatusSelect value={task.status} onChange={(status) => update({ status })} />
         </div>
         <div>
           <label htmlFor="t-priority">Prioridad</label>

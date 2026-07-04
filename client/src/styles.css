@@ -84,7 +84,7 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .nav-item:hover { background: var(--paper-soft); }
 .nav-item.active { background: var(--ink); color: var(--paper); }
 .sidebar .spacer { flex: 1; }
-.main { flex: 1; padding: 28px 32px 90px; max-width: 980px; }
+.main { flex: 1; padding: 28px 36px 90px; max-width: none; min-width: 0; }
 
 .bottombar { display: none; }
 
@@ -145,6 +145,30 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .notes-render h1, .notes-render h2, .notes-render h3 { margin: 14px 0 6px; }
 .notes-render code { background: var(--paper-soft); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
 .notes-render textarea { width: 100%; }
+
+/* ---------- Selector de estado (desplegable propio) ---------- */
+.status-select { position: relative; display: inline-block; }
+.status-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 5px 11px; border-radius: 99px;
+  border: 1px solid var(--line); background: var(--paper);
+  font-size: 13px; font-weight: 500; white-space: nowrap;
+}
+.status-btn:hover { border-color: var(--ink-muted); }
+.status-btn .chev-sm { font-size: 10px; color: var(--ink-muted); }
+.status-menu {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 40;
+  background: var(--paper); border: 1px solid var(--line);
+  border-radius: 10px; padding: 4px; min-width: 165px;
+  box-shadow: 0 8px 24px rgba(10, 10, 10, 0.1);
+}
+.status-option {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 7px 10px; border: none; background: none;
+  border-radius: 6px; font-size: 13.5px; text-align: left;
+}
+.status-option:hover { background: var(--paper-soft); }
+.status-option.current { font-weight: 700; }
 
 /* ---------- Modal ---------- */
 .modal-overlay {

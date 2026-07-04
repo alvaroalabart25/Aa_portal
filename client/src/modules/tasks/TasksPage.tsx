@@ -27,7 +27,7 @@ export default function TasksPage() {
         </button>
       </div>
 
-      <label style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '24px 0 0' }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '24px 0 0', paddingLeft: 10 }}>
         <input type="checkbox" checked={showCompleted} onChange={(e) => setShowCompleted(e.target.checked)} />
         Ver completadas
       </label>

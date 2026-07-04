@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { marked } from 'marked';
 import {
   PRIORITY_LABEL,
@@ -9,24 +9,90 @@ import {
   type TaskStatus,
 } from './types';
 
+export const STATUS_COLOR: Record<string, string> = {
+  backlog: '#8a8a8a',
+  active: '#1971c2',
+  in_progress: '#1971c2',
+  blocked: '#e8590c',
+  completed: '#2f9e44',
+  cancelled: '#adb5bd',
+};
+
 export function StatusBadge({ status }: { status: TaskStatus | ProjectStatus }) {
   const label =
     status in TASK_STATUS_LABEL
       ? TASK_STATUS_LABEL[status as TaskStatus]
       : PROJECT_STATUS_LABEL[status as ProjectStatus];
-  const color: Record<string, string> = {
-    backlog: '#8a8a8a',
-    active: '#1971c2',
-    in_progress: '#1971c2',
-    blocked: '#e8590c',
-    completed: '#2f9e44',
-    cancelled: '#adb5bd',
-  };
   return (
     <span className="badge">
-      <span className="dot" style={{ background: color[status] }} />
+      <span className="dot" style={{ background: STATUS_COLOR[status] }} />
       {label}
     </span>
+  );
+}
+
+// Desplegable de estado con el diseño de la web (sustituye al <select> nativo).
+export function StatusSelect({
+  value,
+  onChange,
+}: {
+  value: TaskStatus;
+  onChange: (status: TaskStatus) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, []);
+
+  return (
+    <div className="status-select" ref={ref}>
+      <button
+        type="button"
+        className="status-btn"
+        style={{ color: STATUS_COLOR[value] }}
+        onClick={() => setOpen(!open)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        <span className="dot" style={{ background: STATUS_COLOR[value] }} />
+        {TASK_STATUS_LABEL[value]}
+        <span className="chev-sm">▾</span>
+      </button>
+      {open && (
+        <div className="status-menu" role="listbox">
+          {(Object.keys(TASK_STATUS_LABEL) as TaskStatus[]).map((s) => (
+            <button
+              key={s}
+              type="button"
+              role="option"
+              aria-selected={s === value}
+              className={`status-option${s === value ? ' current' : ''}`}
+              style={{ color: STATUS_COLOR[s] }}
+              onClick={() => {
+                setOpen(false);
+                if (s !== value) onChange(s);
+              }}
+            >
+              <span className="dot" style={{ background: STATUS_COLOR[s] }} />
+              {TASK_STATUS_LABEL[s]}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

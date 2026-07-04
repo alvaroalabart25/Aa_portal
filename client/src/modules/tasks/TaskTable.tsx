@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { tasksApi } from './api';
-import { DueDate, PriorityBadge, SpaceTag } from './components';
-import { TASK_STATUS_LABEL, type Task, type TaskStatus } from './types';
+import { DueDate, PriorityBadge, SpaceTag, StatusSelect } from './components';
+import type { Task, TaskStatus } from './types';
 
 // Tabla de tareas reutilizable (Agenda, detalle de proyecto...).
 // En PC: tabla con columnas. En móvil: cada fila se convierte en caja (CSS).
@@ -38,17 +38,7 @@ export default function TaskTable({
         {tasks.map((t) => (
           <tr key={t.id} className="row" onClick={() => navigate(`/tareas/${t.id}`)}>
             <td onClick={(e) => e.stopPropagation()}>
-              <select
-                value={t.status}
-                onChange={(e) => changeStatus(t, e.target.value as TaskStatus)}
-                aria-label="Estado"
-              >
-                {Object.entries(TASK_STATUS_LABEL).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
+              <StatusSelect value={t.status} onChange={(s) => changeStatus(t, s)} />
             </td>
             <td style={{ fontWeight: 500 }}>
               {showProject && t.projectName && (

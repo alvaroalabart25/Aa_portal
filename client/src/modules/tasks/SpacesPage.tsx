@@ -18,12 +18,12 @@ export default function SpacesPage() {
     <div>
       <div className="page-head">
         <h1>Espacios</h1>
+        <button className="btn sm" onClick={() => setAdding(true)}>
+          + Añadir espacio
+        </button>
       </div>
-      <button className="btn sm" onClick={() => setAdding(true)}>
-        + Añadir espacio
-      </button>
 
-      <table className="table">
+      <table className="table" style={{ marginTop: 24 }}>
         <thead>
           <tr>
             <th>Nombre</th>

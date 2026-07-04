@@ -24,14 +24,15 @@ export default function ProjectsPage() {
     <div>
       <div className="page-head">
         <h1>Proyectos</h1>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
-          <input type="checkbox" checked={showClosed} onChange={(e) => setShowClosed(e.target.checked)} />
-          Ver completados
-        </label>
+        <button className="btn sm" onClick={() => setAdding(true)}>
+          + Añadir proyecto
+        </button>
       </div>
-      <button className="btn sm" onClick={() => setAdding(true)}>
-        + Añadir proyecto
-      </button>
+
+      <label style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '24px 0 0' }}>
+        <input type="checkbox" checked={showClosed} onChange={(e) => setShowClosed(e.target.checked)} />
+        Ver completados
+      </label>
 
       <table className="table">
         <thead>

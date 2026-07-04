@@ -22,14 +22,15 @@ export default function TasksPage() {
     <div>
       <div className="page-head">
         <h1>Tareas</h1>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
-          <input type="checkbox" checked={showCompleted} onChange={(e) => setShowCompleted(e.target.checked)} />
-          Ver completadas
-        </label>
+        <button className="btn sm" onClick={() => setAdding(true)}>
+          + Añadir tarea
+        </button>
       </div>
-      <button className="btn sm" onClick={() => setAdding(true)}>
-        + Añadir tarea
-      </button>
+
+      <label style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '24px 0 0' }}>
+        <input type="checkbox" checked={showCompleted} onChange={(e) => setShowCompleted(e.target.checked)} />
+        Ver completadas
+      </label>
 
       <TaskTable tasks={tasks} onChanged={load} />
 

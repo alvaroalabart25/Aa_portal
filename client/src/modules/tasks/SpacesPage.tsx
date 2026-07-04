@@ -18,7 +18,7 @@ export default function SpacesPage() {
     <div>
       <div className="page-head">
         <h1>Espacios</h1>
-        <button className="btn sm" onClick={() => setAdding(true)}>
+        <button className="btn" onClick={() => setAdding(true)}>
           + Añadir espacio
         </button>
       </div>

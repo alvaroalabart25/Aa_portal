@@ -54,9 +54,6 @@ export default function ProjectPage() {
       <div className="page-head">
         <h1>{project.name}</h1>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button className="btn sm" onClick={() => setAdding(true)}>
-            + Añadir tarea
-          </button>
           <KebabMenu
             items={[
               ...(project.status === 'active'
@@ -70,6 +67,9 @@ export default function ProjectPage() {
               { label: 'Eliminar proyecto', danger: true, onClick: removeProject },
             ]}
           />
+          <button className="btn" onClick={() => setAdding(true)}>
+            + Añadir tarea
+          </button>
         </div>
       </div>
 

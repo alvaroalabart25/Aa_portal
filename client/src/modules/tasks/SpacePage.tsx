@@ -49,9 +49,6 @@ export default function SpacePage() {
           {space.name}
         </h1>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button className="btn sm" onClick={() => setAdding(true)}>
-            + Añadir proyecto
-          </button>
           <KebabMenu
             items={[
               {
@@ -62,6 +59,9 @@ export default function SpacePage() {
               { label: 'Eliminar espacio', danger: true, onClick: removeSpace },
             ]}
           />
+          <button className="btn" onClick={() => setAdding(true)}>
+            + Añadir proyecto
+          </button>
         </div>
       </div>
 

@@ -25,9 +25,6 @@ export default function ProjectsPage() {
       <div className="page-head">
         <h1>Proyectos</h1>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button className="btn sm" onClick={() => setAdding(true)}>
-            + Añadir proyecto
-          </button>
           <KebabMenu
             items={[
               {
@@ -37,6 +34,9 @@ export default function ProjectsPage() {
               },
             ]}
           />
+          <button className="btn" onClick={() => setAdding(true)}>
+            + Añadir proyecto
+          </button>
         </div>
       </div>
 

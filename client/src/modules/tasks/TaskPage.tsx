@@ -51,6 +51,9 @@ export default function TaskPage() {
           onChange={(e) => setTitle(e.target.value)}
           onBlur={() => title.trim() && title !== task.title && update({ title: title.trim() })}
         />
+        <button className="btn danger sm" onClick={archive}>
+          Eliminar tarea
+        </button>
       </div>
 
       <div className="form-grid" style={{ marginTop: 18 }}>
@@ -81,9 +84,6 @@ export default function TaskPage() {
             onChange={(e) => update({ dueDate: e.target.value || null })}
           />
         </div>
-        <button className="btn danger sm" onClick={archive}>
-          Archivar
-        </button>
       </div>
 
       <NotesBox

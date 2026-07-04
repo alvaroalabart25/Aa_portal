@@ -18,9 +18,10 @@ const taskCounts = {
   )`,
 };
 
-// GET /api/projects?spaceId=&status= — por defecto solo activos (los completados/cancelados se ocultan)
+// GET /api/projects?spaceId=&status= — por defecto solo activos (los completados/cancelados se ocultan).
+// Se excluyen también los proyectos cuyo espacio esté archivado.
 projectsRouter.get('/', async (req: AuthedRequest, res) => {
-  const conds = [eq(projects.userId, req.userId!), isNull(projects.archivedAt)];
+  const conds = [eq(projects.userId, req.userId!), isNull(projects.archivedAt), isNull(spaces.archivedAt)];
   const spaceId = req.query.spaceId ? Number(req.query.spaceId) : undefined;
   if (spaceId) conds.push(eq(projects.spaceId, spaceId));
   const status = String(req.query.status ?? 'active');

@@ -17,7 +17,13 @@ function today(): string {
 // Por defecto: solo tareas abiertas (backlog/en progreso/bloqueada).
 // status=completed => vista "Completadas" (recuperación). status=all => todo.
 tasksRouter.get('/', async (req: AuthedRequest, res) => {
-  const conds = [eq(tasks.userId, req.userId!), isNull(tasks.archivedAt)];
+  // Se excluyen tareas de proyectos o espacios archivados
+  const conds = [
+    eq(tasks.userId, req.userId!),
+    isNull(tasks.archivedAt),
+    isNull(projects.archivedAt),
+    isNull(spaces.archivedAt),
+  ];
 
   const projectId = req.query.projectId ? Number(req.query.projectId) : undefined;
   if (projectId) conds.push(eq(tasks.projectId, projectId));

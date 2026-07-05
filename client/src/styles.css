@@ -170,6 +170,19 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .status-option.current { font-weight: 700; }
 .status-option.danger { color: var(--danger); }
 
+/* ---------- Título editable ---------- */
+.title-editable {
+  cursor: text; padding: 2px 8px; margin-left: -8px;
+  border-radius: var(--radius); border: 1px solid transparent;
+  display: inline-flex; align-items: center; min-width: 0;
+}
+.title-editable:hover { background: var(--paper-soft); border-color: var(--line); }
+.title-input {
+  font-family: var(--font-title); font-size: 26px; font-weight: 600;
+  padding: 2px 8px; margin-left: -8px; border-radius: var(--radius);
+  border: 1px solid var(--ink); min-width: 260px; flex: 1;
+}
+
 /* ---------- Menú de tres puntos ---------- */
 .kebab-btn {
   width: 32px; height: 32px; border-radius: 99px;

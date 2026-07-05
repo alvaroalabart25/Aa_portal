@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { marked } from 'marked';
 import {
   PRIORITY_LABEL,
@@ -206,6 +206,55 @@ export function NotesBox({
         </div>
       )}
     </div>
+  );
+}
+
+// Título editable: clic sobre el texto para renombrar (Enter/blur guarda, Esc cancela).
+export function EditableTitle({
+  value,
+  onSave,
+  prefix,
+}: {
+  value: string;
+  onSave: (name: string) => Promise<void>;
+  prefix?: ReactNode;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => setDraft(value), [value]);
+
+  async function finish() {
+    setEditing(false);
+    const name = draft.trim();
+    if (name && name !== value) await onSave(name);
+    else setDraft(value);
+  }
+
+  if (editing) {
+    return (
+      <input
+        className="title-input"
+        autoFocus
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={finish}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+          if (e.key === 'Escape') {
+            setDraft(value);
+            setEditing(false);
+          }
+        }}
+      />
+    );
+  }
+
+  return (
+    <h1 className="title-editable" title="Clic para renombrar" onClick={() => setEditing(true)}>
+      {prefix}
+      {value}
+    </h1>
   );
 }
 

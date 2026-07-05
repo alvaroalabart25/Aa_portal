@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { tasksApi } from './api';
-import { KebabMenu, NotesBox, StatusSelect } from './components';
+import { EditableTitle, KebabMenu, NotesBox, StatusSelect } from './components';
 import { PRIORITY_LABEL, type Priority, type Task } from './types';
 
 export default function TaskPage() {
@@ -10,12 +10,9 @@ export default function TaskPage() {
   const navigate = useNavigate();
 
   const [task, setTask] = useState<Task | null>(null);
-  const [title, setTitle] = useState('');
 
   const load = useCallback(async () => {
-    const t = await tasksApi.one(taskId);
-    setTask(t);
-    setTitle(t.title);
+    setTask(await tasksApi.one(taskId));
   }, [taskId]);
 
   useEffect(() => {
@@ -45,12 +42,7 @@ export default function TaskPage() {
       </div>
 
       <div className="page-head">
-        <input
-          style={{ fontFamily: 'var(--font-title)', fontSize: 22, fontWeight: 600, flex: 1, minWidth: 220 }}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onBlur={() => title.trim() && title !== task.title && update({ title: title.trim() })}
-        />
+        <EditableTitle value={task.title} onSave={async (title) => update({ title })} />
         <KebabMenu items={[{ label: 'Eliminar tarea', danger: true, onClick: archive }]} />
       </div>
 

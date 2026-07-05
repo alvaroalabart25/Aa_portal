@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { projectsApi, tasksApi } from './api';
-import { KebabMenu, NotesBox, Progress, StatusBadge } from './components';
+import { EditableTitle, KebabMenu, NotesBox, Progress, StatusBadge } from './components';
 import { AddTaskModal } from './modals';
 import TaskTable from './TaskTable';
 import type { Project, Task } from './types';
@@ -52,7 +52,17 @@ export default function ProjectPage() {
       </div>
 
       <div className="page-head">
-        <h1>{project.name}</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', minWidth: 0 }}>
+          <EditableTitle
+            value={project.name}
+            onSave={async (name) => {
+              await projectsApi.update(projectId, { name });
+              await load();
+            }}
+          />
+          <StatusBadge status={project.status} />
+          <Progress done={project.doneTasks ?? 0} total={project.totalTasks ?? 0} />
+        </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <KebabMenu
             items={[
@@ -71,11 +81,6 @@ export default function ProjectPage() {
             + Añadir tarea
           </button>
         </div>
-      </div>
-
-      <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
-        <StatusBadge status={project.status} />
-        <Progress done={project.doneTasks ?? 0} total={project.totalTasks ?? 0} />
       </div>
 
       <NotesBox

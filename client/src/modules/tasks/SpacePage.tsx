@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { projectsApi, spacesApi } from './api';
-import { DueDate, KebabMenu, NotesBox, Progress, StatusBadge } from './components';
+import { DueDate, EditableTitle, KebabMenu, NotesBox, Progress, StatusBadge } from './components';
 import { AddProjectModal } from './modals';
 import type { Project, Space } from './types';
 
@@ -44,10 +44,16 @@ export default function SpacePage() {
       </div>
 
       <div className="page-head">
-        <h1>
-          <span className="dot" style={{ background: space.color, display: 'inline-block', width: 12, height: 12, marginRight: 10 }} />
-          {space.name}
-        </h1>
+        <EditableTitle
+          value={space.name}
+          prefix={
+            <span className="dot" style={{ background: space.color, display: 'inline-block', width: 12, height: 12, marginRight: 10 }} />
+          }
+          onSave={async (name) => {
+            await spacesApi.update(spaceId, { name });
+            await load();
+          }}
+        />
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <KebabMenu
             items={[

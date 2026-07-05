@@ -27,11 +27,11 @@ export default function TaskTable({
     <table className="table">
       <thead>
         <tr>
-          <th style={{ width: 150 }}>Estado</th>
+          <th style={{ width: '14%' }}>Estado</th>
           <th>Nombre</th>
-          <th style={{ width: 110 }}>Vencimiento</th>
-          <th style={{ width: 110 }}>Prioridad</th>
-          {showProject && <th style={{ width: 160 }}>Espacio</th>}
+          <th style={{ width: '12%' }}>Vencimiento</th>
+          <th style={{ width: '12%' }}>Prioridad</th>
+          {showProject && <th style={{ width: '17%' }}>Espacio</th>}
         </tr>
       </thead>
       <tbody>

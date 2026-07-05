@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type DragEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { tasksApi } from './api';
 import type { Task } from './types';
 
 const DOW = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
@@ -11,12 +12,28 @@ function isoLocal(d: Date): string {
 
 // Calendario mensual minimal: contador de tareas por día, hasta 2 chips
 // y el listado completo en un panel al pasar el ratón.
-export default function AgendaCalendar({ tasks }: { tasks: Task[] }) {
+// Las tareas se pueden arrastrar a otro día para cambiar su vencimiento.
+export default function AgendaCalendar({ tasks, onChanged }: { tasks: Task[]; onChanged: () => void }) {
   const navigate = useNavigate();
   const [month, setMonth] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
+  const [dragOver, setDragOver] = useState<string | null>(null);
+
+  function startDrag(e: DragEvent, taskId: number) {
+    e.dataTransfer.setData('text/task-id', String(taskId));
+    e.dataTransfer.effectAllowed = 'move';
+  }
+
+  async function dropOnDay(e: DragEvent, iso: string) {
+    e.preventDefault();
+    setDragOver(null);
+    const id = Number(e.dataTransfer.getData('text/task-id'));
+    if (!id) return;
+    await tasksApi.update(id, { dueDate: iso });
+    onChanged();
+  }
 
   const byDay = useMemo(() => {
     const map = new Map<string, Task[]>();
@@ -71,14 +88,29 @@ export default function AgendaCalendar({ tasks }: { tasks: Task[] }) {
           c === null ? (
             <div key={`e${i}`} className="cal-day empty" />
           ) : (
-            <div key={c.iso} className={`cal-day${c.iso === today ? ' today' : ''}`}>
+            <div
+              key={c.iso}
+              className={`cal-day${c.iso === today ? ' today' : ''}${dragOver === c.iso ? ' dragover' : ''}`}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(c.iso);
+              }}
+              onDragLeave={() => setDragOver((d) => (d === c.iso ? null : d))}
+              onDrop={(e) => dropOnDay(e, c.iso)}
+            >
               <div className="cal-daytop">
                 <span className="cal-num">{c.day}</span>
                 {byDay.has(c.iso) && <span className="cal-count">{byDay.get(c.iso)!.length}</span>}
               </div>
 
               {(byDay.get(c.iso) ?? []).slice(0, MAX_CHIPS).map((t) => (
-                <div key={t.id} className="cal-chip" onClick={() => navigate(`/tareas/${t.id}`)}>
+                <div
+                  key={t.id}
+                  className="cal-chip"
+                  draggable
+                  onDragStart={(e) => startDrag(e, t.id)}
+                  onClick={() => navigate(`/tareas/${t.id}`)}
+                >
                   <span className="dot" style={{ background: t.spaceColor ?? '#0a0a0a', width: 6, height: 6 }} />
                   <span className="cal-chip-text">{t.title}</span>
                 </div>
@@ -96,7 +128,13 @@ export default function AgendaCalendar({ tasks }: { tasks: Task[] }) {
                     })()}
                   </div>
                   {byDay.get(c.iso)!.map((t) => (
-                    <button key={t.id} className="cal-pop-item" onClick={() => navigate(`/tareas/${t.id}`)}>
+                    <button
+                      key={t.id}
+                      className="cal-pop-item"
+                      draggable
+                      onDragStart={(e) => startDrag(e, t.id)}
+                      onClick={() => navigate(`/tareas/${t.id}`)}
+                    >
                       <span className="dot" style={{ background: t.spaceColor ?? '#0a0a0a' }} />
                       <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         <span className="muted" style={{ textTransform: 'uppercase', fontSize: 11 }}>

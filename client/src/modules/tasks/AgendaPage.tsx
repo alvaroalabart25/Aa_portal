@@ -91,7 +91,7 @@ export default function AgendaPage() {
           </section>
         </div>
       ) : (
-        <AgendaCalendar tasks={tasks} />
+        <AgendaCalendar tasks={tasks} onChanged={load} />
       )}
     </div>
   );

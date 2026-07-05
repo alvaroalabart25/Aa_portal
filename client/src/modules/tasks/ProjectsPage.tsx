@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { projectsApi } from './api';
-import { DueDate, KebabMenu, Progress, SpaceTag, StatusBadge } from './components';
+import { KebabMenu, Progress, SpaceTag, StatusBadge } from './components';
 import { AddProjectModal } from './modals';
 import type { Project } from './types';
 
@@ -43,11 +43,10 @@ export default function ProjectsPage() {
       <table className="table" style={{ marginTop: 24 }}>
         <thead>
           <tr>
-            <th style={{ width: 130 }}>Estado</th>
+            <th style={{ width: '14%' }}>Estado</th>
             <th>Nombre</th>
-            <th style={{ width: 110 }}>Vencimiento</th>
-            <th style={{ width: 150 }}>Espacio</th>
-            <th style={{ width: 170 }}>Progreso</th>
+            <th style={{ width: '20%' }}>Espacio</th>
+            <th style={{ width: '22%' }}>Progreso</th>
           </tr>
         </thead>
         <tbody>
@@ -57,9 +56,6 @@ export default function ProjectsPage() {
                 <StatusBadge status={p.status} />
               </td>
               <td style={{ fontWeight: 500 }}>{p.name}</td>
-              <td>
-                <DueDate date={p.dueDate} />
-              </td>
               <td>
                 <SpaceTag name={p.spaceName} color={p.spaceColor} />
               </td>

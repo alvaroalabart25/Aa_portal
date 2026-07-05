@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { projectsApi, spacesApi } from './api';
-import { DueDate, EditableTitle, KebabMenu, NotesBox, Progress, StatusBadge } from './components';
+import { EditableTitle, KebabMenu, NotesBox, Progress, StatusBadge } from './components';
 import { AddProjectModal } from './modals';
 import type { Project, Space } from './types';
 
@@ -85,10 +85,9 @@ export default function SpacePage() {
         <table className="table">
           <thead>
             <tr>
-              <th style={{ width: 130 }}>Estado</th>
+              <th style={{ width: '15%' }}>Estado</th>
               <th>Nombre</th>
-              <th style={{ width: 110 }}>Vencimiento</th>
-              <th style={{ width: 170 }}>Progreso</th>
+              <th style={{ width: '24%' }}>Progreso</th>
             </tr>
           </thead>
           <tbody>
@@ -98,9 +97,6 @@ export default function SpacePage() {
                   <StatusBadge status={p.status} />
                 </td>
                 <td style={{ fontWeight: 500 }}>{p.name}</td>
-                <td>
-                  <DueDate date={p.dueDate} />
-                </td>
                 <td>
                   <Progress done={p.doneTasks ?? 0} total={p.totalTasks ?? 0} />
                 </td>

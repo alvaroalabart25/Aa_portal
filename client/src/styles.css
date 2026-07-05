@@ -132,8 +132,8 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .crumbs { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-muted); margin-bottom: 14px; flex-wrap: wrap; }
 .crumbs a:hover { color: var(--ink); text-decoration: underline; }
 .page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; flex-wrap: wrap; }
-.progress { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); }
-.progress .bar { width: 120px; height: 6px; background: var(--paper-soft); border-radius: 99px; overflow: hidden; }
+.progress { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); white-space: nowrap; }
+.progress .bar { width: 120px; height: 6px; background: var(--paper-soft); border-radius: 99px; overflow: hidden; flex-shrink: 0; }
 .progress .fill { height: 100%; background: var(--ink); border-radius: 99px; }
 .muted { color: var(--ink-muted); }
 .overdue { color: var(--danger); font-weight: 500; }
@@ -230,6 +230,8 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .cal-day:nth-child(7n + 8) { border-left: none; }
 .cal-day.empty { background: var(--paper-soft); opacity: 0.5; }
 .cal-day.today { background: var(--paper-soft); }
+.cal-day.dragover { outline: 2px solid var(--ink); outline-offset: -2px; background: var(--paper-soft); }
+.cal-chip[draggable='true'] { cursor: grab; }
 .cal-day.today .cal-num {
   background: var(--ink); color: var(--paper);
   width: 22px; height: 22px; border-radius: 50%;

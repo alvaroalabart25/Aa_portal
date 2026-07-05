@@ -69,7 +69,6 @@ export function AddProjectModal({
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [spaceId, setSpaceId] = useState<number | ''>(fixedSpaceId ?? '');
   const [name, setName] = useState('');
-  const [dueDate, setDueDate] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -81,7 +80,7 @@ export function AddProjectModal({
     if (!name.trim() || !spaceId) return;
     setSaving(true);
     try {
-      await projectsApi.create({ spaceId: Number(spaceId), name: name.trim(), dueDate: dueDate || null });
+      await projectsApi.create({ spaceId: Number(spaceId), name: name.trim() });
       onCreated();
       onClose();
     } finally {
@@ -106,10 +105,6 @@ export function AddProjectModal({
         <div className="field">
           <label htmlFor="m-proj-name">Nombre</label>
           <input id="m-proj-name" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="P. ej. RESIDENCIA CONDES VAL | Desarrollo web" />
-        </div>
-        <div className="field">
-          <label htmlFor="m-proj-due">Vencimiento (opcional)</label>
-          <input id="m-proj-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
         </div>
         <div className="modal-actions">
           <button type="button" className="btn ghost" onClick={onClose}>Cancelar</button>

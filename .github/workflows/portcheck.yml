@@ -1,0 +1,13 @@
+name: Port check MySQL Raiola
+on: workflow_dispatch
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: TCP 3306 desde IP neutral
+        run: |
+          if timeout 10 bash -c "</dev/tcp/178.211.133.59/3306"; then
+            echo "RESULTADO: 3306 ABIERTO desde IP no whitelisteada"
+          else
+            echo "RESULTADO: 3306 BLOQUEADO desde IP no whitelisteada (firewall por IP)"
+          fi

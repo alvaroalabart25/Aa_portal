@@ -183,6 +183,10 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   border: 1px solid var(--ink); min-width: 260px; flex: 1;
 }
 
+/* ---------- Cabecera de grupo por espacio ---------- */
+.space-group-link { display: inline-flex; align-items: center; }
+.space-group-link:hover { text-decoration: underline; }
+
 /* ---------- Fecha editable en línea ---------- */
 .date-btn {
   border: 1px solid transparent; background: none; font-family: var(--font-body);

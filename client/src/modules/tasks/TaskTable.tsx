@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { tasksApi } from './api';
-import { DueDate, PriorityBadge, SpaceTag, StatusSelect } from './components';
+import { DueDateEdit, PriorityBadge, SpaceTag, StatusSelect } from './components';
 import type { Task, TaskStatus } from './types';
 
 // Tabla de tareas reutilizable (Agenda, detalle de proyecto...).
@@ -48,8 +48,14 @@ export default function TaskTable({
               )}
               {t.title}
             </td>
-            <td>
-              <DueDate date={t.dueDate} />
+            <td onClick={(e) => e.stopPropagation()}>
+              <DueDateEdit
+                value={t.dueDate}
+                onChange={async (dueDate) => {
+                  await tasksApi.update(t.id, { dueDate });
+                  onChanged();
+                }}
+              />
             </td>
             <td>
               <PriorityBadge priority={t.priority} />

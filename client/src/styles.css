@@ -183,6 +183,14 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   border: 1px solid var(--ink); min-width: 260px; flex: 1;
 }
 
+/* ---------- Fecha editable en línea ---------- */
+.date-btn {
+  border: 1px solid transparent; background: none; font-family: var(--font-body);
+  font-size: 14px; padding: 3px 8px; margin-left: -8px; border-radius: var(--radius); cursor: pointer;
+}
+.date-btn:hover { background: var(--paper-soft); border-color: var(--line); }
+.date-inline { padding: 3px 6px; font-size: 13px; max-width: 150px; }
+
 /* ---------- Menú de tres puntos ---------- */
 .kebab-btn {
   width: 32px; height: 32px; border-radius: 99px;

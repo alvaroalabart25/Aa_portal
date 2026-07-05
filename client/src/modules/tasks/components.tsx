@@ -122,6 +122,42 @@ export function DueDate({ date }: { date: string | null }) {
   return <span className={overdue ? 'overdue' : ''}>{`${d}/${m}/${y.slice(2)}`}</span>;
 }
 
+// Vencimiento editable en línea: clic sobre la fecha -> selector de fecha.
+export function DueDateEdit({
+  value,
+  onChange,
+}: {
+  value: string | null;
+  onChange: (date: string | null) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+
+  if (editing) {
+    return (
+      <input
+        type="date"
+        autoFocus
+        className="date-inline"
+        defaultValue={value ?? ''}
+        onChange={async (e) => {
+          const v = e.target.value || null;
+          if (v !== value) await onChange(v);
+        }}
+        onBlur={() => setEditing(false)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === 'Escape') (e.target as HTMLInputElement).blur();
+        }}
+      />
+    );
+  }
+
+  return (
+    <button type="button" className="date-btn" title="Clic para cambiar la fecha" onClick={() => setEditing(true)}>
+      <DueDate date={value} />
+    </button>
+  );
+}
+
 export function Progress({ done, total }: { done: number; total: number }) {
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
   return (

@@ -211,6 +211,14 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 }
 .notes-clickable:hover { background: var(--paper-soft); border-color: var(--line); }
 
+/* ---------- Subgrupos por prioridad (Agenda) ---------- */
+.prio-sub {
+  font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;
+  font-weight: 600; color: var(--ink-muted);
+  margin: 20px 0 -8px; display: flex; align-items: center; gap: 6px;
+}
+.prio-sub.high { color: #c92a2a; }
+
 /* ---------- Conmutador de vistas (Agenda) ---------- */
 .seg {
   display: inline-flex; gap: 2px; padding: 3px;

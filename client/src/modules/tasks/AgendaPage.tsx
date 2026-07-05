@@ -21,6 +21,42 @@ function sortTasks(list: Task[]): Task[] {
   );
 }
 
+// Sección de la vista lista: subagrupa en "Alta" (lo que hay que atacar)
+// y "Media y baja". Si el grupo es homogéneo, tabla única sin sublabels.
+function AgendaSection({
+  title,
+  tasks,
+  onChanged,
+  titleClass,
+}: {
+  title: string;
+  tasks: Task[];
+  onChanged: () => void;
+  titleClass?: string;
+}) {
+  const high = tasks.filter((t) => t.priority === 'high');
+  const rest = tasks.filter((t) => t.priority !== 'high');
+  const split = high.length > 0 && rest.length > 0;
+
+  return (
+    <section className="section">
+      <h2 className={titleClass}>
+        {title} · {tasks.length}
+      </h2>
+      {split ? (
+        <>
+          <h3 className="prio-sub high">↑ Prioridad alta · {high.length}</h3>
+          <TaskTable tasks={high} onChanged={onChanged} />
+          <h3 className="prio-sub">Media y baja · {rest.length}</h3>
+          <TaskTable tasks={rest} onChanged={onChanged} />
+        </>
+      ) : (
+        <TaskTable tasks={tasks} onChanged={onChanged} />
+      )}
+    </section>
+  );
+}
+
 // Vista transversal: cruza TODOS los espacios y proyectos por fecha.
 export default function AgendaPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -69,26 +105,11 @@ export default function AgendaPage() {
       {view === 'list' ? (
         <div>
           {groups.overdue.length > 0 && (
-            <section className="section">
-              <h2 className="overdue">Vencidas · {groups.overdue.length}</h2>
-              <TaskTable tasks={groups.overdue} onChanged={load} />
-            </section>
+            <AgendaSection title="Vencidas" titleClass="overdue" tasks={groups.overdue} onChanged={load} />
           )}
-
-          <section className="section">
-            <h2>Hoy · {groups.today.length}</h2>
-            <TaskTable tasks={groups.today} onChanged={load} />
-          </section>
-
-          <section className="section">
-            <h2>Mañana · {groups.tomorrow.length}</h2>
-            <TaskTable tasks={groups.tomorrow} onChanged={load} />
-          </section>
-
-          <section className="section">
-            <h2>Próximas · {groups.upcoming.length}</h2>
-            <TaskTable tasks={groups.upcoming} onChanged={load} />
-          </section>
+          <AgendaSection title="Hoy" tasks={groups.today} onChanged={load} />
+          <AgendaSection title="Mañana" tasks={groups.tomorrow} onChanged={load} />
+          <AgendaSection title="Próximas" tasks={groups.upcoming} onChanged={load} />
         </div>
       ) : (
         <AgendaCalendar tasks={tasks} onChanged={load} />

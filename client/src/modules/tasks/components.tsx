@@ -96,10 +96,20 @@ export function StatusSelect({
   );
 }
 
+export const PRIORITY_COLOR: Record<Priority, string> = {
+  high: '#c92a2a',
+  medium: '#1971c2',
+  low: '#2f9e44',
+};
+
 export function PriorityBadge({ priority }: { priority: Priority }) {
   const glyph = { high: '↑', medium: '·', low: '↓' }[priority];
   return (
-    <span className="badge" title={`Prioridad ${PRIORITY_LABEL[priority].toLowerCase()}`}>
+    <span
+      className="badge"
+      style={{ color: PRIORITY_COLOR[priority], fontWeight: 600 }}
+      title={`Prioridad ${PRIORITY_LABEL[priority].toLowerCase()}`}
+    >
       {glyph} {PRIORITY_LABEL[priority]}
     </span>
   );

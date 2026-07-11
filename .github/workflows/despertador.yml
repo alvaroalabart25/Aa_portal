@@ -1,12 +1,15 @@
 name: Despertador API
 
-# Mantiene despierta la API de Render (free tier se duerme a los ~15 min).
-# Horario España: despierta 6:00-1:00, siesta 1:00-6:00.
-# Los cron de GitHub van en UTC: 4:00-22:59 UTC = 6:00-0:59 en verano (CEST).
-# (En invierno se desplaza 1h: 5:00-23:59 CET. Ajustar a "5-23" en octubre si molesta.)
+# La API se mantiene despierta SOLA (self-ping interno cada 10 min, con siesta
+# 1:00-6:00 hora de Madrid — ver server/src/index.ts). Este workflow es:
+#   1) La alarma de las 6:00: el primer ping que la despierta tras la siesta.
+#   2) Red de seguridad horaria por si el self-ping fallara.
+# Los cron de GitHub van en UTC y son "best effort" (pueden retrasarse).
 on:
   schedule:
-    - cron: '*/10 4-22 * * *'
+    - cron: '0 4 * * *' # alarma 6:00 en verano (CEST)
+    - cron: '0 5 * * *' # alarma 6:00 en invierno (CET); en verano cae a las 7:00, inofensivo
+    - cron: '7 5-22 * * *' # red de seguridad: un ping por hora durante el día
   workflow_dispatch:
 
 jobs:
@@ -16,6 +19,6 @@ jobs:
     steps:
       - name: Ping /api/health
         run: |
-          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 --retry 2 https://aa-portal-api.onrender.com/api/health)
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 --retry 2 https://aa-portal-api.onrender.com/api/health)
           echo "API respondió HTTP $code"
           [ "$code" = "200" ] || exit 1

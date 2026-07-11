@@ -33,3 +33,18 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 
 const port = Number(process.env.PORT ?? 3001);
 app.listen(port, () => console.log(`API escuchando en http://localhost:${port}`));
+
+// Despertador interno (Render free se duerme a los ~15 min sin tráfico):
+// la propia API se hace ping cada 10 min. Siesta 1:00-6:00 en hora de Madrid
+// (robusto ante cambios de horario). GitHub Actions hace de alarma de las 6:00.
+const selfPingUrl = process.env.SELF_PING_URL;
+if (selfPingUrl) {
+  setInterval(() => {
+    const hour = Number(
+      new Intl.DateTimeFormat('es-ES', { hour: 'numeric', hour12: false, timeZone: 'Europe/Madrid' }).format(new Date()),
+    );
+    if (hour >= 1 && hour < 6) return; // siesta nocturna
+    fetch(selfPingUrl).catch(() => {});
+  }, 10 * 60 * 1000);
+  console.log('Despertador interno activo (siesta 1:00-6:00 Madrid)');
+}

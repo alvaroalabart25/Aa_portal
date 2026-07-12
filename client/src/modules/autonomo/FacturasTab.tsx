@@ -81,7 +81,7 @@ export default function FacturasTab() {
                     </button>
                   )}{' '}
                   <button className="btn ghost sm" disabled={pdfBusy === inv.id} onClick={() => openPdf(inv.id)}>
-                    {pdfBusy === inv.id ? '…' : 'PDF'}
+                    {pdfBusy === inv.id ? 'Cargando…' : 'PDF'}
                   </button>
                 </td>
               </tr>

@@ -38,6 +38,62 @@ function SidebarItem({ mod }: { mod: PortalModule }) {
   );
 }
 
+// En móvil, Espacios no se muestra (se gestiona desde Proyectos)
+const HIDDEN_ON_MOBILE = new Set(['spaces']);
+
+// Barra inferior móvil con navegación en 2 niveles:
+// raíz = Agenda + grupos; al tocar un grupo se muestran sus hijos (+ Agenda y volver).
+function BottomBar() {
+  const [group, setGroup] = useState<string | null>(null);
+  const agenda = MODULES.find((m) => !m.children)!;
+  const groups = MODULES.filter((m) => m.children);
+
+  const agendaLink = (
+    <NavLink
+      key="agenda"
+      to={agenda.path!}
+      onClick={() => setGroup(null)}
+      className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+    >
+      {agenda.icon}
+      <span>{agenda.title}</span>
+    </NavLink>
+  );
+
+  if (group === null) {
+    return (
+      <nav className="bottombar">
+        {agendaLink}
+        {groups.map((g) => (
+          <button key={g.id} className="nav-item" onClick={() => setGroup(g.id)}>
+            {g.icon}
+            <span>{g.title}</span>
+          </button>
+        ))}
+      </nav>
+    );
+  }
+
+  const g = groups.find((x) => x.id === group)!;
+  return (
+    <nav className="bottombar">
+      <button className="nav-item" aria-label="Volver" onClick={() => setGroup(null)}>
+        <span style={{ fontSize: 17, lineHeight: '18px' }}>‹</span>
+        <span>Volver</span>
+      </button>
+      {agendaLink}
+      {g.children!
+        .filter((c) => !HIDDEN_ON_MOBILE.has(c.id))
+        .map((c) => (
+          <NavLink key={c.id} to={c.path} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+            {c.icon}
+            <span>{c.title}</span>
+          </NavLink>
+        ))}
+    </nav>
+  );
+}
+
 export default function Layout() {
   const navigate = useNavigate();
 
@@ -45,9 +101,6 @@ export default function Layout() {
     clearToken();
     navigate('/login');
   }
-
-  // En móvil (barra inferior) los grupos se aplanan: Agenda + Espacios + Proyectos + Tareas
-  const flatLinks = MODULES.flatMap((m) => (m.children ? m.children : [{ id: m.id, title: m.title, path: m.path!, icon: m.icon }]));
 
   return (
     <div className="shell">
@@ -66,14 +119,7 @@ export default function Layout() {
         <Outlet />
       </main>
 
-      <nav className="bottombar">
-        {flatLinks.map((l) => (
-          <NavLink key={l.id} to={l.path} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-            {l.icon}
-            <span>{l.title}</span>
-          </NavLink>
-        ))}
-      </nav>
+      <BottomBar />
     </div>
   );
 }

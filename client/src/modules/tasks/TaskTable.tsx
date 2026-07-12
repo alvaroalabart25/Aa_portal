@@ -24,7 +24,7 @@ export default function TaskTable({
   if (tasks.length === 0) return <div className="empty">No hay tareas aquí.</div>;
 
   return (
-    <table className="table">
+    <table className="table task-table">
       <thead>
         <tr>
           <th style={{ width: '14%' }}>Estado</th>

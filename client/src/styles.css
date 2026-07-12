@@ -97,7 +97,10 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
     padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
     justify-content: space-around; z-index: 50;
   }
-  .bottombar .nav-item { flex-direction: column; gap: 2px; font-size: 11px; padding: 6px 12px; }
+  .bottombar .nav-item {
+    flex-direction: column; gap: 2px; font-size: 11px; padding: 6px 12px;
+    border: none; background: none;
+  }
 }
 
 /* ---------- Tablas (PC) / cajas (móvil) ---------- */
@@ -112,6 +115,9 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .table .num { color: var(--ink-muted); font-size: 13px; }
 
 @media (max-width: 720px) {
+  /* inputs a 16px: evita el auto-zoom de iOS al enfocar campos */
+  input, select, textarea { font-size: 16px; }
+
   .table thead { display: none; }
   .table, .table tbody, .table tr, .table td { display: block; width: 100%; }
   .table tr.row {
@@ -120,6 +126,22 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   }
   .table td { border: none; padding: 2px 0; }
   .table td[data-empty="true"] { display: none; }
+
+  /* Tareas: cajas compactas con nombre arriba y estado/fecha/prioridad/espacio inline */
+  .task-table tr.row {
+    display: flex; flex-wrap: wrap; align-items: center;
+    gap: 3px 10px; padding: 8px 10px; margin-bottom: 8px;
+  }
+  .task-table td { display: inline-flex; align-items: center; width: auto; padding: 0; }
+  .task-table td:nth-child(2) { display: block; width: 100%; order: 1; font-size: 14px; line-height: 1.35; }
+  .task-table td:nth-child(1) { order: 2; }
+  .task-table td:nth-child(3) { order: 3; }
+  .task-table td:nth-child(4) { order: 4; }
+  .task-table td:nth-child(5) { order: 5; }
+  .task-table td[data-empty="true"] { display: none; }
+  .task-table .status-btn { padding: 2px 8px; font-size: 12px; gap: 5px; }
+  .task-table .badge { font-size: 11px; padding: 2px 7px; }
+  .task-table .date-btn { padding: 2px 4px; margin-left: 0; font-size: 12.5px; }
 }
 
 /* ---------- Piezas ---------- */
@@ -186,6 +208,15 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 /* ---------- Cabecera de grupo por espacio ---------- */
 .space-group-link { display: inline-flex; align-items: center; }
 .space-group-link:hover { text-decoration: underline; }
+
+/* Acordeón de espacios en Proyectos */
+.space-acc {
+  display: flex; align-items: center; gap: 9px; width: 100%;
+  border: none; background: none; padding: 6px 0; text-align: left; cursor: pointer;
+  font-family: var(--font-title); font-weight: 600; font-size: 19px; color: var(--ink);
+}
+.space-acc:hover { opacity: 0.75; }
+.space-acc .chev { color: var(--ink-muted); font-size: 13px; width: 14px; }
 
 /* ---------- Fecha editable en línea ---------- */
 .date-btn {

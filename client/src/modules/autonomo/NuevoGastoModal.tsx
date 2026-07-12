@@ -56,7 +56,7 @@ export default function NuevoGastoModal({ onClose, onCreated }: { onClose: () =>
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div className="field">
           <label htmlFor="g-origin">Origen (proveedor)</label>
-          <input id="g-origin" autoFocus value={origin} onChange={(e) => setOrigin(e.target.value)} placeholder="P. ej. Apple" />
+          <input id="g-origin" value={origin} onChange={(e) => setOrigin(e.target.value)} placeholder="P. ej. Apple" />
         </div>
         <div className="form-grid">
           <div className="field">

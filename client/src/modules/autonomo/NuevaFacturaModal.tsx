@@ -95,7 +95,7 @@ export default function NuevaFacturaModal({ onClose, onCreated }: { onClose: () 
         <div className="form-grid">
           <div className="field">
             <label htmlFor="f-base">Base imponible (€)</label>
-            <input id="f-base" type="number" step="0.01" min="0" autoFocus value={base} onChange={(e) => setBase(e.target.value)} placeholder="1800,00" />
+            <input id="f-base" type="number" step="0.01" min="0" value={base} onChange={(e) => setBase(e.target.value)} placeholder="1800,00" />
           </div>
           <div className="field">
             <label htmlFor="f-vat">IVA %</label>

@@ -52,7 +52,7 @@ export default function EmpresaModal({
         <div className="form-grid">
           <div className="field" style={{ flex: 1 }}>
             <label htmlFor="e-name">Razón social</label>
-            <input id="e-name" autoFocus style={{ width: '100%' }} value={name} onChange={(e) => setName(e.target.value)} placeholder="P. ej. CSO Digital S.L." />
+            <input id="e-name" style={{ width: '100%' }} value={name} onChange={(e) => setName(e.target.value)} placeholder="P. ej. CSO Digital S.L." />
           </div>
           <div className="field">
             <label htmlFor="e-cif">CIF/NIF</label>

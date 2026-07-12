@@ -28,7 +28,7 @@ export function AddSpaceModal({ onClose, onCreated }: { onClose: () => void; onC
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div className="field">
           <label htmlFor="m-space-name">Nombre</label>
-          <input id="m-space-name" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="P. ej. CSO" />
+          <input id="m-space-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="P. ej. CSO" />
         </div>
         <div className="field">
           <label>Color</label>
@@ -104,7 +104,7 @@ export function AddProjectModal({
         )}
         <div className="field">
           <label htmlFor="m-proj-name">Nombre</label>
-          <input id="m-proj-name" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="P. ej. RESIDENCIA CONDES VAL | Desarrollo web" />
+          <input id="m-proj-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="P. ej. RESIDENCIA CONDES VAL | Desarrollo web" />
         </div>
         <div className="modal-actions">
           <button type="button" className="btn ghost" onClick={onClose}>Cancelar</button>
@@ -171,7 +171,7 @@ export function AddTaskModal({
         )}
         <div className="field">
           <label htmlFor="m-task-title">Nombre</label>
-          <input id="m-task-title" autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="¿Qué hay que hacer?" />
+          <input id="m-task-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="¿Qué hay que hacer?" />
         </div>
         <div className="form-grid">
           <div className="field">

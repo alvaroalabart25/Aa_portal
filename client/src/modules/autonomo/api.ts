@@ -17,6 +17,9 @@ export const autonomoApi = {
   createInvoice: (data: Record<string, unknown>) => post<Invoice>('/autonomo/invoices', data),
   updateInvoice: (id: number, data: Record<string, unknown>) => patch<Invoice>(`/autonomo/invoices/${id}`, data),
   archiveInvoice: (id: number) => del<{ archived: boolean }>(`/autonomo/invoices/${id}`),
+  approveInvoice: (id: number) => post<Invoice>(`/autonomo/invoices/${id}/approve`, {}),
+  sendInvoice: (id: number, data: { to: string; subject: string; message: string }) =>
+    post<Invoice>(`/autonomo/invoices/${id}/send`, data),
   openPdf: (id: number) => openBlob(`/autonomo/invoices/${id}/pdf`),
 
   summary: (year: number) => get<{ year: number; quarters: QuarterSummary[] }>(`/autonomo/summary?year=${year}`),

@@ -30,3 +30,11 @@ services:
         value: https://portal.alvaroalabart.es
       - key: SELF_PING_URL
         value: https://aa-portal-api.onrender.com/api/health
+      - key: SMTP_HOST
+        value: com1029.raiolanetworks.es
+      - key: SMTP_PORT
+        value: "465"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false

@@ -21,9 +21,12 @@ export interface InvoiceClient {
   email: string | null;
 }
 
+export type InvoiceStatus = 'draft' | 'reviewed' | 'sent';
+
 export interface Invoice {
   id: number;
   kind: InvoiceKind;
+  status: InvoiceStatus;
   clientId: number | null;
   origin: string;
   number: string;
@@ -35,7 +38,15 @@ export interface Invoice {
   vatAmount: string;
   irpfAmount: string;
   total: string;
+  emailedTo: string | null;
+  emailedAt: string | null;
 }
+
+export const INVOICE_STATUS: Record<InvoiceStatus, { label: string; color: string }> = {
+  draft: { label: 'Borrador', color: '#8a8a8a' },
+  reviewed: { label: 'Lista para enviar', color: '#1971c2' },
+  sent: { label: 'Enviada', color: '#2f9e44' },
+};
 
 export interface QuarterSummary {
   incomeBase: number;

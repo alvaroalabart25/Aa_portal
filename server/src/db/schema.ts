@@ -150,6 +150,9 @@ export const invoices = mysqlTable('invoices', {
     .notNull()
     .references(() => users.id),
   kind: mysqlEnum('kind', ['income', 'expense']).notNull(),
+  // Flujo de emisión: crear (draft) -> revisar/aprobar (reviewed) -> enviar (sent).
+  // Una factura enviada queda congelada (no editable).
+  status: mysqlEnum('status', ['draft', 'reviewed', 'sent']).notNull().default('draft'),
   clientId: bigint('client_id', { mode: 'number' }).references(() => invoiceClients.id),
   origin: varchar('origin', { length: 200 }).notNull(), // a quién se factura / de quién es el gasto
   number: varchar('number', { length: 40 }).notNull(),

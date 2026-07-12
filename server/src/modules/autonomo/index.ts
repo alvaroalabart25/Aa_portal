@@ -6,6 +6,7 @@ import { db } from '../../db';
 import { autonomoProfile, invoiceClients, invoices } from '../../db/schema';
 import type { AuthedRequest } from '../../core/auth/middleware';
 import { buildInvoicePdf } from './pdf';
+import { sendInvoiceEmail, smtpConfigured } from './mailer';
 
 // Módulo "Autónomo": facturación, cuentas y trimestrales.
 export const autonomoModule = Router();
@@ -185,6 +186,9 @@ autonomoModule.patch('/invoices/:id', ah(async (req: AuthedRequest, res) => {
   if (!current) return res.status(404).json({ error: 'Factura no encontrada' });
 
   const d = parsed.data;
+  if (current.kind === 'income' && current.status === 'sent') {
+    return res.status(400).json({ error: 'Una factura enviada está congelada y no se puede editar' });
+  }
   if (current.kind === 'income' && (d.origin || d.number)) {
     return res.status(400).json({ error: 'El nº y el cliente de una factura emitida no se cambian (numeración correlativa)' });
   }
@@ -241,6 +245,70 @@ autonomoModule.get('/invoices/:id/pdf', ah(async (req: AuthedRequest, res) => {
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `inline; filename="Factura-${inv.number}.pdf"`);
   res.send(Buffer.from(bytes));
+}));
+
+// Paso 2 del flujo: aprobar tras revisar (draft -> reviewed)
+autonomoModule.post('/invoices/:id/approve', ah(async (req: AuthedRequest, res) => {
+  const id = Number(req.params.id);
+  const [inv] = await db
+    .select()
+    .from(invoices)
+    .where(and(eq(invoices.id, id), eq(invoices.userId, req.userId!)));
+  if (!inv) return res.status(404).json({ error: 'Factura no encontrada' });
+  if (inv.kind !== 'income') return res.status(400).json({ error: 'Solo aplica a facturas emitidas' });
+  if (inv.status === 'sent') return res.status(400).json({ error: 'La factura ya está enviada' });
+  await db.update(invoices).set({ status: 'reviewed' }).where(eq(invoices.id, id));
+  const [row] = await db.select().from(invoices).where(eq(invoices.id, id));
+  res.json(row);
+}));
+
+// Paso 3 del flujo: enviar por email con el PDF adjunto (reviewed -> sent)
+const sendInput = z.object({
+  to: z.string().trim().email(),
+  subject: z.string().trim().min(1).max(200),
+  message: z.string().trim().min(1).max(5000),
+});
+
+autonomoModule.post('/invoices/:id/send', ah(async (req: AuthedRequest, res) => {
+  const id = Number(req.params.id);
+  const parsed = sendInput.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
+
+  const [inv] = await db
+    .select()
+    .from(invoices)
+    .where(and(eq(invoices.id, id), eq(invoices.userId, req.userId!)));
+  if (!inv) return res.status(404).json({ error: 'Factura no encontrada' });
+  if (inv.kind !== 'income') return res.status(400).json({ error: 'Solo aplica a facturas emitidas' });
+  if (inv.status === 'draft') return res.status(400).json({ error: 'Revisa y aprueba la factura antes de enviarla' });
+  if (inv.status === 'sent') return res.status(400).json({ error: 'La factura ya fue enviada' });
+  if (!smtpConfigured()) {
+    return res.status(503).json({ error: 'El envío por email aún no está configurado (falta el buzón SMTP)' });
+  }
+
+  const [profile] = await db.select().from(autonomoProfile).where(eq(autonomoProfile.userId, req.userId!));
+  if (!profile) return res.status(400).json({ error: 'Falta el perfil fiscal' });
+  const [client] = inv.clientId
+    ? await db.select().from(invoiceClients).where(eq(invoiceClients.id, inv.clientId))
+    : [];
+  const payer = client ?? { name: inv.origin, taxId: null, addressLine: null, cityLine: null, phone: null };
+
+  const pdfBytes = await buildInvoicePdf(inv, profile, payer);
+  await sendInvoiceEmail({
+    to: parsed.data.to,
+    subject: parsed.data.subject,
+    message: parsed.data.message,
+    fromName: profile.fullName,
+    pdfName: `Factura-${inv.number}.pdf`,
+    pdfBytes,
+  });
+
+  await db
+    .update(invoices)
+    .set({ status: 'sent', emailedTo: parsed.data.to, emailedAt: new Date() })
+    .where(eq(invoices.id, id));
+  const [row] = await db.select().from(invoices).where(eq(invoices.id, id));
+  res.json(row);
 }));
 
 // ---------- Resumen trimestral ----------

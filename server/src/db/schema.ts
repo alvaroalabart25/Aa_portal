@@ -3,6 +3,7 @@ import {
   bigint,
   datetime,
   date,
+  decimal,
   int,
   mysqlEnum,
   mysqlTable,
@@ -95,7 +96,85 @@ export const tasks = mysqlTable('tasks', {
     .$onUpdateFn(() => new Date()),
 });
 
+// ============================================================
+// Módulo Autónomo: facturación
+// ============================================================
+
+// Datos fiscales del emisor (una sola fila; editable desde la UI en el futuro)
+export const autonomoProfile = mysqlTable('autonomo_profile', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  fullName: varchar('full_name', { length: 160 }).notNull(),
+  taxId: varchar('tax_id', { length: 20 }).notNull(),
+  addressLine: varchar('address_line', { length: 200 }),
+  cityLine: varchar('city_line', { length: 200 }),
+  iban: varchar('iban', { length: 40 }),
+  defaultVatPct: decimal('default_vat_pct', { precision: 5, scale: 2 }).notNull().default('21.00'),
+  defaultIrpfPct: decimal('default_irpf_pct', { precision: 5, scale: 2 }).notNull().default('15.00'),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`)
+    .$onUpdateFn(() => new Date()),
+});
+
+// Pagadores/clientes de facturación (ej: CSO Digital S.L.)
+export const invoiceClients = mysqlTable('invoice_clients', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  name: varchar('name', { length: 160 }).notNull(),
+  taxId: varchar('tax_id', { length: 20 }),
+  addressLine: varchar('address_line', { length: 200 }),
+  cityLine: varchar('city_line', { length: 200 }),
+  phone: varchar('phone', { length: 40 }),
+  email: varchar('email', { length: 160 }),
+  archivedAt: datetime('archived_at'),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`)
+    .$onUpdateFn(() => new Date()),
+});
+
+// Facturas: income = emitidas (numeración correlativa YYYYNNN, alimentan
+// Cuentas y Trimestrales); expense = gastos añadidos a mano.
+// Los importes se calculan en servidor (céntimos, redondeo mitad-arriba) y se
+// guardan congelados: una factura emitida no debe recalcularse sola.
+export const invoices = mysqlTable('invoices', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  kind: mysqlEnum('kind', ['income', 'expense']).notNull(),
+  clientId: bigint('client_id', { mode: 'number' }).references(() => invoiceClients.id),
+  origin: varchar('origin', { length: 200 }).notNull(), // a quién se factura / de quién es el gasto
+  number: varchar('number', { length: 40 }).notNull(),
+  issueDate: date('issue_date', { mode: 'string' }).notNull(),
+  concept: varchar('concept', { length: 255 }),
+  base: decimal('base', { precision: 12, scale: 2 }).notNull(),
+  vatPct: decimal('vat_pct', { precision: 5, scale: 2 }).notNull(),
+  irpfPct: decimal('irpf_pct', { precision: 5, scale: 2 }).notNull(),
+  vatAmount: decimal('vat_amount', { precision: 12, scale: 2 }).notNull(),
+  irpfAmount: decimal('irpf_amount', { precision: 12, scale: 2 }).notNull(),
+  total: decimal('total', { precision: 12, scale: 2 }).notNull(),
+  emailedTo: varchar('emailed_to', { length: 160 }),
+  emailedAt: datetime('emailed_at'),
+  archivedAt: datetime('archived_at'),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`)
+    .$onUpdateFn(() => new Date()),
+});
+
 export type User = typeof users.$inferSelect;
 export type Space = typeof spaces.$inferSelect;
 export type Project = typeof projects.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
+export type AutonomoProfile = typeof autonomoProfile.$inferSelect;
+export type InvoiceClient = typeof invoiceClients.$inferSelect;
+export type Invoice = typeof invoices.$inferSelect;

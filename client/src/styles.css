@@ -317,6 +317,14 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .nav-group-head .chev.open { transform: rotate(90deg); }
 .nav-children { display: flex; flex-direction: column; gap: 2px; margin-left: 14px; border-left: 1px solid var(--line); padding-left: 8px; }
 
+/* ---------- Módulo Autónomo ---------- */
+.invoice-preview {
+  display: flex; gap: 18px; flex-wrap: wrap;
+  background: var(--paper-soft); border: 1px solid var(--line);
+  border-radius: 8px; padding: 10px 14px; font-size: 13.5px;
+}
+.table tfoot td { border-top: 2px solid var(--ink); border-bottom: none; }
+
 /* ---------- Login ---------- */
 .login-wrap { min-height: 100vh; display: grid; place-items: center; padding: 20px; }
 .login-card { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 14px; }

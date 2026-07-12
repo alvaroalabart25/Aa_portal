@@ -9,6 +9,7 @@ import ProjectsPage from './modules/tasks/ProjectsPage';
 import ProjectPage from './modules/tasks/ProjectPage';
 import TasksPage from './modules/tasks/TasksPage';
 import TaskPage from './modules/tasks/TaskPage';
+import AutonomoPage from './modules/autonomo/AutonomoPage';
 
 function RequireAuth() {
   return isLoggedIn() ? <Outlet /> : <Navigate to="/login" replace />;
@@ -29,6 +30,7 @@ export default function App() {
             <Route path="/proyectos/:id" element={<ProjectPage />} />
             <Route path="/tareas" element={<TasksPage />} />
             <Route path="/tareas/:id" element={<TaskPage />} />
+            <Route path="/autonomo" element={<AutonomoPage />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

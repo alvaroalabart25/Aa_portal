@@ -27,6 +27,18 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   return res.json();
 }
 
+// Descarga un binario autenticado (ej. PDF) y lo abre en una pestaña nueva.
+export async function openBlob(path: string) {
+  const token = getToken();
+  const res = await fetch(`${API_BASE}/api${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error(`Error ${res.status} generando el documento`);
+  const url = URL.createObjectURL(await res.blob());
+  window.open(url, '_blank');
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
 export const get = <T>(path: string) => api<T>(path);
 export const post = <T>(path: string, data: unknown) =>
   api<T>(path, { method: 'POST', body: JSON.stringify(data) });

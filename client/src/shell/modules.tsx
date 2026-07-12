@@ -55,6 +55,13 @@ const icons = {
       <path d="M4 6h2M4 12h2M4 18h2M10 6h10M10 12h10M10 18h10" />
     </svg>
   ),
+  autonomo: (
+    <svg width="18" height="18" viewBox="0 0 24 24" {...stroke}>
+      <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+      <path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z" />
+      <path d="M9 13h4M9 17h6" />
+    </svg>
+  ),
 };
 
 export const MODULES: PortalModule[] = [
@@ -69,6 +76,6 @@ export const MODULES: PortalModule[] = [
       { id: 'tasks', title: 'Tareas', path: '/tareas', icon: icons.tasks },
     ],
   },
-  // (futuro) { id: 'autonomo', title: 'Autónomo', ... },
+  { id: 'autonomo', title: 'Autónomo', path: '/autonomo', icon: icons.autonomo },
   // (futuro) { id: 'wiki', title: 'Wiki', ... },
 ];

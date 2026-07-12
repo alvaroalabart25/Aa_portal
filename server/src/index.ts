@@ -4,6 +4,7 @@ import cors from 'cors';
 import { authRouter } from './core/auth/routes';
 import { requireAuth } from './core/auth/middleware';
 import { tasksModule } from './modules/tasks';
+import { autonomoModule } from './modules/autonomo';
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use('/api/auth', authRouter);
 
 // Módulos (todos protegidos por login). Añadir un módulo = una línea más aquí.
 app.use('/api', requireAuth, tasksModule);
+app.use('/api/autonomo', requireAuth, autonomoModule);
 
 // Errores no controlados -> 500 JSON
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

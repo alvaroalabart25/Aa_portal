@@ -75,12 +75,48 @@ function GroupTable({ label, color, rows }: { label: string; color: string; rows
   );
 }
 
-// Subtab Cuentas: movimientos agrupados por trimestre, con Ingresos y Gastos
-// separados, totales por grupo y resultado (ingresos - gastos).
+interface QuarterData {
+  q: number;
+  income: Invoice[];
+  expense: Invoice[];
+  has: boolean;
+}
+
+function QuarterSection({ qt, isCurrent }: { qt: QuarterData; isCurrent: boolean }) {
+  const inc = sumRows(qt.income);
+  const exp = sumRows(qt.expense);
+  return (
+    <section className="section">
+      <h2>
+        {QUARTER_LABEL[qt.q]}
+        {isCurrent && (
+          <span className="badge" style={{ marginLeft: 10, fontSize: 11, verticalAlign: 'middle' }}>
+            trimestre actual
+          </span>
+        )}
+      </h2>
+
+      {!qt.has && <div className="empty">Sin movimientos todavía en este trimestre.</div>}
+      <GroupTable label="Ingresos" color="#2f9e44" rows={qt.income} />
+      <GroupTable label="Gastos" color="#c92a2a" rows={qt.expense} />
+
+      {qt.has && (
+        <p className="quarter-result">
+          Resultado {QUARTER_LABEL[qt.q].slice(0, 2)} (base imponible): {fmtEur(inc.base)} ingresos − {fmtEur(exp.base)} gastos ={' '}
+          <strong>{fmtEur(inc.base - exp.base)}</strong>
+        </p>
+      )}
+    </section>
+  );
+}
+
+// Subtab Cuentas: Resultado del año arriba (status), luego el trimestre en
+// curso, y el resto de trimestres ocultos tras un filtro para una vista limpia.
 export default function CuentasTab() {
   const [all, setAll] = useState<Invoice[]>([]);
   const [year, setYear] = useState(new Date().getFullYear());
   const [adding, setAdding] = useState(false);
+  const [showOthers, setShowOthers] = useState(false);
 
   const load = useCallback(async () => setAll(await autonomoApi.invoices()), []);
   useEffect(() => {
@@ -99,17 +135,21 @@ export default function CuentasTab() {
   const currentQ = Math.floor(now.getMonth() / 3);
   const isCurrentYear = year === now.getFullYear();
 
-  const quarters = useMemo(() => {
+  const quarters: QuarterData[] = useMemo(() => {
     return [0, 1, 2, 3].map((q) => {
       const qRows = rows.filter((i) => Math.floor((Number(i.issueDate.slice(5, 7)) - 1) / 3) === q);
-      const income = qRows.filter((i) => i.kind === 'income');
-      const expense = qRows.filter((i) => i.kind === 'expense');
-      return { q, income, expense, has: qRows.length > 0 };
+      return {
+        q,
+        income: qRows.filter((i) => i.kind === 'income'),
+        expense: qRows.filter((i) => i.kind === 'expense'),
+        has: qRows.length > 0,
+      };
     });
   }, [rows]);
 
   const yearIncome = sumRows(rows.filter((i) => i.kind === 'income'));
   const yearExpense = sumRows(rows.filter((i) => i.kind === 'expense'));
+  const others = quarters.filter((qt) => qt.has && !(isCurrentYear && qt.q === currentQ));
 
   return (
     <div>
@@ -126,38 +166,8 @@ export default function CuentasTab() {
         </button>
       </div>
 
-      {quarters
-        .filter((qt) => qt.has || (isCurrentYear && qt.q === currentQ))
-        .map((qt) => {
-          const inc = sumRows(qt.income);
-          const exp = sumRows(qt.expense);
-          return (
-            <section key={qt.q} className="section">
-              <h2>
-                {QUARTER_LABEL[qt.q]}
-                {isCurrentYear && qt.q === currentQ && (
-                  <span className="badge" style={{ marginLeft: 10, fontSize: 11, verticalAlign: 'middle' }}>
-                    trimestre actual
-                  </span>
-                )}
-              </h2>
-
-              {!qt.has && <div className="empty">Sin movimientos todavía en este trimestre.</div>}
-              <GroupTable label="Ingresos" color="#2f9e44" rows={qt.income} />
-              <GroupTable label="Gastos" color="#c92a2a" rows={qt.expense} />
-
-              {qt.has && (
-                <p className="quarter-result">
-                  Resultado {QUARTER_LABEL[qt.q].slice(0, 2)} (base imponible): {fmtEur(inc.base)} ingresos − {fmtEur(exp.base)} gastos ={' '}
-                  <strong>{fmtEur(inc.base - exp.base)}</strong>
-                </p>
-              )}
-            </section>
-          );
-        })}
-
       {rows.length > 0 && (
-        <section className="section">
+        <section className="section" style={{ marginTop: 26 }}>
           <h2>Resultado {year}</h2>
           <p className="quarter-result" style={{ fontSize: 15 }}>
             {fmtEur(yearIncome.base)} ingresos − {fmtEur(yearExpense.base)} gastos ={' '}
@@ -167,6 +177,20 @@ export default function CuentasTab() {
         </section>
       )}
       {rows.length === 0 && <div className="empty">Sin movimientos en {year}.</div>}
+
+      {isCurrentYear && <QuarterSection qt={quarters[currentQ]} isCurrent />}
+
+      {others.length > 0 &&
+        (isCurrentYear ? (
+          <>
+            <button className="btn ghost sm" style={{ marginTop: 32 }} onClick={() => setShowOthers((v) => !v)}>
+              {showOthers ? '▴ Ocultar trimestres anteriores' : `▾ Ver otros trimestres (${others.length})`}
+            </button>
+            {showOthers && [...others].sort((a, b) => b.q - a.q).map((qt) => <QuarterSection key={qt.q} qt={qt} isCurrent={false} />)}
+          </>
+        ) : (
+          others.map((qt) => <QuarterSection key={qt.q} qt={qt} isCurrent={false} />)
+        ))}
 
       {adding && <NuevoGastoModal onClose={() => setAdding(false)} onCreated={load} />}
     </div>

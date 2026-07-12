@@ -324,6 +324,11 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   border-radius: 8px; padding: 10px 14px; font-size: 13.5px;
 }
 .table tfoot td { border-top: 2px solid var(--ink); border-bottom: none; }
+.quarter-result {
+  margin: 14px 0 0; font-size: 14px; color: var(--ink-soft);
+  background: var(--paper-soft); border: 1px solid var(--line);
+  border-radius: 8px; padding: 10px 14px; display: inline-block;
+}
 
 /* ---------- Login ---------- */
 .login-wrap { min-height: 100vh; display: grid; place-items: center; padding: 20px; }

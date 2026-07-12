@@ -5,6 +5,7 @@ export const autonomoApi = {
   profile: () => get<AutonomoProfile | null>('/autonomo/profile'),
   clients: () => get<InvoiceClient[]>('/autonomo/clients'),
   createClient: (data: Partial<InvoiceClient>) => post<InvoiceClient>('/autonomo/clients', data),
+  updateClient: (id: number, data: Partial<InvoiceClient>) => patch<InvoiceClient>(`/autonomo/clients/${id}`, data),
 
   invoices: (params: { year?: number; kind?: string } = {}) => {
     const q = new URLSearchParams();

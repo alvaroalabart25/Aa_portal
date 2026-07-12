@@ -9,7 +9,8 @@ import ProjectsPage from './modules/tasks/ProjectsPage';
 import ProjectPage from './modules/tasks/ProjectPage';
 import TasksPage from './modules/tasks/TasksPage';
 import TaskPage from './modules/tasks/TaskPage';
-import AutonomoPage from './modules/autonomo/AutonomoPage';
+import FacturasPage from './modules/autonomo/FacturasPage';
+import CuentasPage from './modules/autonomo/CuentasPage';
 
 function RequireAuth() {
   return isLoggedIn() ? <Outlet /> : <Navigate to="/login" replace />;
@@ -30,7 +31,9 @@ export default function App() {
             <Route path="/proyectos/:id" element={<ProjectPage />} />
             <Route path="/tareas" element={<TasksPage />} />
             <Route path="/tareas/:id" element={<TaskPage />} />
-            <Route path="/autonomo" element={<AutonomoPage />} />
+            <Route path="/autonomo" element={<Navigate to="/autonomo/facturas" replace />} />
+            <Route path="/autonomo/facturas" element={<FacturasPage />} />
+            <Route path="/autonomo/cuentas" element={<CuentasPage />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

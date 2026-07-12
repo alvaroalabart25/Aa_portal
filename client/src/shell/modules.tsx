@@ -76,6 +76,34 @@ export const MODULES: PortalModule[] = [
       { id: 'tasks', title: 'Tareas', path: '/tareas', icon: icons.tasks },
     ],
   },
-  { id: 'autonomo', title: 'Autónomo', path: '/autonomo', icon: icons.autonomo },
+  {
+    id: 'autonomo',
+    title: 'Autónomo',
+    icon: icons.autonomo,
+    children: [
+      {
+        id: 'facturas',
+        title: 'Facturas',
+        path: '/autonomo/facturas',
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" {...stroke}>
+            <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+            <path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z" />
+          </svg>
+        ),
+      },
+      {
+        id: 'cuentas',
+        title: 'Cuentas',
+        path: '/autonomo/cuentas',
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" {...stroke}>
+            <rect x="4" y="3" width="16" height="18" rx="2" />
+            <path d="M8 7h8M8 11h3M8 15h3M13 11h3M13 15h3" />
+          </svg>
+        ),
+      },
+    ],
+  },
   // (futuro) { id: 'wiki', title: 'Wiki', ... },
 ];

@@ -70,6 +70,19 @@ autonomoModule.post('/clients', ah(async (req: AuthedRequest, res) => {
   res.status(201).json(row);
 }));
 
+autonomoModule.patch('/clients/:id', ah(async (req: AuthedRequest, res) => {
+  const id = Number(req.params.id);
+  const parsed = clientInput.partial().safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
+  const [result] = await db
+    .update(invoiceClients)
+    .set(parsed.data)
+    .where(and(eq(invoiceClients.id, id), eq(invoiceClients.userId, req.userId!)));
+  if (result.affectedRows === 0) return res.status(404).json({ error: 'Empresa no encontrada' });
+  const [row] = await db.select().from(invoiceClients).where(eq(invoiceClients.id, id));
+  res.json(row);
+}));
+
 // ---------- Facturas ----------
 // GET /invoices?year=&kind= — no archivadas, más recientes primero
 autonomoModule.get('/invoices', ah(async (req: AuthedRequest, res) => {

@@ -25,7 +25,7 @@ function GroupTable({ label, color, rows }: { label: string; color: string; rows
         {label} · {rows.length}
       </h3>
       <div style={{ overflowX: 'auto' }}>
-        <table className="table" style={{ minWidth: 900 }}>
+        <table className="table scroll-table" style={{ minWidth: 900 }}>
           <thead>
             <tr>
               <th>Origen</th>

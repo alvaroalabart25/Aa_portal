@@ -81,7 +81,7 @@ function BottomBar() {
         <span style={{ fontSize: 17, lineHeight: '18px' }}>‹</span>
         <span>Volver</span>
       </button>
-      {agendaLink}
+      {group === 'org' && agendaLink}
       {g.children!
         .filter((c) => !HIDDEN_ON_MOBILE.has(c.id))
         .map((c) => (

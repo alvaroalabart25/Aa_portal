@@ -97,7 +97,7 @@ export default function TrimestralesTab() {
       </div>
 
       <div style={{ overflowX: 'auto' }}>
-        <table className="table" style={{ minWidth: 860 }}>
+        <table className="table scroll-table" style={{ minWidth: 860 }}>
           <thead>
             <tr>
               <th style={{ width: '13%' }}>Trimestre</th>

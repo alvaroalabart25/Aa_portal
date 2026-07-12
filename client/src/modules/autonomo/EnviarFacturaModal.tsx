@@ -13,11 +13,14 @@ export default function EnviarFacturaModal({
   onClose: () => void;
   onSent: () => void;
 }) {
+  const [d, m, y] = [invoice.issueDate.slice(8, 10), invoice.issueDate.slice(5, 7), invoice.issueDate.slice(0, 4)];
+  const buildMessage = (name: string) =>
+    `¡Hola!\n\nTe adjunto la factura.\n\nNº de factura: ${invoice.number}\nFecha: ${d}/${m}/${y}\nConcepto: ${invoice.concept ?? ''}\nImporte: ${fmtEur(Number(invoice.total))}\n\nGracias,\n${name}`;
+
   const [to, setTo] = useState('');
   const [subject, setSubject] = useState(`Factura ${invoice.number} — Álvaro Alabart`);
-  const [message, setMessage] = useState(
-    `Hola,\n\nTe adjunto la factura ${invoice.number} (${fmtEur(Number(invoice.total))}).\n\nUn saludo,\nÁlvaro`,
-  );
+  const [message, setMessage] = useState(buildMessage('Álvaro Alabart'));
+  const [touched, setTouched] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
 
@@ -27,8 +30,12 @@ export default function EnviarFacturaModal({
       if (client?.email) setTo(client.email);
     });
     autonomoApi.profile().then((p) => {
-      if (p) setSubject(`Factura ${invoice.number} — ${p.fullName}`);
+      if (p) {
+        setSubject(`Factura ${invoice.number} — ${p.fullName}`);
+        if (!touched) setMessage(buildMessage(p.fullName));
+      }
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invoice]);
 
   async function submit(e: FormEvent) {
@@ -60,7 +67,15 @@ export default function EnviarFacturaModal({
         </div>
         <div className="field">
           <label htmlFor="s-message">Mensaje</label>
-          <textarea id="s-message" rows={6} value={message} onChange={(e) => setMessage(e.target.value)} />
+          <textarea
+            id="s-message"
+            rows={9}
+            value={message}
+            onChange={(e) => {
+              setTouched(true);
+              setMessage(e.target.value);
+            }}
+          />
         </div>
         <p className="muted" style={{ fontSize: 13, margin: 0 }}>
           Se adjuntará <strong>Factura-{invoice.number}.pdf</strong> y quedará una copia en tu buzón.

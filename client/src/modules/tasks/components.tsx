@@ -115,6 +115,70 @@ export function PriorityBadge({ priority }: { priority: Priority }) {
   );
 }
 
+// Desplegable de prioridad en línea (mismo patrón que el de estado).
+export function PrioritySelect({
+  value,
+  onChange,
+}: {
+  value: Priority;
+  onChange: (priority: Priority) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const glyph: Record<Priority, string> = { high: '↑', medium: '·', low: '↓' };
+
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, []);
+
+  return (
+    <div className="status-select" ref={ref}>
+      <button
+        type="button"
+        className="status-btn"
+        style={{ color: PRIORITY_COLOR[value], fontWeight: 600 }}
+        onClick={() => setOpen(!open)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        {glyph[value]} {PRIORITY_LABEL[value]}
+        <span className="chev-sm">▾</span>
+      </button>
+      {open && (
+        <div className="status-menu" role="listbox">
+          {(Object.keys(PRIORITY_LABEL) as Priority[]).map((p) => (
+            <button
+              key={p}
+              type="button"
+              role="option"
+              aria-selected={p === value}
+              className={`status-option${p === value ? ' current' : ''}`}
+              style={{ color: PRIORITY_COLOR[p] }}
+              onClick={() => {
+                setOpen(false);
+                if (p !== value) onChange(p);
+              }}
+            >
+              {glyph[p]} {PRIORITY_LABEL[p]}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function SpaceTag({ name, color }: { name?: string; color?: string }) {
   if (!name) return null;
   return (

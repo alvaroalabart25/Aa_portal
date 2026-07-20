@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { tasksApi } from './api';
-import { DueDateEdit, PriorityBadge, SpaceTag, StatusSelect } from './components';
-import type { Task, TaskStatus } from './types';
+import { DueDateEdit, PrioritySelect, SpaceTag, StatusSelect } from './components';
+import type { Priority, Task, TaskStatus } from './types';
 
 // Tabla de tareas reutilizable (Agenda, detalle de proyecto...).
 // En PC: tabla con columnas. En móvil: cada fila se convierte en caja (CSS).
@@ -57,8 +57,14 @@ export default function TaskTable({
                 }}
               />
             </td>
-            <td>
-              <PriorityBadge priority={t.priority} />
+            <td onClick={(e) => e.stopPropagation()}>
+              <PrioritySelect
+                value={t.priority}
+                onChange={async (priority: Priority) => {
+                  await tasksApi.update(t.id, { priority });
+                  onChanged();
+                }}
+              />
             </td>
             {showProject && (
               <td data-empty={!t.spaceName}>

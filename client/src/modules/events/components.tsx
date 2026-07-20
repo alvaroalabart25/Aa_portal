@@ -5,8 +5,9 @@ import {
   eventColor,
   eventPlace,
   fmtEventDate,
-  milestoneLabel,
   nextOccurrence,
+  RADAR_WINDOW_DAYS,
+  whenLabel,
   type EventScope,
   type ImportantEvent,
 } from './types';
@@ -28,8 +29,9 @@ export function EventBand({ ev, note }: { ev: ImportantEvent; note?: string }) {
   );
 }
 
-// Radar: franja de recordatorios. Muestra vencidos (puntuales, en rojo hasta
-// borrarlos) y los eventos que hoy tocan hito (1 mes, 15, 7, 3, 2, víspera, día).
+// Radar: franja de recordatorios siempre visible. Muestra vencidos (puntuales,
+// en rojo hasta borrarlos) y todo evento dentro de los próximos 4 meses,
+// ordenado por cercanía y con cuenta atrás.
 export function EventsRadar({ scope }: { scope?: EventScope }) {
   const [eventsList, setEventsList] = useState<ImportantEvent[]>([]);
 
@@ -48,7 +50,7 @@ export function EventsRadar({ scope }: { scope?: EventScope }) {
       const next = nextOccurrence(e);
       return { e, next, days: daysUntil(next) };
     })
-    .filter((x) => milestoneLabel(x.days) !== null)
+    .filter((x) => x.days >= 0 && x.days <= RADAR_WINDOW_DAYS)
     .sort((a, b) => a.days - b.days);
 
   if (overdue.length === 0 && alerts.length === 0) return null;
@@ -75,7 +77,7 @@ export function EventsRadar({ scope }: { scope?: EventScope }) {
           style={{ borderLeftColor: eventColor(e) }}
         >
           <span className="event-pin">📌</span>
-          <span className={`event-when${days <= 2 ? ' soon' : ''}`}>{milestoneLabel(days)}</span>
+          <span className={`event-when${days <= 7 ? ' soon' : ''}`}>{whenLabel(days)}</span>
           <span className="event-title">{e.title}</span>
           <span className="badge">
             <span className="dot" style={{ background: eventColor(e) }} />

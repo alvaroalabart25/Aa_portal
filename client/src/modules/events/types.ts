@@ -53,16 +53,15 @@ export function daysUntil(iso: string): number {
   return Math.round((target.getTime() - base.getTime()) / 86_400_000);
 }
 
-// Hitos del radar: 1 mes, 15, 7, 3, 2 días, víspera y el mismo día.
-export function milestoneLabel(days: number): string | null {
+// El radar muestra todo lo que caiga dentro de esta ventana (~4 meses)
+export const RADAR_WINDOW_DAYS = 120;
+
+export function whenLabel(days: number): string {
   if (days === 0) return 'HOY';
   if (days === 1) return 'Mañana';
-  if (days === 2) return 'En 2 días';
-  if (days === 3) return 'En 3 días';
-  if (days === 7) return 'En 7 días';
-  if (days === 15) return 'En 15 días';
-  if (days === 30) return 'En 1 mes';
-  return null;
+  if (days < 30) return `En ${days} días`;
+  const months = Math.floor(days / 30);
+  return months === 1 ? 'En 1 mes' : `En ${months} meses`;
 }
 
 export function eventColor(ev: ImportantEvent): string {

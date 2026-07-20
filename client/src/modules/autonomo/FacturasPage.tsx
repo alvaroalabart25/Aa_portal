@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import FacturasTab from './FacturasTab';
+import { EventsRadar } from '../events/components';
 import EmpresasTab from './EmpresasTab';
 
 // Página Facturas: emisión y listado + empresas a las que facturas.
@@ -19,6 +20,8 @@ export default function FacturasPage() {
           </button>
         </div>
       </div>
+
+      <EventsRadar scope="autonomo" />
 
       {tab === 'emitidas' ? <FacturasTab /> : <EmpresasTab />}
     </div>

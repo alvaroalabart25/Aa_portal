@@ -3,6 +3,7 @@ import { tasksApi } from './api';
 import { KebabMenu } from './components';
 import { AddTaskModal } from './modals';
 import TaskTable from './TaskTable';
+import { EventsRadar } from '../events/components';
 import type { Task } from './types';
 
 // Vista global: TODAS las tareas de todos los espacios y proyectos.
@@ -39,6 +40,7 @@ export default function TasksPage() {
         </div>
       </div>
 
+      <EventsRadar scope="space" />
       <div style={{ marginTop: 12 }}>
         <TaskTable tasks={tasks} onChanged={load} />
       </div>

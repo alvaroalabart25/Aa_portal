@@ -2,6 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { tasksApi } from './api';
 import TaskTable from './TaskTable';
 import type { Task } from './types';
+import { eventsApi } from '../events/api';
+import { EventBand, EventsRadar } from '../events/components';
+import EventosTab from '../events/EventosTab';
+import { nextOccurrence, type ImportantEvent } from '../events/types';
 
 function isoLocal(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -27,11 +31,13 @@ function AgendaSection({
   tasks,
   onChanged,
   titleClass,
+  events = [],
 }: {
   title: string;
   tasks: Task[];
   onChanged: () => void;
   titleClass?: string;
+  events?: ImportantEvent[];
 }) {
   const high = tasks.filter((t) => t.priority === 'high');
   const rest = tasks.filter((t) => t.priority !== 'high');
@@ -42,6 +48,9 @@ function AgendaSection({
       <h2 className={titleClass}>
         {title} · {tasks.length}
       </h2>
+      {events.map((ev) => (
+        <EventBand key={ev.id} ev={ev} />
+      ))}
       {split ? (
         <>
           <h3 className="prio-sub high">↑ Prioridad alta · {high.length}</h3>
@@ -60,10 +69,14 @@ function AgendaSection({
 // arriba y Próximas al final.
 export default function AgendaPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [eventsList, setEventsList] = useState<ImportantEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState<'agenda' | 'eventos'>('agenda');
 
   const load = useCallback(async () => {
-    setTasks(await tasksApi.list({ status: 'open' }));
+    const [t, e] = await Promise.all([tasksApi.list({ status: 'open' }), eventsApi.list()]);
+    setTasks(t);
+    setEventsList(e);
     setLoading(false);
   }, []);
 
@@ -100,17 +113,39 @@ export default function AgendaPage() {
     <div>
       <div className="page-head">
         <h1>Agenda</h1>
+        <div className="seg" role="tablist">
+          <button role="tab" aria-selected={view === 'agenda'} className={view === 'agenda' ? 'active' : ''} onClick={() => setView('agenda')}>
+            Agenda
+          </button>
+          <button role="tab" aria-selected={view === 'eventos'} className={view === 'eventos' ? 'active' : ''} onClick={() => setView('eventos')}>
+            Eventos
+          </button>
+        </div>
       </div>
 
-      {groups.overdue.length > 0 && (
-        <AgendaSection title="Vencidas" titleClass="overdue" tasks={groups.overdue} onChanged={load} />
+      {view === 'eventos' ? (
+        <EventosTab />
+      ) : (
+        <>
+          <EventsRadar />
+
+          {groups.overdue.length > 0 && (
+            <AgendaSection title="Vencidas" titleClass="overdue" tasks={groups.overdue} onChanged={load} />
+          )}
+
+          {groups.days.map((day) => (
+            <AgendaSection
+              key={day.iso}
+              title={day.label}
+              tasks={day.tasks}
+              onChanged={load}
+              events={eventsList.filter((ev) => nextOccurrence(ev) === day.iso)}
+            />
+          ))}
+
+          <AgendaSection title="Próximas" tasks={groups.upcoming} onChanged={load} />
+        </>
       )}
-
-      {groups.days.map((day) => (
-        <AgendaSection key={day.iso} title={day.label} tasks={day.tasks} onChanged={load} />
-      ))}
-
-      <AgendaSection title="Próximas" tasks={groups.upcoming} onChanged={load} />
     </div>
   );
 }

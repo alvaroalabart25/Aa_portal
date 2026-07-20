@@ -96,6 +96,27 @@ export const tasks = mysqlTable('tasks', {
     .$onUpdateFn(() => new Date()),
 });
 
+// Eventos importantes: fechas clave (no son tareas). Vinculados a Autónomo o
+// a un espacio de Organización. Los recurrentes muestran solo su próxima
+// ocurrencia (nunca se proyectan al infinito).
+export const events = mysqlTable('events', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  title: varchar('title', { length: 200 }).notNull(),
+  eventDate: date('event_date', { mode: 'string' }).notNull(), // fecha (o primera ocurrencia)
+  recurrence: mysqlEnum('recurrence', ['none', 'monthly', 'yearly']).notNull().default('none'),
+  scope: mysqlEnum('scope', ['autonomo', 'space']).notNull(),
+  spaceId: bigint('space_id', { mode: 'number' }).references(() => spaces.id),
+  archivedAt: datetime('archived_at'),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`)
+    .$onUpdateFn(() => new Date()),
+});
+
 // ============================================================
 // Módulo Autónomo: facturación
 // ============================================================

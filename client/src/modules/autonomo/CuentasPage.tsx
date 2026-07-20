@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import CuentasTab from './CuentasTab';
+import { EventsRadar } from '../events/components';
 import TrimestralesTab from './TrimestralesTab';
 
 // Página Cuentas: libro de movimientos por trimestre + resumen trimestral.
@@ -19,6 +20,8 @@ export default function CuentasPage() {
           </button>
         </div>
       </div>
+
+      <EventsRadar scope="autonomo" />
 
       {tab === 'cuentas' ? <CuentasTab /> : <TrimestralesTab />}
     </div>

@@ -35,6 +35,9 @@ export default function TaskPage() {
   return (
     <div>
       <div className="crumbs">
+        <Link to="/agenda" className="btn ghost sm" style={{ marginRight: 8 }}>
+          ‹ Agenda
+        </Link>
         <Link to="/espacios">Espacios</Link> ›{' '}
         <Link to={`/espacios/${task.spaceId}`}>{task.spaceName}</Link> ›{' '}
         <Link to={`/proyectos/${task.projectId}`}>{task.projectName}</Link> ›{' '}

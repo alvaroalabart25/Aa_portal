@@ -182,7 +182,15 @@ export function Progress({ done, total }: { done: number; total: number }) {
   );
 }
 
-// Notas en Markdown: clic sobre el texto para editar directamente.
+function notesToHtml(value: string | null): string {
+  if (!value) return '';
+  if (/<[a-z][\s\S]*>/i.test(value)) return value; // ya es HTML (formato nuevo)
+  // notas antiguas en Markdown; breaks: los saltos de línea simples cuentan
+  return marked.parse(value, { breaks: true, async: false }) as string;
+}
+
+// Notas: editor enriquecido siempre activo (negrita/cursiva/subrayado/listas)
+// con AUTOGUARDADO (debounce 1s + al salir del campo + al salir de la página).
 export function NotesBox({
   value,
   onSave,
@@ -190,67 +198,91 @@ export function NotesBox({
   value: string | null;
   onSave: (notes: string) => Promise<void>;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value ?? '');
-  const [saving, setSaving] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const [status, setStatus] = useState<'idle' | 'pending' | 'saving' | 'saved'>('idle');
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dirtyRef = useRef(false);
 
-  async function save() {
-    setSaving(true);
+  // contenido inicial una sola vez (no re-pintar mientras se escribe)
+  useEffect(() => {
+    if (ref.current) ref.current.innerHTML = notesToHtml(value);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function doSave() {
+    if (!dirtyRef.current || !ref.current) return;
+    dirtyRef.current = false;
+    // si solo quedan <br> y etiquetas vacías, guardar vacío de verdad
+    const html = ref.current.innerHTML;
+    const textOnly = html.replace(/<br\s*\/?>/gi, '').replace(/&nbsp;/g, ' ').replace(/<[^>]+>/g, '').trim();
+    const toSave = textOnly === '' ? '' : html;
+    setStatus('saving');
     try {
-      await onSave(draft);
-      setEditing(false);
-    } finally {
-      setSaving(false);
+      await onSave(toSave);
+      if (toSave === '' && document.activeElement !== ref.current) ref.current.innerHTML = '';
+      setStatus('saved');
+    } catch {
+      dirtyRef.current = true;
+      setStatus('pending');
     }
   }
 
+  function onInput() {
+    dirtyRef.current = true;
+    setStatus('pending');
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(doSave, 1000);
+  }
+
+  // al desmontar (navegar a otra vista), volcar lo pendiente
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      void doSave();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function cmd(command: string) {
+    document.execCommand(command);
+    ref.current?.focus();
+    onInput();
+  }
+
+  const statusLabel = { idle: '', pending: 'Sin guardar…', saving: 'Guardando…', saved: '✓ Guardado' }[status];
+
   return (
     <div className="section notes-box">
-      <h2>Notas</h2>
-      {editing ? (
-        <div style={{ marginTop: 12 }}>
-          <textarea
-            rows={10}
-            autoFocus
-            style={{ width: '100%' }}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder="Escribe en Markdown…"
-          />
-          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            <button className="btn sm" onClick={save} disabled={saving}>
-              {saving ? 'Guardando…' : 'Guardar'}
-            </button>
-            <button className="btn ghost sm" onClick={() => setEditing(false)}>
-              Cancelar
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div
-          className="notes-clickable"
-          role="button"
-          tabIndex={0}
-          onClick={() => {
-            setDraft(value ?? '');
-            setEditing(true);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              setDraft(value ?? '');
-              setEditing(true);
-            }
-          }}
-        >
-          {value ? (
-            <div className="notes-render" dangerouslySetInnerHTML={{ __html: marked.parse(value) as string }} />
-          ) : (
-            <p className="muted" style={{ fontSize: 14, margin: 0 }}>
-              Sin notas. Haz clic aquí para escribir (admite Markdown).
-            </p>
-          )}
-        </div>
-      )}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+        <h2>Notas</h2>
+        <span className="muted" style={{ fontSize: 12 }}>{statusLabel}</span>
+      </div>
+      <div className="notes-toolbar">
+        <button type="button" title="Negrita (⌘B)" style={{ fontWeight: 700 }} onMouseDown={(e) => { e.preventDefault(); cmd('bold'); }}>
+          B
+        </button>
+        <button type="button" title="Cursiva (⌘I)" style={{ fontStyle: 'italic' }} onMouseDown={(e) => { e.preventDefault(); cmd('italic'); }}>
+          I
+        </button>
+        <button type="button" title="Subrayado (⌘U)" onMouseDown={(e) => { e.preventDefault(); cmd('underline'); }}>
+          <u>U</u>
+        </button>
+        <button type="button" title="Lista" onMouseDown={(e) => { e.preventDefault(); cmd('insertUnorderedList'); }}>
+          • Lista
+        </button>
+        <button type="button" title="Tachado" onMouseDown={(e) => { e.preventDefault(); cmd('strikeThrough'); }}>
+          <s>S</s>
+        </button>
+      </div>
+      <div
+        ref={ref}
+        className="notes-editor"
+        contentEditable
+        suppressContentEditableWarning
+        data-placeholder="Escribe aquí… (guardado automático)"
+        onInput={onInput}
+        onBlur={doSave}
+      />
     </div>
   );
 }

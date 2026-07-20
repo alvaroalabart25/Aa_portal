@@ -75,7 +75,6 @@ export default function SpacePage() {
         value={space.notes}
         onSave={async (notes) => {
           await spacesApi.update(spaceId, { notes });
-          await load();
         }}
       />
 

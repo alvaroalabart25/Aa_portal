@@ -180,10 +180,24 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .empty { color: var(--ink-muted); padding: 32px 0; text-align: center; font-size: 14px; }
 .section { margin-top: 38px; }
 .form-grid { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-top: 14px; }
-.notes-render { line-height: 1.65; font-size: 14.5px; }
-.notes-render h1, .notes-render h2, .notes-render h3 { margin: 14px 0 6px; }
-.notes-render code { background: var(--paper-soft); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
-.notes-render textarea { width: 100%; }
+/* Editor de notas enriquecido con autoguardado */
+.notes-toolbar { display: flex; gap: 4px; margin: 10px 0 8px; }
+.notes-toolbar button {
+  border: 1px solid var(--line); background: var(--paper); border-radius: 6px;
+  min-width: 30px; height: 28px; font-size: 13px; color: var(--ink-soft); padding: 0 8px;
+}
+.notes-toolbar button:hover { background: var(--paper-soft); }
+.notes-editor {
+  min-height: 90px; padding: 12px 14px; border: 1px solid var(--line);
+  border-radius: 10px; font-size: 14.5px; line-height: 1.65; outline: none;
+  background: var(--paper); overflow-wrap: break-word;
+}
+.notes-editor:focus { border-color: var(--ink); }
+.notes-editor:empty::before { content: attr(data-placeholder); color: var(--ink-muted); }
+.notes-editor p { margin: 0 0 6px; }
+.notes-editor ul, .notes-editor ol { padding-left: 22px; margin: 6px 0; }
+.notes-editor h1, .notes-editor h2, .notes-editor h3 { margin: 12px 0 6px; }
+.notes-editor code { background: var(--paper-soft); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
 
 /* ---------- Selector de estado (desplegable propio) ---------- */
 .status-select { position: relative; display: inline-block; }
@@ -253,12 +267,7 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 }
 .kebab-btn:hover { background: var(--paper-soft); border-color: var(--ink-muted); }
 
-/* ---------- Notas clicables ---------- */
-.notes-clickable {
-  margin-top: 10px; padding: 10px 12px; border-radius: 8px;
-  cursor: text; border: 1px solid transparent;
-}
-.notes-clickable:hover { background: var(--paper-soft); border-color: var(--line); }
+
 
 /* ---------- Subgrupos por prioridad (Agenda) ---------- */
 .prio-sub {

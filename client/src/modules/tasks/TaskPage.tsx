@@ -79,7 +79,7 @@ export default function TaskPage() {
       <NotesBox
         value={task.notes ?? null}
         onSave={async (notes) => {
-          await update({ notes });
+          await tasksApi.update(taskId, { notes });
         }}
       />
     </div>

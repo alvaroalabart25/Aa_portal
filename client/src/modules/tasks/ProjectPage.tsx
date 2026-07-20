@@ -87,7 +87,6 @@ export default function ProjectPage() {
         value={project.notes ?? null}
         onSave={async (notes) => {
           await projectsApi.update(projectId, { notes });
-          await load();
         }}
       />
 

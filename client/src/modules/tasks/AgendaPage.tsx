@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { tasksApi } from './api';
 import TaskTable from './TaskTable';
-import AgendaCalendar from './AgendaCalendar';
 import type { Task } from './types';
 
 function isoLocal(d: Date): string {
@@ -21,7 +20,7 @@ function sortTasks(list: Task[]): Task[] {
   );
 }
 
-// Sección de la vista lista: subagrupa en "Alta" (lo que hay que atacar)
+// Sección de la agenda: subagrupa en "Alta" (lo que hay que atacar)
 // y "Media y baja". Si el grupo es homogéneo, tabla única sin sublabels.
 function AgendaSection({
   title,
@@ -57,11 +56,11 @@ function AgendaSection({
   );
 }
 
-// Vista transversal: cruza TODOS los espacios y proyectos por fecha.
+// Agenda: los próximos 5 días de la semana (rotando desde hoy) + Vencidas
+// arriba y Próximas al final.
 export default function AgendaPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<'list' | 'calendar'>('list');
 
   const load = useCallback(async () => {
     setTasks(await tasksApi.list({ status: 'open' }));
@@ -73,16 +72,25 @@ export default function AgendaPage() {
   }, [load]);
 
   const groups = useMemo(() => {
-    const today = isoLocal(new Date());
-    const t = new Date();
-    t.setDate(t.getDate() + 1);
-    const tomorrow = isoLocal(t);
     const dated = tasks.filter((x) => x.dueDate);
+    const todayIso = isoLocal(new Date());
+
+    const days: Array<{ iso: string; label: string; tasks: Task[] }> = [];
+    for (let i = 0; i < 5; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      const iso = isoLocal(d);
+      const weekday = d.toLocaleDateString('es-ES', { weekday: 'long' });
+      let label = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+      if (i === 0) label += ' (Hoy)';
+      days.push({ iso, label, tasks: sortTasks(dated.filter((x) => x.dueDate === iso)) });
+    }
+    const lastIso = days[days.length - 1].iso;
+
     return {
-      overdue: sortTasks(dated.filter((x) => x.dueDate! < today)),
-      today: sortTasks(dated.filter((x) => x.dueDate === today)),
-      tomorrow: sortTasks(dated.filter((x) => x.dueDate === tomorrow)),
-      upcoming: sortTasks(dated.filter((x) => x.dueDate! > tomorrow)),
+      overdue: sortTasks(dated.filter((x) => x.dueDate! < todayIso)),
+      days,
+      upcoming: sortTasks(dated.filter((x) => x.dueDate! > lastIso)),
     };
   }, [tasks]);
 
@@ -92,28 +100,17 @@ export default function AgendaPage() {
     <div>
       <div className="page-head">
         <h1>Agenda</h1>
-        <div className="seg" role="tablist">
-          <button role="tab" aria-selected={view === 'list'} className={view === 'list' ? 'active' : ''} onClick={() => setView('list')}>
-            Vencimiento
-          </button>
-          <button role="tab" aria-selected={view === 'calendar'} className={view === 'calendar' ? 'active' : ''} onClick={() => setView('calendar')}>
-            Calendario
-          </button>
-        </div>
       </div>
 
-      {view === 'list' ? (
-        <div>
-          {groups.overdue.length > 0 && (
-            <AgendaSection title="Vencidas" titleClass="overdue" tasks={groups.overdue} onChanged={load} />
-          )}
-          <AgendaSection title="Hoy" tasks={groups.today} onChanged={load} />
-          <AgendaSection title="Mañana" tasks={groups.tomorrow} onChanged={load} />
-          <AgendaSection title="Próximas" tasks={groups.upcoming} onChanged={load} />
-        </div>
-      ) : (
-        <AgendaCalendar tasks={tasks} onChanged={load} />
+      {groups.overdue.length > 0 && (
+        <AgendaSection title="Vencidas" titleClass="overdue" tasks={groups.overdue} onChanged={load} />
       )}
+
+      {groups.days.map((day) => (
+        <AgendaSection key={day.iso} title={day.label} tasks={day.tasks} onChanged={load} />
+      ))}
+
+      <AgendaSection title="Próximas" tasks={groups.upcoming} onChanged={load} />
     </div>
   );
 }

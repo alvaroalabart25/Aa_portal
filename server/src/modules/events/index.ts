@@ -15,6 +15,7 @@ const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida (YYYY-M
 
 const eventBase = z.object({
   title: z.string().trim().min(1).max(200),
+  emoji: z.string().trim().min(1).max(16).default('📌'),
   eventDate: isoDate,
   recurrence: z.enum(['none', 'monthly', 'yearly']).default('none'),
   scope: z.enum(['autonomo', 'space']),
@@ -31,6 +32,7 @@ eventsModule.get('/', ah(async (req: AuthedRequest, res) => {
     .select({
       id: events.id,
       title: events.title,
+      emoji: events.emoji,
       eventDate: events.eventDate,
       recurrence: events.recurrence,
       scope: events.scope,
@@ -52,6 +54,7 @@ eventsModule.post('/', ah(async (req: AuthedRequest, res) => {
   const [result] = await db.insert(events).values({
     userId: req.userId!,
     title: d.title,
+    emoji: d.emoji,
     eventDate: d.eventDate,
     recurrence: d.recurrence,
     scope: d.scope,

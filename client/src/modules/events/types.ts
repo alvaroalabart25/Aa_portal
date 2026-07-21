@@ -4,6 +4,7 @@ export type EventScope = 'autonomo' | 'space';
 export interface ImportantEvent {
   id: number;
   title: string;
+  emoji: string;
   eventDate: string;
   recurrence: EventRecurrence;
   scope: EventScope;
@@ -53,8 +54,10 @@ export function daysUntil(iso: string): number {
   return Math.round((target.getTime() - base.getTime()) / 86_400_000);
 }
 
-// El radar muestra todo lo que caiga dentro de esta ventana (~4 meses)
-export const RADAR_WINDOW_DAYS = 120;
+// El radar (franja superior) solo muestra el próximo mes; el listado de la
+// agenda (sección Próximas) llega hasta 4 meses.
+export const RADAR_WINDOW_DAYS = 30;
+export const LIST_WINDOW_DAYS = 120;
 
 export function whenLabel(days: number): string {
   if (days === 0) return 'HOY';

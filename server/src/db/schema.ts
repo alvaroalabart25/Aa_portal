@@ -105,6 +105,7 @@ export const events = mysqlTable('events', {
     .notNull()
     .references(() => users.id),
   title: varchar('title', { length: 200 }).notNull(),
+  emoji: varchar('emoji', { length: 16 }).notNull().default('📌'),
   eventDate: date('event_date', { mode: 'string' }).notNull(), // fecha (o primera ocurrencia)
   recurrence: mysqlEnum('recurrence', ['none', 'monthly', 'yearly']).notNull().default('none'),
   scope: mysqlEnum('scope', ['autonomo', 'space']).notNull(),

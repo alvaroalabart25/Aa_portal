@@ -15,6 +15,7 @@ export default function EventoModal({
   onSaved: () => void;
 }) {
   const [title, setTitle] = useState(event?.title ?? '');
+  const [emoji, setEmoji] = useState(event?.emoji ?? '📌');
   const [eventDate, setEventDate] = useState(event?.eventDate ?? '');
   const [recurrence, setRecurrence] = useState<EventRecurrence>(event?.recurrence ?? 'none');
   const [place, setPlace] = useState<string>(event ? (event.scope === 'autonomo' ? 'autonomo' : String(event.spaceId)) : 'autonomo');
@@ -33,6 +34,7 @@ export default function EventoModal({
     setError('');
     const data = {
       title: title.trim(),
+      emoji: emoji.trim() || '📌',
       eventDate,
       recurrence,
       scope: place === 'autonomo' ? 'autonomo' : 'space',
@@ -61,9 +63,21 @@ export default function EventoModal({
   return (
     <Modal title={event ? 'Editar evento' : 'Añadir evento importante'} onClose={onClose}>
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div className="field">
-          <label htmlFor="ev-title">Título</label>
-          <input id="ev-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="P. ej. Dar de alta formación Delmar" />
+        <div className="form-grid">
+          <div className="field">
+            <label htmlFor="ev-emoji">Emoji</label>
+            <input
+              id="ev-emoji"
+              value={emoji}
+              onChange={(e) => setEmoji(e.target.value)}
+              maxLength={8}
+              style={{ width: 64, textAlign: 'center', fontSize: 18 }}
+            />
+          </div>
+          <div className="field" style={{ flex: 1 }}>
+            <label htmlFor="ev-title">Título</label>
+            <input id="ev-title" style={{ width: '100%' }} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="P. ej. Dar de alta formación Delmar" />
+          </div>
         </div>
         <div className="form-grid">
           <div className="field">

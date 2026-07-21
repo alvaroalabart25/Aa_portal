@@ -5,7 +5,14 @@ import type { Task } from './types';
 import { eventsApi } from '../events/api';
 import { EventBand, EventsRadar } from '../events/components';
 import EventosTab from '../events/EventosTab';
-import { nextOccurrence, type ImportantEvent } from '../events/types';
+import {
+  daysUntil,
+  fmtEventDate,
+  LIST_WINDOW_DAYS,
+  nextOccurrence,
+  whenLabel,
+  type ImportantEvent,
+} from '../events/types';
 
 function isoLocal(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -32,12 +39,14 @@ function AgendaSection({
   onChanged,
   titleClass,
   events = [],
+  eventNote,
 }: {
   title: string;
   tasks: Task[];
   onChanged: () => void;
   titleClass?: string;
   events?: ImportantEvent[];
+  eventNote?: (ev: ImportantEvent) => string;
 }) {
   const high = tasks.filter((t) => t.priority === 'high');
   const rest = tasks.filter((t) => t.priority !== 'high');
@@ -49,7 +58,7 @@ function AgendaSection({
         {title} · {tasks.length}
       </h2>
       {events.map((ev) => (
-        <EventBand key={ev.id} ev={ev} />
+        <EventBand key={ev.id} ev={ev} note={eventNote?.(ev)} />
       ))}
       {split ? (
         <>
@@ -143,7 +152,21 @@ export default function AgendaPage() {
             />
           ))}
 
-          <AgendaSection title="Próximas" tasks={groups.upcoming} onChanged={load} />
+          <AgendaSection
+            title="Próximas"
+            tasks={groups.upcoming}
+            onChanged={load}
+            events={eventsList
+              .filter((ev) => {
+                const days = daysUntil(nextOccurrence(ev));
+                return days > 4 && days <= LIST_WINDOW_DAYS; // más allá de los 5 días visibles, hasta 4 meses
+              })
+              .sort((a, b) => nextOccurrence(a).localeCompare(nextOccurrence(b)))}
+            eventNote={(ev) => {
+              const next = nextOccurrence(ev);
+              return `${whenLabel(daysUntil(next))} · ${fmtEventDate(next)}`;
+            }}
+          />
         </>
       )}
     </div>

@@ -34,7 +34,7 @@ export default function EventosTab() {
     return (
       <button key={e.id} className="event-row" onClick={() => setEditing(e)} title="Clic para editar">
         <span className="event-band-inline" style={{ borderLeftColor: days < 0 ? '#c92a2a' : eventColor(e) }}>
-          <span className="event-pin">{days < 0 ? '🚨' : '📌'}</span>
+          <span className="event-pin">{days < 0 ? '🚨' : e.emoji}</span>
           <span className="event-title">{e.title}</span>
           <span className="badge">
             <span className="dot" style={{ background: eventColor(e) }} />

@@ -18,7 +18,7 @@ export function EventBand({ ev, note }: { ev: ImportantEvent; note?: string }) {
   const color = eventColor(ev);
   return (
     <div className="event-band" style={{ borderLeftColor: color }}>
-      <span className="event-pin">📌</span>
+      <span className="event-pin">{ev.emoji}</span>
       <span className="event-title">{ev.title}</span>
       <span className="badge">
         <span className="dot" style={{ background: color }} />
@@ -76,7 +76,7 @@ export function EventsRadar({ scope }: { scope?: EventScope }) {
           className={`event-band${days === 0 ? ' today-band' : ''}`}
           style={{ borderLeftColor: eventColor(e) }}
         >
-          <span className="event-pin">📌</span>
+          <span className="event-pin">{e.emoji}</span>
           <span className={`event-when${days <= 7 ? ' soon' : ''}`}>{whenLabel(days)}</span>
           <span className="event-title">{e.title}</span>
           <span className="badge">

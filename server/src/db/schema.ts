@@ -118,6 +118,23 @@ export const events = mysqlTable('events', {
     .$onUpdateFn(() => new Date()),
 });
 
+// Road Map: seguimiento de mejoras del propio portal, categorizadas por área.
+export const roadmapItems = mysqlTable('roadmap_items', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  title: varchar('title', { length: 255 }).notNull(),
+  category: mysqlEnum('category', ['agenda', 'organizacion', 'autonomo', 'futuros']).notNull(),
+  status: mysqlEnum('status', ['pending', 'in_progress', 'done']).notNull().default('pending'),
+  archivedAt: datetime('archived_at'),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`)
+    .$onUpdateFn(() => new Date()),
+});
+
 // ============================================================
 // Módulo Autónomo: facturación
 // ============================================================

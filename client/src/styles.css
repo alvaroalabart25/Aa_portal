@@ -373,3 +373,18 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .login-card { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 14px; }
 .login-card .brand { font-size: 42px; padding: 0; text-align: center; }
 .error-msg { color: var(--danger); font-size: 13px; }
+
+/* ---------- Road Map ---------- */
+.nav-item.subtle { color: var(--ink-muted); font-size: 13px; }
+.nav-item.subtle.active { background: var(--paper-soft); color: var(--ink-soft); }
+.roadmap-list { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.roadmap-row {
+  display: flex; align-items: center; gap: 12px;
+  border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px;
+}
+.roadmap-row:hover { background: var(--paper-soft); }
+.roadmap-title {
+  border: none; background: none; text-align: left; flex: 1;
+  font-family: var(--font-body); font-size: 14px; font-weight: 500; color: var(--ink);
+  padding: 4px 0; cursor: pointer; min-width: 0;
+}

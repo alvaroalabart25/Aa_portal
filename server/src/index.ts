@@ -6,6 +6,7 @@ import { requireAuth } from './core/auth/middleware';
 import { tasksModule } from './modules/tasks';
 import { autonomoModule } from './modules/autonomo';
 import { eventsModule } from './modules/events';
+import { roadmapModule } from './modules/roadmap';
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.use('/api/auth', authRouter);
 app.use('/api', requireAuth, tasksModule);
 app.use('/api/autonomo', requireAuth, autonomoModule);
 app.use('/api/events', requireAuth, eventsModule);
+app.use('/api/roadmap', requireAuth, roadmapModule);
 
 // Errores no controlados -> 500 JSON
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

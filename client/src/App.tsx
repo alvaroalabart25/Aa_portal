@@ -11,6 +11,7 @@ import TasksPage from './modules/tasks/TasksPage';
 import TaskPage from './modules/tasks/TaskPage';
 import FacturasPage from './modules/autonomo/FacturasPage';
 import CuentasPage from './modules/autonomo/CuentasPage';
+import RoadmapPage from './modules/roadmap/RoadmapPage';
 
 function RequireAuth() {
   return isLoggedIn() ? <Outlet /> : <Navigate to="/login" replace />;
@@ -34,6 +35,7 @@ export default function App() {
             <Route path="/autonomo" element={<Navigate to="/autonomo/facturas" replace />} />
             <Route path="/autonomo/facturas" element={<FacturasPage />} />
             <Route path="/autonomo/cuentas" element={<CuentasPage />} />
+            <Route path="/roadmap" element={<RoadmapPage />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

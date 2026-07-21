@@ -110,6 +110,13 @@ export default function Layout() {
           <SidebarItem key={m.id} mod={m} />
         ))}
         <div className="spacer" />
+        <NavLink to="/roadmap" className={({ isActive }) => `nav-item subtle${isActive ? ' active' : ''}`}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 4l-5 2v14l5-2 6 2 5-2V4l-5 2-6-2z" />
+            <path d="M9 4v14M15 6v14" />
+          </svg>
+          <span>Road Map</span>
+        </NavLink>
         <button className="btn ghost sm" onClick={logout}>
           Cerrar sesión
         </button>

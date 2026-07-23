@@ -466,3 +466,6 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   .rt-daychip.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
   .rt-daylist { display: flex; flex-direction: column; gap: 8px; }
 }
+
+/* Botón rápido "✓ Hecho" en eventos vencidos (radar y tab Eventos) */
+.event-done { margin-left: auto; flex-shrink: 0; white-space: nowrap; }

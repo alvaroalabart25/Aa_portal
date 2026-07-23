@@ -41,6 +41,11 @@ export function EventsRadar({ scope }: { scope?: EventScope }) {
 
   const relevant = scope ? eventsList.filter((e) => e.scope === scope) : eventsList;
 
+  async function markDone(e: ImportantEvent) {
+    await eventsApi.remove(e.id);
+    setEventsList((list) => list.filter((x) => x.id !== e.id));
+  }
+
   const overdue = relevant
     .filter((e) => e.recurrence === 'none' && daysUntil(e.eventDate) < 0)
     .sort((a, b) => a.eventDate.localeCompare(b.eventDate));
@@ -66,8 +71,12 @@ export function EventsRadar({ scope }: { scope?: EventScope }) {
             {eventPlace(e)}
           </span>
           <span className="event-note overdue">
-            venció el {fmtEventDate(e.eventDate).toLowerCase()} — hace {Math.abs(daysUntil(e.eventDate))} días
+            venció el {fmtEventDate(e.eventDate).toLowerCase()} — hace{' '}
+            {Math.abs(daysUntil(e.eventDate))} {Math.abs(daysUntil(e.eventDate)) === 1 ? 'día' : 'días'}
           </span>
+          <button className="btn ghost sm event-done" title="Dar por hecho (se retira del radar)" onClick={() => markDone(e)}>
+            ✓ Hecho
+          </button>
         </div>
       ))}
       {alerts.map(({ e, next, days }) => (

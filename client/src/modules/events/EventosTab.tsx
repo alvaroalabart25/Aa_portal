@@ -43,11 +43,25 @@ export default function EventosTab() {
           {e.recurrence !== 'none' && <span className="badge">↻ {RECURRENCE_LABEL[e.recurrence].toLowerCase()}</span>}
           <span className={`event-note${days < 0 ? ' overdue' : ''}`}>
             {days < 0
-              ? `venció hace ${Math.abs(days)} días`
+              ? `venció hace ${Math.abs(days)} ${Math.abs(days) === 1 ? 'día' : 'días'}`
               : days === 0
                 ? 'HOY'
                 : `${fmtEventDate(next)} · en ${days} días`}
           </span>
+          {(days <= 0 && e.recurrence === 'none') && (
+            <span
+              className="btn ghost sm event-done"
+              role="button"
+              title="Dar por hecho (se retira de la lista)"
+              onClick={async (ev) => {
+                ev.stopPropagation();
+                await eventsApi.remove(e.id);
+                load();
+              }}
+            >
+              ✓ Hecho
+            </span>
+          )}
         </span>
       </button>
     );
@@ -76,7 +90,7 @@ export default function EventosTab() {
 
       <p className="muted" style={{ fontSize: 12.5, marginTop: 16 }}>
         Los eventos recurrentes (↻) muestran siempre su próxima ocurrencia. Los puntuales vencidos se quedan en rojo
-        hasta que los elimines.
+        hasta que los des por hechos (✓) o los elimines.
       </p>
 
       {editing && (

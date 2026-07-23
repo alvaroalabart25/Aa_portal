@@ -70,6 +70,13 @@ function BottomBar() {
             <span>{g.title}</span>
           </button>
         ))}
+        <NavLink to="/notificaciones" onClick={() => setGroup(null)} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+            <path d="M13.7 21a2 2 0 0 1-3.4 0" />
+          </svg>
+          <span>Avisos</span>
+        </NavLink>
       </nav>
     );
   }
@@ -110,6 +117,13 @@ export default function Layout() {
           <SidebarItem key={m.id} mod={m} />
         ))}
         <div className="spacer" />
+        <NavLink to="/notificaciones" className={({ isActive }) => `nav-item subtle${isActive ? ' active' : ''}`}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+            <path d="M13.7 21a2 2 0 0 1-3.4 0" />
+          </svg>
+          <span>Notificaciones</span>
+        </NavLink>
         <NavLink to="/roadmap" className={({ isActive }) => `nav-item subtle${isActive ? ' active' : ''}`}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 4l-5 2v14l5-2 6 2 5-2V4l-5 2-6-2z" />

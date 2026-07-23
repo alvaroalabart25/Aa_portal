@@ -38,3 +38,11 @@ services:
         sync: false
       - key: SMTP_PASS
         sync: false
+      - key: VAPID_PUBLIC_KEY
+        value: BAbZ80TW5Jjnm_vlQ9NkoGJ1Hn92x8AwR9HizgPPEcSWuE5H8Yq4b3awBHcHMlXqH7T1olF4ETVrS1LrAgMPdtw
+      - key: VAPID_SUBJECT
+        value: mailto:hola@alvaroalabart.es
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: CRON_SECRET
+        sync: false

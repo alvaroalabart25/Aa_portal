@@ -8,6 +8,7 @@ import { autonomoModule } from './modules/autonomo';
 import { eventsModule } from './modules/events';
 import { roadmapModule } from './modules/roadmap';
 import { routineModule } from './modules/routine';
+import { pushModule, pushRunner } from './modules/push';
 
 const app = express();
 
@@ -26,12 +27,17 @@ app.use((req, _res, next) => {
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 app.use('/api/auth', authRouter);
 
+// Disparador de notificaciones: va con secreto propio (sin JWT), por eso
+// se monta antes que los módulos protegidos (tasksModule cuelga de /api).
+app.use('/api/push', pushRunner);
+
 // Módulos (todos protegidos por login). Añadir un módulo = una línea más aquí.
 app.use('/api', requireAuth, tasksModule);
 app.use('/api/autonomo', requireAuth, autonomoModule);
 app.use('/api/events', requireAuth, eventsModule);
 app.use('/api/roadmap', requireAuth, roadmapModule);
 app.use('/api/routine', requireAuth, routineModule);
+app.use('/api/push', requireAuth, pushModule);
 
 // Errores no controlados -> 500 JSON
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

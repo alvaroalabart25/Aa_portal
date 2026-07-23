@@ -6,6 +6,13 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      // SW propio (src/sw.ts): precaché + manejadores de notificaciones push
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,woff2,png,svg}'],
+      },
       registerType: 'autoUpdate',
       includeAssets: ['fonts/*.woff2', 'icons/*.png'],
       manifest: {
@@ -22,11 +29,6 @@ export default defineConfig({
           { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
           { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
-      },
-      workbox: {
-        // La app (estáticos) funciona offline; la API pide red (los datos viven en el servidor)
-        globPatterns: ['**/*.{js,css,html,woff2,png,svg}'],
-        navigateFallbackDenylist: [/^\/api/],
       },
     }),
   ],

@@ -1,0 +1,20 @@
+name: Avisos (notificaciones push)
+
+# Dispara el envío de notificaciones cada hora (la API decide qué toca según
+# las preferencias y la hora de Madrid). El cron de GitHub es aproximado,
+# por eso el runner reenvía como muy tarde una vez al día por tipo.
+on:
+  schedule:
+    - cron: '7 5-22 * * *' # cada hora UTC ≈ 07:00-23:00 Madrid en verano
+  workflow_dispatch: {}
+
+jobs:
+  avisar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Llamar al runner de notificaciones
+        run: |
+          curl -fsS -X POST \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            --max-time 90 --retry 3 --retry-delay 20 \
+            https://aa-portal-api.onrender.com/api/push/run

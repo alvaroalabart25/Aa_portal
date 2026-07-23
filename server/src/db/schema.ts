@@ -167,6 +167,35 @@ export const routineChecks = mysqlTable('routine_checks', {
   createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Notificaciones push: suscripciones de dispositivos (Web Push) y
+// preferencias por tipo de aviso (el configurador).
+export const pushSubscriptions = mysqlTable('push_subscriptions', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  endpoint: varchar('endpoint', { length: 500 }).notNull().unique(),
+  p256dh: varchar('p256dh', { length: 255 }).notNull(),
+  auth: varchar('auth', { length: 255 }).notNull(),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const notificationPrefs = mysqlTable('notification_prefs', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  type: varchar('type', { length: 40 }).notNull(),
+  enabled: int('enabled').notNull().default(1),
+  sendTime: varchar('send_time', { length: 5 }).notNull().default('09:00'),
+  lastSent: date('last_sent', { mode: 'string' }),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`)
+    .$onUpdateFn(() => new Date()),
+});
+
 // Road Map: seguimiento de mejoras del propio portal, categorizadas por área.
 export const roadmapItems = mysqlTable('roadmap_items', {
   id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),

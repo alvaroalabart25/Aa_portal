@@ -118,6 +118,55 @@ export const events = mysqlTable('events', {
     .$onUpdateFn(() => new Date()),
 });
 
+// Rutinas: catálogo de eventos, plantilla semanal (slots) y checks diarios.
+// Todo se archiva (nunca se borra) para que el historial de la cuadrícula de
+// evolución quede intacto: un slot cuenta para un día pasado si ya existía
+// entonces (created_at <= día < archived_at).
+export const routineItems = mysqlTable('routine_items', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  title: varchar('title', { length: 120 }).notNull(),
+  emoji: varchar('emoji', { length: 16 }).notNull().default('🔁'),
+  archivedAt: datetime('archived_at'),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`)
+    .$onUpdateFn(() => new Date()),
+});
+
+export const routineSlots = mysqlTable('routine_slots', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  itemId: bigint('item_id', { mode: 'number' })
+    .notNull()
+    .references(() => routineItems.id),
+  weekday: int('weekday').notNull(), // 0 = lunes ... 6 = domingo
+  time: varchar('time', { length: 5 }).notNull().default('08:00'), // hora orientativa
+  archivedAt: datetime('archived_at'),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`)
+    .$onUpdateFn(() => new Date()),
+});
+
+export const routineChecks = mysqlTable('routine_checks', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  slotId: bigint('slot_id', { mode: 'number' })
+    .notNull()
+    .references(() => routineSlots.id),
+  checkDate: date('check_date', { mode: 'string' }).notNull(),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 // Road Map: seguimiento de mejoras del propio portal, categorizadas por área.
 export const roadmapItems = mysqlTable('roadmap_items', {
   id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),

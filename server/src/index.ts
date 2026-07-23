@@ -7,6 +7,7 @@ import { tasksModule } from './modules/tasks';
 import { autonomoModule } from './modules/autonomo';
 import { eventsModule } from './modules/events';
 import { roadmapModule } from './modules/roadmap';
+import { routineModule } from './modules/routine';
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.use('/api', requireAuth, tasksModule);
 app.use('/api/autonomo', requireAuth, autonomoModule);
 app.use('/api/events', requireAuth, eventsModule);
 app.use('/api/roadmap', requireAuth, roadmapModule);
+app.use('/api/routine', requireAuth, routineModule);
 
 // Errores no controlados -> 500 JSON
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

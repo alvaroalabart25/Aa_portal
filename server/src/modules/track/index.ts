@@ -114,11 +114,25 @@ trackModule.all('/track', ah(async (req, res) => {
     return res.json({ opciones });
   }
 
-  // Ejecutar lo elegido en el menú: piti, parar o empezar actividad
+  // Ejecutar lo elegido en el menú: piti, parar o empezar actividad.
+  // El valor se lee del final de la URL en crudo: así un título con "&"
+  // (p. ej. "Café & Otros") no se parte en dos parámetros.
   if (action === 'do') {
-    const raw = String(q.what ?? '');
+    const afterWhat = req.originalUrl.split('what=')[1];
+    let raw = String(q.what ?? '');
+    if (afterWhat) {
+      try {
+        raw = decodeURIComponent(afterWhat.replace(/\+/g, ' '));
+      } catch {
+        raw = afterWhat;
+      }
+    }
+    // Si llega el menú entero, falta el paso «Elegir de la lista» en el atajo
+    if (/piti/i.test(raw) && /parar/i.test(raw)) {
+      return reply(400, 'Parece que el atajo manda la lista entera: añade el paso «Elegir de la lista» antes de esta acción e inserta la variable «Elemento elegido».');
+    }
     const wanted = normalize(raw.replace(/[^\p{L}\p{N} &+]/gu, ' ')).replace(/\s+/g, ' ').trim();
-    if (!wanted) return reply(400, 'Falta la elección (what)');
+    if (!wanted) return reply(400, 'Falta la elección: inserta la variable «Elemento elegido» detrás de what=');
     if (wanted.includes('piti') || wanted.includes('cigarro')) return doCigarro();
     if (wanted.includes('parar') || wanted === 'stop') return doStop();
     return doStart(wanted);

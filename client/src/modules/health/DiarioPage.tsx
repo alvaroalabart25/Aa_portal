@@ -234,11 +234,20 @@ function ControlRemotoModal({ onClose }: { onClose: () => void }) {
           </div>
           <ol className="muted" style={{ fontSize: 12.5, lineHeight: 1.7, margin: '10px 0 0', paddingLeft: 18 }}>
             <li>App <strong>Atajos</strong> → ＋ → acción <strong>«Obtener contenido de URL»</strong> → pega la URL 1.</li>
-            <li>Añade <strong>«Obtener valor de diccionario»</strong> → clave <code>opciones</code>.</li>
-            <li>Añade <strong>«Elegir de la lista»</strong>.</li>
-            <li>Añade otra <strong>«Obtener contenido de URL»</strong> → pega la URL 2 y, justo detrás de <code>what=</code>, inserta la variable <strong>Elemento elegido</strong>.</li>
+            <li>Añade <strong>«Obtener valor del diccionario»</strong> → obtener <em>Valor</em> para la clave <code>opciones</code>.</li>
+            <li>
+              Añade <strong>«Elegir de la lista»</strong> (busca «Elegir» en el buscador de acciones). Este paso es el
+              que suele faltar: sin él se envía la lista entera y no funciona.
+            </li>
+            <li>
+              Añade otra <strong>«Obtener contenido de URL»</strong> → pega la URL 2 y, pegado detrás de{' '}
+              <code>what=</code>, inserta la variable <strong>Elemento elegido</strong> (no «Valor del diccionario»).
+            </li>
             <li>Opcional: <strong>«Mostrar notificación»</strong> con «Contenido de URL» — te confirma «▶ Trabajar desde las 9:02».</li>
           </ol>
+          <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>
+            El orden final debe ser: URL menú → Valor de <code>opciones</code> → <strong>Elegir de la lista</strong> → URL acción.
+          </p>
           <p className="muted" style={{ fontSize: 12.5, lineHeight: 1.6, marginTop: 10 }}>
             Colócalo donde quieras (tu parte E): widget de Atajos en la pantalla de inicio, <strong>Centro de
             Control</strong> (iOS 18: ＋ → Atajos), pantalla de bloqueo o el botón de acción. Marca tus favoritas con la

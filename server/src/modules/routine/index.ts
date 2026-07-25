@@ -80,6 +80,7 @@ const slotInput = z.object({
   itemId: z.number().int().positive(),
   weekday: z.number().int().min(0).max(6),
   time: z.string().regex(/^\d{2}:\d{2}$/, 'Hora inválida (HH:MM)'),
+  durationMin: z.number().int().min(15).max(1080).default(60),
 });
 
 routineModule.get('/slots', ah(async (req: AuthedRequest, res) => {
@@ -89,6 +90,7 @@ routineModule.get('/slots', ah(async (req: AuthedRequest, res) => {
       itemId: routineSlots.itemId,
       weekday: routineSlots.weekday,
       time: routineSlots.time,
+      durationMin: routineSlots.durationMin,
       title: routineItems.title,
       emoji: routineItems.emoji,
     })

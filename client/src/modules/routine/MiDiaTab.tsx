@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type DragEvent, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import Modal from '../../components/Modal';
 import { routineApi, type DayStat, type RoutineItem, type RoutineSlot, type TodayItem } from './api';
 
@@ -180,6 +180,7 @@ function AddSlotModal({
 }) {
   const [itemId, setItemId] = useState<number | ''>(items[0]?.id ?? '');
   const [time, setTime] = useState('08:00');
+  const [duration, setDuration] = useState(60);
   const [saving, setSaving] = useState(false);
 
   async function submit(e: FormEvent) {
@@ -187,7 +188,7 @@ function AddSlotModal({
     if (!itemId) return;
     setSaving(true);
     try {
-      await routineApi.createSlot({ itemId: Number(itemId), weekday, time });
+      await routineApi.createSlot({ itemId: Number(itemId), weekday, time, durationMin: duration });
       onCreated();
       onClose();
     } finally {
@@ -218,6 +219,16 @@ function AddSlotModal({
             ))}
           </select>
         </div>
+        <div className="field">
+          <label htmlFor="rs-dur">Duración</label>
+          <select id="rs-dur" value={duration} onChange={(e) => setDuration(Number(e.target.value))}>
+            {[15, 30, 45, 60, 90, 120, 180].map((m) => (
+              <option key={m} value={m}>
+                {m < 60 ? `${m} min` : `${m / 60} h${m % 60 ? ` ${m % 60} min` : ''}`}
+              </option>
+            ))}
+          </select>
+        </div>
         <div className="modal-actions">
           <button type="button" className="btn ghost" onClick={onClose}>
             Cancelar
@@ -231,7 +242,63 @@ function AddSlotModal({
   );
 }
 
-// ---------- Plantilla semanal ----------
+// ---------- Plantilla semanal (calendario) ----------
+const HOUR_PX = 48; // 1 hora = 48px (15 min = 12px)
+const DAY_START = 6 * 60; // 06:00
+const DAY_END = 24 * 60; // 24:00
+const COL_HEIGHT = ((DAY_END - DAY_START) / 60) * HOUR_PX;
+
+function toMin(t: string): number {
+  return Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+}
+function toHHMM(m: number): string {
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+}
+function snap(m: number, step = 15): number {
+  return Math.round(m / step) * step;
+}
+
+interface CalItem {
+  key: string;
+  slotId: number | null; // null = fantasma al arrastrar del catálogo
+  start: number; // minutos desde medianoche
+  duration: number;
+  title: string;
+  emoji: string;
+  ghost?: boolean;
+  dragging?: boolean;
+}
+
+// Reparto tipo calendario: los bloques que se solapan comparten el ancho
+// de la columna en sub-columnas, como en Calendario de Mac.
+function layoutColumn(list: CalItem[]): Array<CalItem & { col: number; cols: number }> {
+  const sorted = [...list].sort((a, b) => a.start - b.start || b.duration - a.duration);
+  const out: Array<CalItem & { col: number; cols: number }> = [];
+  let cluster: Array<CalItem & { col: number; cols: number }> = [];
+  let colEnds: number[] = [];
+  let clusterEnd = -1;
+  const flush = () => {
+    for (const it of cluster) it.cols = colEnds.length;
+    out.push(...cluster);
+    cluster = [];
+    colEnds = [];
+    clusterEnd = -1;
+  };
+  for (const it of sorted) {
+    if (cluster.length && it.start >= clusterEnd) flush();
+    let col = colEnds.findIndex((end) => end <= it.start);
+    if (col === -1) {
+      col = colEnds.length;
+      colEnds.push(0);
+    }
+    colEnds[col] = it.start + it.duration;
+    clusterEnd = Math.max(clusterEnd, it.start + it.duration);
+    cluster.push({ ...it, col, cols: 1 });
+  }
+  flush();
+  return out;
+}
+
 function WeekTemplate({
   items,
   slots,
@@ -241,50 +308,105 @@ function WeekTemplate({
   slots: RoutineSlot[];
   onChanged: () => void;
 }) {
-  const [dragOver, setDragOver] = useState<string | null>(null);
-  const [insertBefore, setInsertBefore] = useState<number | null>(null);
   const [mobileDay, setMobileDay] = useState<number>((new Date().getDay() + 6) % 7);
   const [adding, setAdding] = useState<number | null>(null);
+  const [drag, setDrag] = useState<{ id: number; weekday: number; start: number } | null>(null);
+  const [resizing, setResizing] = useState<{ id: number; duration: number } | null>(null);
+  const [ghost, setGhost] = useState<{ weekday: number; start: number } | null>(null);
+  const weekRef = useRef<HTMLDivElement>(null);
 
   function startNew(e: DragEvent, itemId: number) {
     e.dataTransfer.setData('text/rt', `new:${itemId}`);
   }
-  function startMove(e: DragEvent, slotId: number) {
-    e.dataTransfer.setData('text/rt', `slot:${slotId}`);
+
+  // Punto del puntero -> día y minuto (imán de 15 min)
+  function pointToCell(clientX: number, clientY: number) {
+    const rect = weekRef.current!.getBoundingClientRect();
+    const wd = Math.max(0, Math.min(6, Math.floor(((clientX - rect.left) / rect.width) * 7)));
+    const raw = DAY_START + ((clientY - rect.top) / HOUR_PX) * 60;
+    const min = Math.max(DAY_START, Math.min(snap(raw), DAY_END - 15));
+    return { wd, min };
   }
 
-  // Soltar en la celda = al final del tramo; soltar SOBRE una rutina = justo
-  // antes de ella. El orden se fija escalonando los minutos orientativos
-  // (07:00, 07:10, ...), así la cuadrícula nunca reordena por su cuenta.
-  async function drop(e: DragEvent, weekday: number, hour: number, beforeId?: number) {
+  // Crear desde el catálogo (drag & drop nativo con bloque fantasma)
+  function onGridDragOver(e: DragEvent) {
+    e.preventDefault();
+    const { wd, min } = pointToCell(e.clientX, e.clientY);
+    setGhost({ weekday: wd, start: Math.min(min, DAY_END - 60) });
+  }
+  async function onGridDrop(e: DragEvent) {
+    e.preventDefault();
+    setGhost(null);
+    const data = e.dataTransfer.getData('text/rt');
+    if (!data.startsWith('new:')) return;
+    const { wd, min } = pointToCell(e.clientX, e.clientY);
+    await routineApi.createSlot({
+      itemId: Number(data.slice(4)),
+      weekday: wd,
+      time: toHHMM(Math.min(min, DAY_END - 60)),
+      durationMin: 60,
+    });
+    onChanged();
+  }
+
+  // Mover un bloque: arrastre con puntero, previsualización en vivo
+  function onMoveStart(e: ReactPointerEvent, id: number) {
+    if ((e.target as HTMLElement).closest('.rt-x, .rt-evt-resize')) return;
+    const s = slots.find((x) => x.id === id);
+    if (!s) return;
+    e.preventDefault();
+    const startY = e.clientY;
+    const orig = toMin(s.time);
+    let cur = { id, weekday: s.weekday, start: orig };
+    const onMove = (ev: PointerEvent) => {
+      const dy = ev.clientY - startY;
+      let ns = snap(orig + (dy / HOUR_PX) * 60);
+      ns = Math.max(DAY_START, Math.min(ns, DAY_END - s.durationMin));
+      const rect = weekRef.current!.getBoundingClientRect();
+      const wd = Math.max(0, Math.min(6, Math.floor(((ev.clientX - rect.left) / rect.width) * 7)));
+      cur = { id, weekday: wd, start: ns };
+      setDrag(cur);
+    };
+    const onUp = async () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      setDrag(null);
+      if (cur.weekday !== s.weekday || cur.start !== orig) {
+        await routineApi.moveSlot(id, { weekday: cur.weekday, time: toHHMM(cur.start) });
+        onChanged();
+      }
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }
+
+  // Estirar un bloque por el borde inferior
+  function onResizeStart(e: ReactPointerEvent, id: number) {
     e.preventDefault();
     e.stopPropagation();
-    setDragOver(null);
-    setInsertBefore(null);
-    const data = e.dataTransfer.getData('text/rt');
-    if (!data) return;
-    const [kind, idStr] = data.split(':');
-    const movingId = kind === 'slot' ? Number(idStr) : null;
-
-    const cell = (byCell.get(`${weekday}-${hour}`) ?? []).filter((s) => s.id !== movingId);
-    const at = beforeId != null ? cell.findIndex((s) => s.id === beforeId) : -1;
-    const order: Array<number | 'moving'> = cell.map((s) => s.id);
-    order.splice(at >= 0 ? at : order.length, 0, 'moving');
-
-    const step = order.length > 6 ? 5 : 10;
-    const timeAt = (i: number) => `${String(hour).padStart(2, '0')}:${String(Math.min(i * step, 55)).padStart(2, '0')}`;
-
-    for (let i = 0; i < order.length; i++) {
-      const id = order[i];
-      if (id === 'moving') {
-        if (kind === 'new') await routineApi.createSlot({ itemId: Number(idStr), weekday, time: timeAt(i) });
-        else await routineApi.moveSlot(movingId!, { weekday, time: timeAt(i) });
-      } else {
-        const existing = cell.find((s) => s.id === id)!;
-        if (existing.time !== timeAt(i)) await routineApi.moveSlot(existing.id, { time: timeAt(i) });
+    const s = slots.find((x) => x.id === id);
+    if (!s) return;
+    const startY = e.clientY;
+    const orig = s.durationMin;
+    const startMin = toMin(s.time);
+    let cur = orig;
+    const onMove = (ev: PointerEvent) => {
+      let nd = snap(orig + ((ev.clientY - startY) / HOUR_PX) * 60);
+      nd = Math.max(15, Math.min(nd, DAY_END - startMin));
+      cur = nd;
+      setResizing({ id, duration: nd });
+    };
+    const onUp = async () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      setResizing(null);
+      if (cur !== orig) {
+        await routineApi.moveSlot(id, { durationMin: cur });
+        onChanged();
       }
-    }
-    onChanged();
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
   }
 
   async function remove(slotId: number) {
@@ -298,15 +420,12 @@ function WeekTemplate({
     onChanged();
   }
 
-  const byCell = useMemo(() => {
-    const map = new Map<string, RoutineSlot[]>();
-    for (const s of slots) {
-      const k = `${s.weekday}-${Number(s.time.slice(0, 2))}`;
-      if (!map.has(k)) map.set(k, []);
-      map.get(k)!.push(s);
-    }
-    return map;
-  }, [slots]);
+  // Slots con las previsualizaciones de arrastre/estirado aplicadas
+  const effective = slots.map((s) => {
+    if (drag && drag.id === s.id) return { ...s, weekday: drag.weekday, time: toHHMM(drag.start) };
+    if (resizing && resizing.id === s.id) return { ...s, durationMin: resizing.duration };
+    return s;
+  });
 
   return (
     <section className="section">
@@ -319,8 +438,8 @@ function WeekTemplate({
         )}
       </div>
       <p className="muted" style={{ fontSize: 13, margin: '2px 0 12px' }}>
-        Arrastra un evento a un día y hora. Suelta sobre otra rutina para colocarlo justo antes y ordenar el tramo a tu
-        gusto. La hora es orientativa: lo que puntúa es completar el check del día.
+        Arrastra un evento del catálogo al calendario. Mueve los bloques con el ratón (imán de 15 min) y estíralos por
+        el borde inferior para darles la duración que necesites. La hora es orientativa: lo que puntúa es el check.
       </p>
 
       <div className="rt-catalog">
@@ -332,57 +451,84 @@ function WeekTemplate({
         {items.length === 0 && <span className="muted" style={{ fontSize: 13 }}>Crea eventos en la pestaña «Eventos» para empezar.</span>}
       </div>
 
-      {/* Escritorio: rejilla semanal con drag & drop */}
+      {/* Escritorio: calendario semanal continuo */}
       <div className="rt-grid-wrap">
-        <div className="rt-grid">
-          <span className="rt-gridhead" />
-          {WEEKDAYS.map((d) => (
-            <span key={d} className="rt-gridhead">
-              {d}
-            </span>
-          ))}
-          {HOURS.map((h) => [
-            <span key={`h${h}`} className="rt-hour">
-              {String(h).padStart(2, '0')}:00
-            </span>,
-            ...WEEKDAYS.map((_, wd) => {
-              const k = `${wd}-${h}`;
-              return (
-                <div
-                  key={k}
-                  className={`rt-cell${dragOver === k ? ' over' : ''}`}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    setDragOver(k);
-                  }}
-                  onDragLeave={() => setDragOver((d) => (d === k ? null : d))}
-                  onDrop={(e) => drop(e, wd, h)}
-                >
-                  {(byCell.get(k) ?? []).map((s) => (
-                    <span
-                      key={s.id}
-                      className={`rt-block${insertBefore === s.id ? ' insert-before' : ''}`}
-                      draggable
-                      onDragStart={(e) => startMove(e, s.id)}
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setDragOver(k);
-                        setInsertBefore(s.id);
-                      }}
-                      onDragLeave={() => setInsertBefore((v) => (v === s.id ? null : v))}
-                      onDrop={(e) => drop(e, wd, h, s.id)}
-                    >
-                      {s.emoji} {s.title}
-                      <button className="rt-x" title="Quitar" onClick={() => remove(s.id)}>
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              );
-            }),
-          ])}
+        <div className="rt-cal">
+          <div className="rt-cal-head">
+            <span className="rt-cal-corner" />
+            {WEEKDAYS.map((d) => (
+              <span key={d} className="rt-cal-day">
+                {d}
+              </span>
+            ))}
+          </div>
+          <div className="rt-cal-scroll">
+            <div className="rt-cal-body">
+              <div className="rt-timegutter" style={{ height: COL_HEIGHT }}>
+                {Array.from({ length: (DAY_END - DAY_START) / 60 - 1 }, (_, i) => (
+                  <span key={i} style={{ top: (i + 1) * HOUR_PX - 7 }}>
+                    {toHHMM(DAY_START + (i + 1) * 60)}
+                  </span>
+                ))}
+              </div>
+              <div
+                className="rt-week"
+                ref={weekRef}
+                onDragOver={onGridDragOver}
+                onDragLeave={() => setGhost(null)}
+                onDrop={onGridDrop}
+              >
+                {WEEKDAYS.map((_, wd) => {
+                  const dayItems: CalItem[] = effective
+                    .filter((s) => s.weekday === wd)
+                    .map((s) => ({
+                      key: String(s.id),
+                      slotId: s.id,
+                      start: toMin(s.time),
+                      duration: s.durationMin,
+                      title: s.title,
+                      emoji: s.emoji,
+                      dragging: drag?.id === s.id,
+                    }));
+                  if (ghost && ghost.weekday === wd) {
+                    dayItems.push({ key: 'ghost', slotId: null, start: ghost.start, duration: 60, title: '', emoji: '', ghost: true });
+                  }
+                  return (
+                    <div key={wd} className="rt-col" style={{ height: COL_HEIGHT }}>
+                      {layoutColumn(dayItems).map((it) => (
+                        <div
+                          key={it.key}
+                          className={`rt-evt${it.ghost ? ' ghost' : ''}${it.dragging ? ' dragging' : ''}${resizing && String(resizing.id) === it.key ? ' dragging' : ''}`}
+                          style={{
+                            top: ((it.start - DAY_START) / 60) * HOUR_PX + 1,
+                            height: Math.max((it.duration / 60) * HOUR_PX, 18) - 3,
+                            left: `calc(${(100 / it.cols) * it.col}% + 2px)`,
+                            width: `calc(${100 / it.cols}% - 5px)`,
+                          }}
+                          onPointerDown={it.slotId != null ? (e) => onMoveStart(e, it.slotId!) : undefined}
+                        >
+                          {!it.ghost && (
+                            <>
+                              <span className="rt-evt-title">
+                                {it.emoji} {it.title}
+                              </span>
+                              <span className="rt-evt-time">
+                                {toHHMM(it.start)}–{toHHMM(it.start + it.duration)}
+                              </span>
+                              <button className="rt-x" title="Quitar" onPointerDown={(e) => e.stopPropagation()} onClick={() => remove(it.slotId!)}>
+                                ×
+                              </button>
+                              <span className="rt-evt-resize" onPointerDown={(e) => onResizeStart(e, it.slotId!)} />
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -401,7 +547,9 @@ function WeekTemplate({
             .map((s) => (
               <div key={s.id} className="rt-block" style={{ justifyContent: 'space-between' }}>
                 <span>
-                  <span className="muted" style={{ fontSize: 12, marginRight: 8 }}>{s.time}</span>
+                  <span className="muted" style={{ fontSize: 12, marginRight: 8 }}>
+                    {s.time}–{toHHMM(toMin(s.time) + s.durationMin)}
+                  </span>
                   {s.emoji} {s.title}
                 </span>
                 <button className="rt-x" onClick={() => remove(s.id)}>

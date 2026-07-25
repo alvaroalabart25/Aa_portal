@@ -11,6 +11,7 @@ export interface RoutineSlot {
   itemId: number;
   weekday: number; // 0 = lunes ... 6 = domingo
   time: string; // HH:MM orientativa
+  durationMin: number; // duración del bloque
   title: string;
   emoji: string;
 }
@@ -36,8 +37,10 @@ export const routineApi = {
   removeItem: (id: number) => del<{ archived: boolean }>(`/routine/items/${id}`),
 
   slots: () => get<RoutineSlot[]>('/routine/slots'),
-  createSlot: (data: { itemId: number; weekday: number; time: string }) => post<RoutineSlot>('/routine/slots', data),
-  moveSlot: (id: number, data: Partial<{ weekday: number; time: string }>) => patch<RoutineSlot>(`/routine/slots/${id}`, data),
+  createSlot: (data: { itemId: number; weekday: number; time: string; durationMin?: number }) =>
+    post<RoutineSlot>('/routine/slots', data),
+  moveSlot: (id: number, data: Partial<{ weekday: number; time: string; durationMin: number }>) =>
+    patch<RoutineSlot>(`/routine/slots/${id}`, data),
   removeSlot: (id: number) => del<{ archived: boolean }>(`/routine/slots/${id}`),
   clearSlots: () => del<{ archived: number }>('/routine/slots'),
 

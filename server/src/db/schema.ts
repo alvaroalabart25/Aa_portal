@@ -147,6 +147,7 @@ export const routineSlots = mysqlTable('routine_slots', {
     .references(() => routineItems.id),
   weekday: int('weekday').notNull(), // 0 = lunes ... 6 = domingo
   time: varchar('time', { length: 5 }).notNull().default('08:00'), // hora orientativa
+  durationMin: int('duration_min').notNull().default(60), // duración del bloque en minutos
   archivedAt: datetime('archived_at'),
   createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime('updated_at')

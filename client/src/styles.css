@@ -472,3 +472,46 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 
 /* Indicador de inserción al reordenar rutinas dentro de un tramo */
 .rt-block.insert-before { box-shadow: 0 -2px 0 0 var(--ink); }
+
+/* Plantilla semanal tipo calendario (Rutina) */
+.rt-cal { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--paper); }
+.rt-cal-head { display: flex; border-bottom: 1px solid var(--line); }
+.rt-cal-corner { width: 52px; flex-shrink: 0; }
+.rt-cal-day { flex: 1; text-align: center; font-size: 11.5px; font-weight: 600; color: var(--ink-muted); padding: 8px 0; text-transform: uppercase; letter-spacing: 0.04em; }
+.rt-cal-scroll { max-height: 580px; overflow-y: auto; }
+.rt-cal-body { display: flex; }
+.rt-timegutter { width: 52px; flex-shrink: 0; position: relative; }
+.rt-timegutter span { position: absolute; right: 8px; font-size: 10.5px; color: var(--ink-muted); }
+.rt-week { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); }
+.rt-col {
+  position: relative;
+  border-left: 1px solid var(--line);
+  background-image: linear-gradient(to bottom, var(--line) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--line) 45%, transparent) 1px, transparent 1px);
+  background-size: 100% 48px, 100% 24px;
+}
+.rt-evt {
+  position: absolute;
+  border-radius: 7px;
+  background: var(--paper-soft);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--ink);
+  padding: 3px 18px 3px 7px;
+  font-size: 12px;
+  line-height: 1.25;
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  box-sizing: border-box;
+}
+.rt-evt-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rt-evt-time { font-size: 10.5px; color: var(--ink-muted); }
+.rt-evt .rt-x { position: absolute; top: 1px; right: 2px; }
+.rt-evt.dragging { opacity: 0.75; box-shadow: 0 6px 18px rgba(10, 10, 10, 0.18); z-index: 6; cursor: grabbing; }
+.rt-evt.ghost { border-style: dashed; background: transparent; pointer-events: none; }
+.rt-evt-resize { position: absolute; left: 0; right: 0; bottom: -2px; height: 9px; cursor: ns-resize; }

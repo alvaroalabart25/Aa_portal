@@ -211,9 +211,9 @@ function AddSlotModal({
         <div className="field">
           <label htmlFor="rs-time">Hora (orientativa)</label>
           <select id="rs-time" value={time} onChange={(e) => setTime(e.target.value)}>
-            {HOURS.map((h) => (
-              <option key={h} value={`${String(h).padStart(2, '0')}:00`}>
-                {String(h).padStart(2, '0')}:00
+            {HOURS.flatMap((h) => ['00', '30'].map((m) => `${String(h).padStart(2, '0')}:${m}`)).map((t) => (
+              <option key={t} value={t}>
+                {t}
               </option>
             ))}
           </select>
@@ -242,6 +242,7 @@ function WeekTemplate({
   onChanged: () => void;
 }) {
   const [dragOver, setDragOver] = useState<string | null>(null);
+  const [insertBefore, setInsertBefore] = useState<number | null>(null);
   const [mobileDay, setMobileDay] = useState<number>((new Date().getDay() + 6) % 7);
   const [adding, setAdding] = useState<number | null>(null);
 
@@ -252,15 +253,37 @@ function WeekTemplate({
     e.dataTransfer.setData('text/rt', `slot:${slotId}`);
   }
 
-  async function drop(e: DragEvent, weekday: number, hour: number) {
+  // Soltar en la celda = al final del tramo; soltar SOBRE una rutina = justo
+  // antes de ella. El orden se fija escalonando los minutos orientativos
+  // (07:00, 07:10, ...), así la cuadrícula nunca reordena por su cuenta.
+  async function drop(e: DragEvent, weekday: number, hour: number, beforeId?: number) {
     e.preventDefault();
+    e.stopPropagation();
     setDragOver(null);
+    setInsertBefore(null);
     const data = e.dataTransfer.getData('text/rt');
     if (!data) return;
-    const time = `${String(hour).padStart(2, '0')}:00`;
     const [kind, idStr] = data.split(':');
-    if (kind === 'new') await routineApi.createSlot({ itemId: Number(idStr), weekday, time });
-    if (kind === 'slot') await routineApi.moveSlot(Number(idStr), { weekday, time });
+    const movingId = kind === 'slot' ? Number(idStr) : null;
+
+    const cell = (byCell.get(`${weekday}-${hour}`) ?? []).filter((s) => s.id !== movingId);
+    const at = beforeId != null ? cell.findIndex((s) => s.id === beforeId) : -1;
+    const order: Array<number | 'moving'> = cell.map((s) => s.id);
+    order.splice(at >= 0 ? at : order.length, 0, 'moving');
+
+    const step = order.length > 6 ? 5 : 10;
+    const timeAt = (i: number) => `${String(hour).padStart(2, '0')}:${String(Math.min(i * step, 55)).padStart(2, '0')}`;
+
+    for (let i = 0; i < order.length; i++) {
+      const id = order[i];
+      if (id === 'moving') {
+        if (kind === 'new') await routineApi.createSlot({ itemId: Number(idStr), weekday, time: timeAt(i) });
+        else await routineApi.moveSlot(movingId!, { weekday, time: timeAt(i) });
+      } else {
+        const existing = cell.find((s) => s.id === id)!;
+        if (existing.time !== timeAt(i)) await routineApi.moveSlot(existing.id, { time: timeAt(i) });
+      }
+    }
     onChanged();
   }
 
@@ -296,8 +319,8 @@ function WeekTemplate({
         )}
       </div>
       <p className="muted" style={{ fontSize: 13, margin: '2px 0 12px' }}>
-        Arrastra un evento a un día y hora. La hora es orientativa: muévela cuando quieras, lo que puntúa es completar
-        el check del día.
+        Arrastra un evento a un día y hora. Suelta sobre otra rutina para colocarlo justo antes y ordenar el tramo a tu
+        gusto. La hora es orientativa: lo que puntúa es completar el check del día.
       </p>
 
       <div className="rt-catalog">
@@ -336,7 +359,20 @@ function WeekTemplate({
                   onDrop={(e) => drop(e, wd, h)}
                 >
                   {(byCell.get(k) ?? []).map((s) => (
-                    <span key={s.id} className="rt-block" draggable onDragStart={(e) => startMove(e, s.id)}>
+                    <span
+                      key={s.id}
+                      className={`rt-block${insertBefore === s.id ? ' insert-before' : ''}`}
+                      draggable
+                      onDragStart={(e) => startMove(e, s.id)}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setDragOver(k);
+                        setInsertBefore(s.id);
+                      }}
+                      onDragLeave={() => setInsertBefore((v) => (v === s.id ? null : v))}
+                      onDrop={(e) => drop(e, wd, h, s.id)}
+                    >
                       {s.emoji} {s.title}
                       <button className="rt-x" title="Quitar" onClick={() => remove(s.id)}>
                         ×

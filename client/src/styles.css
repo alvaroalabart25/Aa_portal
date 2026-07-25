@@ -469,3 +469,6 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 
 /* Botón rápido "✓ Hecho" en eventos vencidos (radar y tab Eventos) */
 .event-done { margin-left: auto; flex-shrink: 0; white-space: nowrap; }
+
+/* Indicador de inserción al reordenar rutinas dentro de un tramo */
+.rt-block.insert-before { box-shadow: 0 -2px 0 0 var(--ink); }

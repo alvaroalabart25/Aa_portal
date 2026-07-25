@@ -71,6 +71,20 @@ export const MODULES: PortalModule[] = [
     title: 'Organización',
     icon: icons.org,
     children: [
+      { id: 'spaces', title: 'Espacios', path: '/espacios', icon: icons.spaces },
+      { id: 'projects', title: 'Proyectos', path: '/proyectos', icon: icons.projects },
+      { id: 'tasks', title: 'Tareas', path: '/tareas', icon: icons.tasks },
+    ],
+  },
+  {
+    id: 'salud',
+    title: 'Salud',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" {...stroke}>
+        <path d="M19.5 12.6 12 20l-7.5-7.4a5 5 0 1 1 7.5-6.6 5 5 0 1 1 7.5 6.6z" />
+      </svg>
+    ),
+    children: [
       {
         id: 'rutina',
         title: 'Rutina',
@@ -83,9 +97,17 @@ export const MODULES: PortalModule[] = [
           </svg>
         ),
       },
-      { id: 'spaces', title: 'Espacios', path: '/espacios', icon: icons.spaces },
-      { id: 'projects', title: 'Proyectos', path: '/proyectos', icon: icons.projects },
-      { id: 'tasks', title: 'Tareas', path: '/tareas', icon: icons.tasks },
+      {
+        id: 'diario',
+        title: 'Diario',
+        path: '/diario',
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" {...stroke}>
+            <path d="M3 12h4l2-6 4 12 2-6h6" />
+          </svg>
+        ),
+      },
+      // (futuro) { id: 'gimnasio', title: 'Gimnasio', path: '/gimnasio', ... },
     ],
   },
   {

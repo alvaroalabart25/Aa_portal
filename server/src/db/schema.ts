@@ -4,6 +4,7 @@ import {
   datetime,
   date,
   decimal,
+  double,
   int,
   mysqlEnum,
   mysqlTable,
@@ -290,6 +291,18 @@ export const invoices = mysqlTable('invoices', {
     .notNull()
     .default(sql`CURRENT_TIMESTAMP`)
     .$onUpdateFn(() => new Date()),
+});
+
+// Salud: registro de realidad diaria (pitis, peso; ampliable a más métricas)
+export const healthEntries = mysqlTable('health_entries', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  kind: varchar('kind', { length: 20 }).notNull(), // cig_pausa | cig_trabajo | peso
+  value: double('value'), // peso en kg; null para conteos
+  entryDate: date('entry_date', { mode: 'string' }).notNull(),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 export type User = typeof users.$inferSelect;

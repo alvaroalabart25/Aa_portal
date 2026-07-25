@@ -202,6 +202,53 @@ routineModule.post('/check', ah(async (req: AuthedRequest, res) => {
   res.json({ date: today, slotId, checked });
 }));
 
+// ---------- Semana real: qué estaba planificado y qué se completó ----------
+// GET /week?from=YYYY-MM-DD (lunes) -> [{date, items:[{slotId,time,title,emoji,checked}]}]
+// Usa la misma ventana created_at/archived_at que /stats: días pasados exactos
+// aunque luego borres o muevas slots.
+routineModule.get('/week', ah(async (req: AuthedRequest, res) => {
+  const from = String(req.query.from ?? '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from)) return res.status(400).json({ error: 'Fecha inválida' });
+  const days: string[] = [];
+  const cursor = new Date(`${from}T12:00:00`);
+  for (let i = 0; i < 7; i++) {
+    days.push(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`);
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  const to = days[6];
+
+  const slots = await db
+    .select({
+      id: routineSlots.id,
+      weekday: routineSlots.weekday,
+      time: routineSlots.time,
+      createdAt: routineSlots.createdAt,
+      archivedAt: routineSlots.archivedAt,
+      title: routineItems.title,
+      emoji: routineItems.emoji,
+    })
+    .from(routineSlots)
+    .innerJoin(routineItems, eq(routineSlots.itemId, routineItems.id))
+    .where(eq(routineSlots.userId, req.userId!));
+
+  const checks = await db
+    .select({ slotId: routineChecks.slotId, checkDate: routineChecks.checkDate })
+    .from(routineChecks)
+    .where(and(eq(routineChecks.userId, req.userId!), gte(routineChecks.checkDate, from), lte(routineChecks.checkDate, to)));
+  const checked = new Set(checks.map((c) => `${c.slotId}:${c.checkDate}`));
+
+  const out = days.map((iso) => {
+    const wd = weekdayOf(iso);
+    const dayEnd = new Date(`${iso}T23:59:59`);
+    const items = slots
+      .filter((s) => s.weekday === wd && s.createdAt <= dayEnd && (!s.archivedAt || s.archivedAt > dayEnd))
+      .sort((a, b) => a.time.localeCompare(b.time))
+      .map((s) => ({ slotId: s.id, time: s.time, title: s.title, emoji: s.emoji, checked: checked.has(`${s.id}:${iso}`) }));
+    return { date: iso, items };
+  });
+  res.json(out);
+}));
+
 // ---------- Estadísticas para la cuadrícula ----------
 // GET /stats?from=YYYY-MM-DD&to=YYYY-MM-DD -> [{date, scheduled, checked}]
 // Un slot cuenta para un día si ya existía entonces y aún no estaba archivado.

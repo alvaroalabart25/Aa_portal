@@ -105,6 +105,16 @@ export default function RutinaEventosTab() {
             <button className="roadmap-title" onClick={() => setEditing(i)} title="Clic para editar">
               {i.title}
             </button>
+            <button
+              className="rt-fav"
+              title={i.isFavorite ? 'Quitar del menú del control remoto' : 'Añadir al menú del control remoto (Atajos)'}
+              onClick={async () => {
+                await routineApi.updateItem(i.id, { isFavorite: i.isFavorite ? 0 : 1 });
+                load();
+              }}
+            >
+              {i.isFavorite ? '★' : '☆'}
+            </button>
           </div>
         ))}
       </div>
@@ -112,7 +122,8 @@ export default function RutinaEventosTab() {
 
       <p className="muted" style={{ fontSize: 12.5, marginTop: 16, lineHeight: 1.6 }}>
         ℹ️ Eliminar un evento lo quita del catálogo y de la plantilla semanal, pero <strong>no rompe tu historial</strong>:
-        los días pasados conservan sus checks y su porcentaje en la cuadrícula de evolución.
+        los días pasados conservan sus checks y su porcentaje en la cuadrícula de evolución. Las estrellas (★) marcan
+        las actividades que salen en el menú del control remoto del Diario.
       </p>
 
       {editing && <ItemModal item={editing} onClose={() => setEditing(null)} onSaved={load} />}

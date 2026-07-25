@@ -4,6 +4,7 @@ export interface RoutineItem {
   id: number;
   title: string;
   emoji: string;
+  isFavorite: number; // 1 = aparece en el menú del control remoto (Atajos)
 }
 
 export interface RoutineSlot {
@@ -33,7 +34,8 @@ export interface DayStat {
 export const routineApi = {
   items: () => get<RoutineItem[]>('/routine/items'),
   createItem: (data: { title: string; emoji: string }) => post<RoutineItem>('/routine/items', data),
-  updateItem: (id: number, data: Partial<{ title: string; emoji: string }>) => patch<RoutineItem>(`/routine/items/${id}`, data),
+  updateItem: (id: number, data: Partial<{ title: string; emoji: string; isFavorite: number }>) =>
+    patch<RoutineItem>(`/routine/items/${id}`, data),
   removeItem: (id: number) => del<{ archived: boolean }>(`/routine/items/${id}`),
 
   slots: () => get<RoutineSlot[]>('/routine/slots'),

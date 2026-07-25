@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { and, asc, eq, gte, isNull, lte } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, isNull, lte } from 'drizzle-orm';
 import { ah } from '../../lib/async';
 import { db } from '../../db';
 import { routineChecks, routineItems, routineSlots } from '../../db/schema';
@@ -27,6 +27,7 @@ function weekdayOf(iso: string): number {
 const itemInput = z.object({
   title: z.string().trim().min(1).max(120),
   emoji: z.string().trim().min(1).max(16).default('🔁'),
+  isFavorite: z.number().int().min(0).max(1).optional(), // 1 = en el menú del control remoto
 });
 
 routineModule.get('/items', ah(async (req: AuthedRequest, res) => {
@@ -34,7 +35,7 @@ routineModule.get('/items', ah(async (req: AuthedRequest, res) => {
     .select()
     .from(routineItems)
     .where(and(eq(routineItems.userId, req.userId!), isNull(routineItems.archivedAt)))
-    .orderBy(asc(routineItems.title));
+    .orderBy(desc(routineItems.isFavorite), asc(routineItems.title));
   res.json(rows);
 }));
 

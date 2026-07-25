@@ -190,9 +190,9 @@ function NewItemModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   );
 }
 
-// Control remoto (Atajos de iOS): URLs con token para registrar sin abrir
-// la app — botones en la pantalla de inicio, widget de Atajos o automatizaciones.
-function ControlRemotoModal({ items, onClose }: { items: RoutineItem[]; onClose: () => void }) {
+// Control remoto (Atajos de iOS): UN solo atajo con menú dinámico. El menú
+// sale de las actividades ★ favoritas del catálogo (o todas si no hay).
+function ControlRemotoModal({ onClose }: { onClose: () => void }) {
   const [secret, setSecret] = useState('');
   const [copied, setCopied] = useState('');
 
@@ -208,46 +208,57 @@ function ControlRemotoModal({ items, onClose }: { items: RoutineItem[]; onClose:
     setTimeout(() => setCopied(''), 1500);
   }
 
-  const rows: Array<{ label: string; url: string }> = [
-    { label: '🚬 Piti', url: `${base}&action=cigarro` },
-    { label: '■ Parar actividad', url: `${base}&action=stop` },
-    ...items.map((i) => ({ label: `▶ ${i.emoji} ${i.title}`, url: `${base}&action=start&item=${encodeURIComponent(i.title)}` })),
-  ];
+  const row = (label: string, url: string) => (
+    <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <span style={{ fontSize: 13, flex: '0 0 140px' }}>{label}</span>
+      <input readOnly value={url} style={{ flex: 1, fontSize: 11, color: 'var(--ink-muted)' }} onFocus={(e) => e.target.select()} />
+      <button className="btn ghost sm" onClick={() => copy(label, url)}>
+        {copied === label ? '✓' : 'Copiar'}
+      </button>
+    </div>
+  );
 
   return (
     <Modal title="🎛️ Control remoto (Atajos de iOS)" onClose={onClose}>
-      <p className="muted" style={{ fontSize: 13, lineHeight: 1.55 }}>
-        Cada URL registra directamente, sin abrir la app. En el iPhone: app <strong>Atajos</strong> → ＋ → acción
-        «Obtener contenido de URL» → pega la URL → ponle nombre y añádelo a la pantalla de inicio (o al widget de
-        Atajos). Un toque = registrado.
-      </p>
       {!secret && <p className="muted" style={{ fontSize: 13 }}>Generando token…</p>}
       {secret && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
-          {rows.map((r) => (
-            <div key={r.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 13, flex: '0 0 168px' }}>{r.label}</span>
-              <input readOnly value={r.url} style={{ flex: 1, fontSize: 11, color: 'var(--ink-muted)' }} onFocus={(e) => e.target.select()} />
-              <button className="btn ghost sm" onClick={() => copy(r.label, r.url)}>
-                {copied === r.label ? '✓' : 'Copiar'}
-              </button>
-            </div>
-          ))}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 13, flex: '0 0 168px' }}>⚖️ Peso</span>
-            <input readOnly value={`${base}&action=peso&value=`} style={{ flex: 1, fontSize: 11, color: 'var(--ink-muted)' }} onFocus={(e) => e.target.select()} />
-            <button className="btn ghost sm" onClick={() => copy('peso', `${base}&action=peso&value=`)}>
-              {copied === 'peso' ? '✓' : 'Copiar'}
-            </button>
+        <>
+          <p style={{ fontSize: 13.5, fontWeight: 600, margin: '4px 0 6px' }}>El atajo único (móntalo una vez)</p>
+          <p className="muted" style={{ fontSize: 12.5, lineHeight: 1.6, margin: '0 0 10px' }}>
+            Un solo botón: lo tocas, sale el menú con tus actividades ★ y lo que elijas queda registrado. El menú se
+            actualiza solo cuando cambias tus favoritas aquí — el iPhone no se toca más.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {row('1 · URL del menú', `${base}&action=list`)}
+            {row('2 · URL de acción', `${base}&action=do&what=`)}
           </div>
-        </div>
+          <ol className="muted" style={{ fontSize: 12.5, lineHeight: 1.7, margin: '10px 0 0', paddingLeft: 18 }}>
+            <li>App <strong>Atajos</strong> → ＋ → acción <strong>«Obtener contenido de URL»</strong> → pega la URL 1.</li>
+            <li>Añade <strong>«Obtener valor de diccionario»</strong> → clave <code>opciones</code>.</li>
+            <li>Añade <strong>«Elegir de la lista»</strong>.</li>
+            <li>Añade otra <strong>«Obtener contenido de URL»</strong> → pega la URL 2 y, justo detrás de <code>what=</code>, inserta la variable <strong>Elemento elegido</strong>.</li>
+            <li>Opcional: <strong>«Mostrar notificación»</strong> con «Contenido de URL» — te confirma «▶ Trabajar desde las 9:02».</li>
+          </ol>
+          <p className="muted" style={{ fontSize: 12.5, lineHeight: 1.6, marginTop: 10 }}>
+            Colócalo donde quieras (tu parte E): widget de Atajos en la pantalla de inicio, <strong>Centro de
+            Control</strong> (iOS 18: ＋ → Atajos), pantalla de bloqueo o el botón de acción. Marca tus favoritas con la
+            ★ en Rutina → Eventos.
+          </p>
+          <details style={{ marginTop: 12 }}>
+            <summary style={{ fontSize: 13, cursor: 'pointer' }}>URLs sueltas (Tocar atrás, NFC, Siri o peso)</summary>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+              {row('🚬 Piti', `${base}&action=cigarro&plain=1`)}
+              {row('■ Parar', `${base}&action=stop&plain=1`)}
+              {row('⚖️ Peso', `${base}&action=peso&plain=1&value=`)}
+            </div>
+            <p className="muted" style={{ fontSize: 12, marginTop: 8, lineHeight: 1.6 }}>
+              La del piti es perfecta para <strong>Tocar atrás</strong> (Ajustes → Accesibilidad → Tocar → Tocar atrás)
+              o una pegatina NFC. Para el peso: añade antes «Solicitar entrada» (número) y pega su resultado al final.
+              El token es secreto — no compartas estas URLs.
+            </p>
+          </details>
+        </>
       )}
-      <p className="muted" style={{ fontSize: 12, marginTop: 12, lineHeight: 1.55 }}>
-        Para el peso: en el atajo añade antes «Solicitar entrada» (número) y pega su resultado al final de la URL.
-        Consejo pro: en Atajos → Automatización puedes disparar «▶ Levantarme» al apagar la alarma, o «🚬 Piti» con un
-        toque en el trasero del iPhone (Ajustes → Accesibilidad → Tocar → Tocar atrás). El token es secreto: no
-        compartas estas URLs.
-      </p>
       <div className="modal-actions">
         <button className="btn" onClick={onClose}>
           Listo
@@ -579,7 +590,7 @@ export default function DiarioPage() {
         <SessionModal session={editing === 'new' ? null : editing} items={items} day={day} onClose={() => setEditing(null)} onSaved={load} />
       )}
       {creatingItem && <NewItemModal onClose={() => setCreatingItem(false)} onCreated={() => load()} />}
-      {remote && <ControlRemotoModal items={items} onClose={() => setRemote(false)} />}
+      {remote && <ControlRemotoModal onClose={() => setRemote(false)} />}
     </div>
   );
 }

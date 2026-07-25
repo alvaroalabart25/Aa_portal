@@ -53,46 +53,76 @@ trackModule.all('/track', ah(async (req, res) => {
 
   const action = String(q.action ?? '');
   const now = madridNow();
+  // 'do' responde en texto plano: queda limpio en la notificación de Atajos
+  const plain = action === 'do' || q.plain != null;
+  const reply = (status: number, message: string) =>
+    plain ? res.status(status).type('text/plain').send(message) : res.status(status).json({ ok: status < 400, message });
 
-  if (action === 'cigarro') {
+  const doCigarro = async () => {
     await db.insert(healthEntries).values({ userId: user.id, kind: 'cigarro', entryDate: now.date, entryTime: now.time });
-    return res.json({ ok: true, message: `🚬 Piti registrado a las ${now.time}` });
-  }
+    return reply(200, `🚬 Piti registrado a las ${now.time}`);
+  };
 
-  if (action === 'peso') {
-    const value = Number(q.value);
-    if (!value || value <= 0 || value > 400) return res.status(400).json({ ok: false, message: 'Peso inválido (kg)' });
-    await db.insert(healthEntries).values({ userId: user.id, kind: 'peso', value, entryDate: now.date, entryTime: now.time });
-    return res.json({ ok: true, message: `⚖️ ${value} kg registrados a las ${now.time}` });
-  }
-
-  if (action === 'stop') {
+  const doStop = async () => {
     const [result] = await db
       .update(diarySessions)
       .set({ endAt: new Date() })
       .where(and(eq(diarySessions.userId, user.id), isNull(diarySessions.endAt)));
-    return res.json({ ok: true, message: result.affectedRows > 0 ? `■ Actividad parada a las ${now.time}` : 'No había nada en curso' });
-  }
+    return reply(200, result.affectedRows > 0 ? `■ Actividad parada a las ${now.time}` : 'No había nada en curso');
+  };
 
-  if (action === 'start') {
-    const wanted = normalize(String(q.item ?? ''));
-    if (!wanted) return res.status(400).json({ ok: false, message: 'Falta la actividad (item)' });
+  const doStart = async (wanted: string) => {
     const items = await db
       .select()
       .from(routineItems)
       .where(and(eq(routineItems.userId, user.id), isNull(routineItems.archivedAt)));
     const item = items.find((i) => normalize(i.title) === wanted) ?? items.find((i) => normalize(i.title).includes(wanted));
-    if (!item) {
-      return res.status(400).json({ ok: false, message: `Actividad "${q.item}" no encontrada. Hay: ${items.map((i) => i.title).join(', ')}` });
-    }
+    if (!item) return reply(400, `Actividad "${wanted}" no encontrada. Hay: ${items.map((i) => i.title).join(', ')}`);
     const nowDate = new Date();
     await db
       .update(diarySessions)
       .set({ endAt: nowDate })
       .where(and(eq(diarySessions.userId, user.id), isNull(diarySessions.endAt)));
     await db.insert(diarySessions).values({ userId: user.id, itemId: item.id, startAt: nowDate });
-    return res.json({ ok: true, message: `▶ ${item.emoji} ${item.title} desde las ${now.time}` });
+    return reply(200, `▶ ${item.emoji} ${item.title} desde las ${now.time}`);
+  };
+
+  if (action === 'cigarro') return doCigarro();
+  if (action === 'stop') return doStop();
+
+  if (action === 'peso') {
+    const value = Number(q.value);
+    if (!value || value <= 0 || value > 400) return reply(400, 'Peso inválido (kg)');
+    await db.insert(healthEntries).values({ userId: user.id, kind: 'peso', value, entryDate: now.date, entryTime: now.time });
+    return reply(200, `⚖️ ${value} kg registrados a las ${now.time}`);
   }
 
-  res.status(400).json({ ok: false, message: 'Acción desconocida (usa start, stop, cigarro o peso)' });
+  if (action === 'start') {
+    const wanted = normalize(String(q.item ?? ''));
+    if (!wanted) return reply(400, 'Falta la actividad (item)');
+    return doStart(wanted);
+  }
+
+  // Menú del atajo único: favoritas del catálogo (o todas si no hay) + fijos
+  if (action === 'list') {
+    const items = await db
+      .select()
+      .from(routineItems)
+      .where(and(eq(routineItems.userId, user.id), isNull(routineItems.archivedAt)));
+    const pool = items.some((i) => i.isFavorite === 1) ? items.filter((i) => i.isFavorite === 1) : items;
+    const opciones = ['🚬 Piti', '■ Parar', ...pool.sort((a, b) => a.title.localeCompare(b.title)).map((i) => `${i.emoji} ${i.title}`)];
+    return res.json({ opciones });
+  }
+
+  // Ejecutar lo elegido en el menú: piti, parar o empezar actividad
+  if (action === 'do') {
+    const raw = String(q.what ?? '');
+    const wanted = normalize(raw.replace(/[^\p{L}\p{N} &+]/gu, ' ')).replace(/\s+/g, ' ').trim();
+    if (!wanted) return reply(400, 'Falta la elección (what)');
+    if (wanted.includes('piti') || wanted.includes('cigarro')) return doCigarro();
+    if (wanted.includes('parar') || wanted === 'stop') return doStop();
+    return doStart(wanted);
+  }
+
+  reply(400, 'Acción desconocida (usa list, do, start, stop, cigarro o peso)');
 }));

@@ -496,7 +496,7 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   background: var(--paper-soft);
   border: 1px solid var(--line);
   border-left: 3px solid var(--ink);
-  padding: 3px 18px 3px 7px;
+  padding: 3px 16px 3px 7px;
   font-size: 12px;
   line-height: 1.25;
   overflow: hidden;
@@ -508,10 +508,16 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   flex-direction: column;
   gap: 1px;
   box-sizing: border-box;
+  z-index: var(--z, 2);
+  box-shadow: 0 1px 3px rgba(10, 10, 10, 0.08);
 }
-.rt-evt-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rt-evt:hover { z-index: 18; }
+.rt-evt-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .rt-evt-time { font-size: 10.5px; color: var(--ink-muted); }
 .rt-evt .rt-x { position: absolute; top: 1px; right: 2px; }
-.rt-evt.dragging { opacity: 0.75; box-shadow: 0 6px 18px rgba(10, 10, 10, 0.18); z-index: 6; cursor: grabbing; }
-.rt-evt.ghost { border-style: dashed; background: transparent; pointer-events: none; }
+/* Bloques cortos: nombre primero y hora pequeña al lado */
+.rt-evt.compact { flex-direction: row; align-items: center; gap: 6px; padding-top: 1px; padding-bottom: 1px; }
+.rt-evt.compact .rt-evt-time { margin-left: auto; flex-shrink: 0; }
+.rt-evt.dragging { opacity: 0.75; box-shadow: 0 6px 18px rgba(10, 10, 10, 0.18); z-index: 30; cursor: grabbing; }
+.rt-evt.ghost { border-style: dashed; background: transparent; pointer-events: none; box-shadow: none; }
 .rt-evt-resize { position: absolute; left: 0; right: 0; bottom: -2px; height: 9px; cursor: ns-resize; }

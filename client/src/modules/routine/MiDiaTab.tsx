@@ -261,6 +261,7 @@ function snap(m: number, step = 15): number {
 interface CalItem {
   key: string;
   slotId: number | null; // null = fantasma al arrastrar del catálogo
+  itemId: number | null;
   start: number; // minutos desde medianoche
   duration: number;
   title: string;
@@ -269,23 +270,26 @@ interface CalItem {
   dragging?: boolean;
 }
 
-// Reparto tipo calendario: los bloques que se solapan comparten el ancho
-// de la columna en sub-columnas, como en Calendario de Mac.
-function layoutColumn(list: CalItem[]): Array<CalItem & { col: number; cols: number }> {
+// Color pastel estable por rutina (mismo tono toda la semana)
+function itemHue(id: number): number {
+  return Math.round((id * 137.508) % 360);
+}
+
+// Solapes estilo Mac: cascada hacia la derecha con transparencia (no se parte
+// el ancho). Si dos bloques empiezan a la misma hora, el de delante baja unos
+// px para que asome el nombre del de atrás.
+function layoutColumn(list: CalItem[]): Array<CalItem & { col: number; nudge: number }> {
   const sorted = [...list].sort((a, b) => a.start - b.start || b.duration - a.duration);
-  const out: Array<CalItem & { col: number; cols: number }> = [];
-  let cluster: Array<CalItem & { col: number; cols: number }> = [];
+  const out: Array<CalItem & { col: number; nudge: number }> = [];
   let colEnds: number[] = [];
+  let starts: number[] = [];
   let clusterEnd = -1;
-  const flush = () => {
-    for (const it of cluster) it.cols = colEnds.length;
-    out.push(...cluster);
-    cluster = [];
-    colEnds = [];
-    clusterEnd = -1;
-  };
   for (const it of sorted) {
-    if (cluster.length && it.start >= clusterEnd) flush();
+    if (out.length && it.start >= clusterEnd) {
+      colEnds = [];
+      starts = [];
+      clusterEnd = -1;
+    }
     let col = colEnds.findIndex((end) => end <= it.start);
     if (col === -1) {
       col = colEnds.length;
@@ -293,9 +297,10 @@ function layoutColumn(list: CalItem[]): Array<CalItem & { col: number; cols: num
     }
     colEnds[col] = it.start + it.duration;
     clusterEnd = Math.max(clusterEnd, it.start + it.duration);
-    cluster.push({ ...it, col, cols: 1 });
+    const nudge = starts.filter((s) => s === it.start).length;
+    starts.push(it.start);
+    out.push({ ...it, col, nudge });
   }
-  flush();
   return out;
 }
 
@@ -484,6 +489,7 @@ function WeekTemplate({
                     .map((s) => ({
                       key: String(s.id),
                       slotId: s.id,
+                      itemId: s.itemId,
                       start: toMin(s.time),
                       duration: s.durationMin,
                       title: s.title,
@@ -491,20 +497,32 @@ function WeekTemplate({
                       dragging: drag?.id === s.id,
                     }));
                   if (ghost && ghost.weekday === wd) {
-                    dayItems.push({ key: 'ghost', slotId: null, start: ghost.start, duration: 60, title: '', emoji: '', ghost: true });
+                    dayItems.push({ key: 'ghost', slotId: null, itemId: null, start: ghost.start, duration: 60, title: '', emoji: '', ghost: true });
                   }
                   return (
                     <div key={wd} className="rt-col" style={{ height: COL_HEIGHT }}>
-                      {layoutColumn(dayItems).map((it) => (
+                      {layoutColumn(dayItems).map((it) => {
+                        const hue = it.itemId != null ? itemHue(it.itemId) : null;
+                        const nudgePx = it.nudge * 16;
+                        const compact = it.duration < 45;
+                        return (
                         <div
                           key={it.key}
-                          className={`rt-evt${it.ghost ? ' ghost' : ''}${it.dragging ? ' dragging' : ''}${resizing && String(resizing.id) === it.key ? ' dragging' : ''}`}
+                          className={`rt-evt${compact ? ' compact' : ''}${it.ghost ? ' ghost' : ''}${it.dragging ? ' dragging' : ''}${resizing && String(resizing.id) === it.key ? ' dragging' : ''}`}
                           style={{
-                            top: ((it.start - DAY_START) / 60) * HOUR_PX + 1,
-                            height: Math.max((it.duration / 60) * HOUR_PX, 18) - 3,
-                            left: `calc(${(100 / it.cols) * it.col}% + 2px)`,
-                            width: `calc(${100 / it.cols}% - 5px)`,
-                          }}
+                            top: ((it.start - DAY_START) / 60) * HOUR_PX + 1 + nudgePx,
+                            height: Math.max((it.duration / 60) * HOUR_PX - nudgePx, 16) - 3,
+                            left: `calc(${it.col * 12}% + 2px)`,
+                            width: `calc(${100 - it.col * 12}% - 5px)`,
+                            ...(hue != null
+                              ? {
+                                  background: `hsla(${hue}, 65%, 95%, 0.88)`,
+                                  borderColor: `hsla(${hue}, 45%, 70%, 0.6)`,
+                                  borderLeftColor: `hsl(${hue}, 55%, 42%)`,
+                                }
+                              : {}),
+                            ['--z' as string]: 2 + it.col + it.nudge,
+                          } as React.CSSProperties}
                           onPointerDown={it.slotId != null ? (e) => onMoveStart(e, it.slotId!) : undefined}
                         >
                           {!it.ghost && (
@@ -512,9 +530,11 @@ function WeekTemplate({
                               <span className="rt-evt-title">
                                 {it.emoji} {it.title}
                               </span>
-                              <span className="rt-evt-time">
-                                {toHHMM(it.start)}–{toHHMM(it.start + it.duration)}
-                              </span>
+                              {it.duration >= 25 && (
+                                <span className="rt-evt-time">
+                                  {compact ? toHHMM(it.start) : `${toHHMM(it.start)}–${toHHMM(it.start + it.duration)}`}
+                                </span>
+                              )}
                               <button className="rt-x" title="Quitar" onPointerDown={(e) => e.stopPropagation()} onClick={() => remove(it.slotId!)}>
                                 ×
                               </button>
@@ -522,7 +542,8 @@ function WeekTemplate({
                             </>
                           )}
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   );
                 })}

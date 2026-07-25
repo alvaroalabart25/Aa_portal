@@ -293,15 +293,32 @@ export const invoices = mysqlTable('invoices', {
     .$onUpdateFn(() => new Date()),
 });
 
-// Salud: registro de realidad diaria (pitis, peso; ampliable a más métricas)
+// Salud · Diario: marcas puntuales del día (cigarro con su hora, peso en kg)
 export const healthEntries = mysqlTable('health_entries', {
   id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
   userId: bigint('user_id', { mode: 'number' })
     .notNull()
     .references(() => users.id),
-  kind: varchar('kind', { length: 20 }).notNull(), // cig_pausa | cig_trabajo | peso
-  value: double('value'), // peso en kg; null para conteos
+  kind: varchar('kind', { length: 20 }).notNull(), // cigarro | peso
+  value: double('value'), // peso en kg; null para marcas
   entryDate: date('entry_date', { mode: 'string' }).notNull(),
+  entryTime: varchar('entry_time', { length: 5 }), // HH:MM hora de Madrid
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Salud · Diario: la radiografía del día. Actividades exclusivas y
+// secuenciales: empezar una cierra la anterior (end_at). Solo puede haber
+// una sesión abierta (end_at NULL). Comparte catálogo con Rutina (routine_items).
+export const diarySessions = mysqlTable('diary_sessions', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  itemId: bigint('item_id', { mode: 'number' })
+    .notNull()
+    .references(() => routineItems.id),
+  startAt: datetime('start_at').notNull(),
+  endAt: datetime('end_at'),
   createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 

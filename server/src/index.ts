@@ -9,6 +9,7 @@ import { eventsModule } from './modules/events';
 import { roadmapModule } from './modules/roadmap';
 import { routineModule } from './modules/routine';
 import { healthModule } from './modules/health';
+import { diaryModule } from './modules/diary';
 import { pushModule, pushRunner } from './modules/push';
 
 const app = express();
@@ -39,6 +40,7 @@ app.use('/api/events', requireAuth, eventsModule);
 app.use('/api/roadmap', requireAuth, roadmapModule);
 app.use('/api/routine', requireAuth, routineModule);
 app.use('/api/health-log', requireAuth, healthModule);
+app.use('/api/diary', requireAuth, diaryModule);
 app.use('/api/push', requireAuth, pushModule);
 
 // Errores no controlados -> 500 JSON

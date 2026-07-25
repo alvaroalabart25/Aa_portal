@@ -1,95 +1,292 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { healthApi, type DaySummary, type HealthEntry, type HealthKind } from './api';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import Modal from '../../components/Modal';
+import { routineApi, type RoutineItem } from '../routine/api';
+import { diaryApi, healthApi, type DiarySession, type HealthEntry } from './api';
+
+const HOUR_PX = 40; // 1 hora = 40px en la radiografía
+const COL_HEIGHT = 24 * HOUR_PX;
 
 function isoLocal(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
-
-function dayLabel(iso: string): string {
-  return new Date(`${iso}T12:00:00`).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+function dayStartOf(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+function minToHHMM(m: number): string {
+  const mm = Math.max(0, Math.min(Math.round(m), 24 * 60 - 1));
+  return `${String(Math.floor(mm / 60)).padStart(2, '0')}:${String(mm % 60).padStart(2, '0')}`;
+}
+function hhmmToMin(t: string): number {
+  return Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+}
+function nowHHMM(): string {
+  const n = new Date();
+  return `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`;
+}
+function itemHue(id: number): number {
+  return Math.round((id * 137.508) % 360);
 }
 
-// Contador grande de un tipo de piti: +1 al toque, − para corregir
-function Tally({
-  emoji,
-  label,
-  count,
-  busy,
-  onAdd,
-  onUndo,
+interface Block {
+  s: DiarySession;
+  startMin: number;
+  endMin: number;
+  open: boolean;
+}
+
+// Modal para añadir/corregir un bloque de actividad (edición a posteriori)
+function SessionModal({
+  session,
+  items,
+  day,
+  onClose,
+  onSaved,
 }: {
-  emoji: string;
-  label: string;
-  count: number;
-  busy: boolean;
-  onAdd: () => void;
-  onUndo: () => void;
+  session: DiarySession | null; // null = crear
+  items: RoutineItem[];
+  day: Date;
+  onClose: () => void;
+  onSaved: () => void;
 }) {
+  const [itemId, setItemId] = useState<number>(session?.itemId ?? items[0]?.id ?? 0);
+  const [start, setStart] = useState(session ? minToHHMM((new Date(session.startAt).getTime() - dayStartOf(day).getTime()) / 60000) : '09:00');
+  const [end, setEnd] = useState(
+    session ? (session.endAt ? minToHHMM((new Date(session.endAt).getTime() - dayStartOf(day).getTime()) / 60000) : '') : '10:00',
+  );
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+
+  function toIso(hhmm: string): string {
+    const d = dayStartOf(day);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate(), Number(hhmm.slice(0, 2)), Number(hhmm.slice(3, 5))).toISOString();
+  }
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setErr('');
+    if (!itemId || !start) return;
+    if (end && hhmmToMin(end) <= hhmmToMin(start)) {
+      setErr('El fin debe ser posterior al inicio');
+      return;
+    }
+    setSaving(true);
+    try {
+      if (session) {
+        await diaryApi.update(session.id, { itemId, startAt: toIso(start), endAt: end ? toIso(end) : session.endAt === null ? null : toIso(start) });
+      } else {
+        if (!end) {
+          setErr('Para añadir a posteriori indica el fin');
+          setSaving(false);
+          return;
+        }
+        await diaryApi.create(itemId, toIso(start), toIso(end));
+      }
+      onSaved();
+      onClose();
+    } catch (e2) {
+      setErr(e2 instanceof Error ? e2.message : 'Error');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function removeSession() {
+    if (!session) return;
+    await diaryApi.remove(session.id);
+    onSaved();
+    onClose();
+  }
+
   return (
-    <div className="hl-tally">
-      <span className="hl-tally-emoji">{emoji}</span>
-      <div className="hl-tally-mid">
-        <span className="hl-tally-label">{label}</span>
-        <span className="hl-tally-count">{count}</span>
-      </div>
-      <div className="hl-tally-btns">
-        <button className="btn sm" disabled={busy} onClick={onAdd}>
-          +1
-        </button>
-        <button className="btn ghost sm" disabled={busy || count === 0} onClick={onUndo} title="Quitar el último">
-          −
-        </button>
-      </div>
-    </div>
+    <Modal title={session ? 'Corregir bloque' : 'Añadir bloque'} onClose={onClose}>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="field">
+          <label htmlFor="dy-item">Actividad</label>
+          <select id="dy-item" value={itemId} onChange={(e) => setItemId(Number(e.target.value))}>
+            {items.map((i) => (
+              <option key={i.id} value={i.id}>
+                {i.emoji} {i.title}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <div className="field" style={{ flex: 1 }}>
+            <label htmlFor="dy-start">Inicio</label>
+            <input id="dy-start" type="time" value={start} onChange={(e) => setStart(e.target.value)} />
+          </div>
+          <div className="field" style={{ flex: 1 }}>
+            <label htmlFor="dy-end">Fin {session?.endAt === null && <span className="muted">(en curso)</span>}</label>
+            <input id="dy-end" type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
+          </div>
+        </div>
+        {err && <p style={{ fontSize: 13, color: 'var(--danger)' }}>{err}</p>}
+        <div className="modal-actions">
+          {session && (
+            <button type="button" className="btn danger sm" onClick={removeSession} style={{ marginRight: 'auto' }}>
+              Eliminar
+            </button>
+          )}
+          <button type="button" className="btn ghost" onClick={onClose}>
+            Cancelar
+          </button>
+          <button className="btn" disabled={saving}>
+            Guardar
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
-// Salud · Diario: registrar la realidad del día (pitis y peso) y ver la
-// serie de los últimos días. La base para comparar plan vs realidad.
+// Modal para crear una actividad nueva del catálogo (compartido con Rutina)
+function NewItemModal({ onClose, onCreated }: { onClose: () => void; onCreated: (item: RoutineItem) => void }) {
+  const [title, setTitle] = useState('');
+  const [emoji, setEmoji] = useState('☕');
+  const [saving, setSaving] = useState(false);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!title.trim()) return;
+    setSaving(true);
+    try {
+      const item = await routineApi.createItem({ title: title.trim(), emoji: emoji.trim() || '🔁' });
+      onCreated(item);
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal title="Nueva actividad" onClose={onClose}>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <div className="field" style={{ width: 70 }}>
+            <label htmlFor="ni-emoji">Emoji</label>
+            <input id="ni-emoji" value={emoji} onChange={(e) => setEmoji(e.target.value)} />
+          </div>
+          <div className="field" style={{ flex: 1 }}>
+            <label htmlFor="ni-title">Nombre</label>
+            <input id="ni-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Café, Desayuno, Ver pelis..." />
+          </div>
+        </div>
+        <p className="muted" style={{ fontSize: 12 }}>
+          Queda disponible también en el catálogo de Rutina.
+        </p>
+        <div className="modal-actions">
+          <button type="button" className="btn ghost" onClick={onClose}>
+            Cancelar
+          </button>
+          <button className="btn" disabled={saving || !title.trim()}>
+            Crear
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+// Salud · Diario: la radiografía del día. Actividades secuenciales (empezar
+// una para la anterior), el cigarro se superpone como marca, y el peso es la
+// pregunta del día. De esta realidad saldrán las rutinas que sí encajan.
 export default function DiarioPage() {
+  const [day, setDay] = useState<Date>(() => dayStartOf(new Date()));
+  const [sessions, setSessions] = useState<DiarySession[]>([]);
   const [entries, setEntries] = useState<HealthEntry[]>([]);
-  const [summary, setSummary] = useState<DaySummary[]>([]);
+  const [items, setItems] = useState<RoutineItem[]>([]);
+  const [current, setCurrent] = useState<DiarySession | null>(null);
+  const [editing, setEditing] = useState<DiarySession | 'new' | null>(null);
+  const [creatingItem, setCreatingItem] = useState(false);
   const [pesoInput, setPesoInput] = useState('');
+  const [pesoTime, setPesoTime] = useState(nowHHMM());
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState('');
+  const calRef = useRef<HTMLDivElement>(null);
+
+  const today = isoLocal(new Date());
+  const dayIso = isoLocal(day);
+  const isToday = dayIso === today;
 
   const load = useCallback(async () => {
-    const today = new Date();
-    const from = new Date(today);
-    from.setDate(from.getDate() - 13);
-    const [d, s] = await Promise.all([healthApi.day(), healthApi.summary(isoLocal(from), isoLocal(today))]);
+    const from = dayStartOf(day);
+    const to = new Date(from.getTime() + 24 * 3600 * 1000);
+    const [s, d, i, c] = await Promise.all([
+      diaryApi.sessions(from.toISOString(), to.toISOString()),
+      healthApi.day(dayIso),
+      routineApi.items(),
+      diaryApi.current(),
+    ]);
+    setSessions(s);
     setEntries(d.entries);
-    setSummary(s);
-  }, []);
+    setItems(i);
+    setCurrent(c);
+  }, [day, dayIso]);
   useEffect(() => {
     load();
   }, [load]);
 
-  const counts = useMemo(
-    () => ({
-      pausa: entries.filter((e) => e.kind === 'cig_pausa').length,
-      trabajo: entries.filter((e) => e.kind === 'cig_trabajo').length,
-      peso: entries.filter((e) => e.kind === 'peso').at(-1)?.value ?? null,
-    }),
-    [entries],
-  );
+  // al abrir, centrar la radiografía en la mañana
+  useEffect(() => {
+    if (calRef.current) calRef.current.scrollTop = 6.5 * HOUR_PX;
+  }, []);
 
-  async function add(kind: HealthKind, value?: number) {
+  const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+
+  const blocks: Block[] = useMemo(() => {
+    const start = dayStartOf(day).getTime();
+    return sessions.map((s) => {
+      const sm = (new Date(s.startAt).getTime() - start) / 60000;
+      const open = s.endAt === null;
+      const em = open ? (isToday ? nowMin : 24 * 60) : (new Date(s.endAt!).getTime() - start) / 60000;
+      return { s, startMin: Math.max(0, sm), endMin: Math.min(24 * 60, Math.max(em, sm + 4)), open };
+    });
+  }, [sessions, day, isToday, nowMin]);
+
+  const cigs = useMemo(() => entries.filter((e) => e.kind === 'cigarro' && e.entryTime), [entries]);
+  const peso = useMemo(() => entries.filter((e) => e.kind === 'peso').at(-1) ?? null, [entries]);
+
+  // contexto de cada piti: la actividad que corría en ese momento
+  const cigsByContext = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const c of cigs) {
+      const m = hhmmToMin(c.entryTime!);
+      const b = blocks.find((x) => x.startMin <= m && m < x.endMin);
+      const k = b ? `${b.s.emoji} ${b.s.title}` : 'sin actividad';
+      map.set(k, (map.get(k) ?? 0) + 1);
+    }
+    return [...map.entries()];
+  }, [cigs, blocks]);
+
+  function moveDay(delta: number) {
+    const d = new Date(day);
+    d.setDate(d.getDate() + delta);
+    setDay(dayStartOf(d));
+  }
+
+  async function startActivity(itemId: number) {
     setBusy(true);
     try {
-      await healthApi.add(kind, value);
+      await diaryApi.start(itemId);
       await load();
     } finally {
       setBusy(false);
     }
   }
 
-  async function undo(kind: HealthKind) {
-    const last = entries.filter((e) => e.kind === kind).at(-1);
-    if (!last) return;
+  async function stopActivity() {
     setBusy(true);
     try {
-      await healthApi.remove(last.id);
+      await diaryApi.stop();
+      await load();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function addCig() {
+    setBusy(true);
+    try {
+      await healthApi.add('cigarro');
       await load();
     } finally {
       setBusy(false);
@@ -98,84 +295,221 @@ export default function DiarioPage() {
 
   async function savePeso() {
     const v = Number(pesoInput.replace(',', '.'));
-    if (!v || v <= 0 || v > 400) {
-      setMsg('Pon un peso válido en kg (ej. 78,4)');
-      return;
+    if (!v || v <= 0 || v > 400) return;
+    setBusy(true);
+    try {
+      await healthApi.add('peso', { value: v, time: pesoTime });
+      setPesoInput('');
+      await load();
+    } finally {
+      setBusy(false);
     }
-    setMsg('');
-    await add('peso', v);
-    setPesoInput('');
   }
 
-  const maxCigs = Math.max(1, ...summary.map((s) => s.cigPausa + s.cigTrabajo));
+  const dayLabel = day.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
     <div>
       <div className="page-head">
         <h1>Diario</h1>
+        <div className="seg">
+          <button onClick={() => moveDay(-1)} title="Día anterior">
+            ‹
+          </button>
+          <button onClick={() => setDay(dayStartOf(new Date()))}>
+            {isToday ? 'Hoy' : dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1)}
+          </button>
+          <button onClick={() => moveDay(1)} title="Día siguiente" disabled={dayIso >= today}>
+            ›
+          </button>
+        </div>
       </div>
-      <p className="muted" style={{ fontSize: 13, marginTop: 6 }}>
-        Tu realidad del día, sin juicio: primero medir, luego decidir. Cada toque queda registrado con fecha.
-      </p>
+      {isToday && (
+        <p className="muted" style={{ fontSize: 13, marginTop: 6 }}>
+          {dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1)} · tu día tal y como está pasando. Toca una actividad
+          para empezarla (la anterior se cierra sola).
+        </p>
+      )}
 
-      <section className="section" style={{ marginTop: 18 }}>
-        <h2>Hoy</h2>
-        <div className="hl-tallies">
-          <Tally emoji="🚬" label="Piti en pausa" count={counts.pausa} busy={busy} onAdd={() => add('cig_pausa')} onUndo={() => undo('cig_pausa')} />
-          <Tally emoji="💻" label="Piti trabajando" count={counts.trabajo} busy={busy} onAdd={() => add('cig_trabajo')} onUndo={() => undo('cig_trabajo')} />
-          <div className="hl-tally">
-            <span className="hl-tally-emoji">⚖️</span>
-            <div className="hl-tally-mid">
-              <span className="hl-tally-label">Peso</span>
-              <span className="hl-tally-count">{counts.peso != null ? `${counts.peso} kg` : '—'}</span>
-            </div>
-            <div className="hl-tally-btns" style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <input
-                inputMode="decimal"
-                placeholder="kg"
-                value={pesoInput}
-                onChange={(e) => setPesoInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && savePeso()}
-                style={{ width: 72 }}
-              />
-              <button className="btn sm" disabled={busy || !pesoInput} onClick={savePeso}>
-                ✓
+      {isToday && (
+        <section className="section" style={{ marginTop: 16 }}>
+          <div className="dy-nowbar">
+            {current ? (
+              <>
+                <span className="dy-nowdot" />
+                <strong>
+                  {current.emoji} {current.title}
+                </strong>
+                <span className="muted" style={{ fontSize: 12.5 }}>
+                  desde las {new Date(current.startAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+                <button className="btn ghost sm" disabled={busy} onClick={stopActivity}>
+                  ■ Parar
+                </button>
+              </>
+            ) : (
+              <span className="muted" style={{ fontSize: 13.5 }}>Sin actividad en curso.</span>
+            )}
+            <button className="btn sm dy-cigbtn" disabled={busy} onClick={addCig}>
+              🚬 Piti ({cigs.length})
+            </button>
+          </div>
+
+          <div className="rt-catalog" style={{ marginTop: 12 }}>
+            {items.map((i) => (
+              <button
+                key={i.id}
+                className={`rt-chip dy-chip${current?.itemId === i.id ? ' active' : ''}`}
+                disabled={busy || current?.itemId === i.id}
+                onClick={() => startActivity(i.id)}
+              >
+                {i.emoji} {i.title}
               </button>
+            ))}
+            <button className="rt-chip dy-chip" onClick={() => setCreatingItem(true)}>
+              ＋ Nueva
+            </button>
+          </div>
+
+          <div className="dy-peso">
+            {peso ? (
+              <span style={{ fontSize: 13.5 }}>
+                ⚖️ <strong>{peso.value} kg</strong>
+                <span className="muted"> · a las {peso.entryTime}</span>
+                <button className="btn ghost sm" style={{ marginLeft: 8 }} onClick={async () => { await healthApi.remove(peso.id); load(); }}>
+                  ↺
+                </button>
+              </span>
+            ) : (
+              <span style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 13.5 }}>
+                ⚖️ ¿Te has pesado hoy?
+                <input inputMode="decimal" placeholder="kg" value={pesoInput} onChange={(e) => setPesoInput(e.target.value)} style={{ width: 70 }} />
+                <input type="time" value={pesoTime} onChange={(e) => setPesoTime(e.target.value)} style={{ width: 110 }} />
+                <button className="btn sm" disabled={busy || !pesoInput} onClick={savePeso}>
+                  ✓
+                </button>
+              </span>
+            )}
+          </div>
+        </section>
+      )}
+
+      <section className="section">
+        <div className="page-head">
+          <h2>Radiografía</h2>
+          <button className="btn ghost sm" onClick={() => setEditing('new')}>
+            ＋ Añadir bloque
+          </button>
+        </div>
+        {(cigs.length > 0 || !isToday) && (
+          <p className="muted" style={{ fontSize: 12.5, margin: '4px 0 10px' }}>
+            🚬 {cigs.length} {cigs.length === 1 ? 'piti' : 'pitis'}
+            {cigsByContext.length > 0 && <> · {cigsByContext.map(([k, n]) => `${n} ${k}`).join(' · ')}</>}
+            {!isToday && peso && <> · ⚖️ {peso.value} kg a las {peso.entryTime}</>}
+          </p>
+        )}
+        <div className="dy-cal" ref={calRef}>
+          <div className="dy-body">
+            <div className="dy-gutter" style={{ height: COL_HEIGHT }}>
+              {Array.from({ length: 23 }, (_, i) => (
+                <span key={i} style={{ top: (i + 1) * HOUR_PX - 7 }}>
+                  {String(i + 1).padStart(2, '0')}:00
+                </span>
+              ))}
+            </div>
+            <div className="dy-col" style={{ height: COL_HEIGHT }}>
+              {blocks.map((b) => {
+                const hue = itemHue(b.s.itemId);
+                const compact = b.endMin - b.startMin < 45;
+                return (
+                  <div
+                    key={b.s.id}
+                    className={`dy-evt${compact ? ' compact' : ''}${b.open ? ' open' : ''}`}
+                    style={{
+                      top: (b.startMin / 60) * HOUR_PX + 1,
+                      height: Math.max(((b.endMin - b.startMin) / 60) * HOUR_PX - 3, 14),
+                      background: `hsla(${hue}, 65%, 95%, 0.9)`,
+                      borderColor: `hsla(${hue}, 45%, 70%, 0.6)`,
+                      borderLeftColor: `hsl(${hue}, 55%, 42%)`,
+                    }}
+                    onClick={() => setEditing(b.s)}
+                    title="Clic para corregir"
+                  >
+                    <span className="dy-evt-title">
+                      {b.s.emoji} {b.s.title}
+                      {b.open && <span className="dy-live"> · en curso</span>}
+                    </span>
+                    <span className="dy-evt-time">
+                      {minToHHMM(b.startMin)}–{b.open ? '…' : minToHHMM(b.endMin)}
+                    </span>
+                  </div>
+                );
+              })}
+              {cigs.map((c) => (
+                <span
+                  key={c.id}
+                  className="dy-cig"
+                  style={{ top: (hhmmToMin(c.entryTime!) / 60) * HOUR_PX - 8 }}
+                  title={`Cigarro · ${c.entryTime} (clic para borrar)`}
+                  onClick={async () => {
+                    await healthApi.remove(c.id);
+                    load();
+                  }}
+                >
+                  🚬 {c.entryTime}
+                </span>
+              ))}
+              {isToday && <div className="dy-now" style={{ top: (nowMin / 60) * HOUR_PX }} />}
             </div>
           </div>
         </div>
-        <p className="muted" style={{ fontSize: 12.5, marginTop: 8 }}>
-          Total pitis hoy: <strong>{counts.pausa + counts.trabajo}</strong> · {counts.pausa} en pausa · {counts.trabajo} trabajando
+        <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>
+          Cada bloque es lo que estabas haciendo; los 🚬 se superponen a la actividad. Clic en un bloque o en un 🚬
+          para corregirlo.
         </p>
-        {msg && <p style={{ fontSize: 13, marginTop: 6 }}>{msg}</p>}
       </section>
 
-      <section className="section">
-        <h2>Últimos 14 días</h2>
-        {summary.length === 0 && <div className="empty">Aún sin registros. Empieza hoy con un toque arriba. ☝️</div>}
-        <div className="hl-days">
-          {summary.map((s) => {
-            const total = s.cigPausa + s.cigTrabajo;
-            return (
-              <div key={s.date} className="hl-day">
-                <span className="hl-day-label">{dayLabel(s.date)}</span>
-                <span className="hl-day-bar">
-                  <span className="hl-day-fill pausa" style={{ width: `${(s.cigPausa / maxCigs) * 100}%` }} />
-                  <span className="hl-day-fill trabajo" style={{ width: `${(s.cigTrabajo / maxCigs) * 100}%` }} />
-                </span>
-                <span className="hl-day-num">
-                  🚬 {total}
-                  <span className="muted" style={{ fontSize: 11 }}> ({s.cigPausa}/{s.cigTrabajo})</span>
-                </span>
-                <span className="hl-day-peso">{s.peso != null ? `⚖️ ${s.peso} kg` : ''}</span>
-              </div>
-            );
-          })}
-        </div>
-        <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>
-          Barra: pitis del día (oscuro = en pausa, claro = trabajando). El peso muestra el último registro de cada día.
-        </p>
-      </section>
+      <ResumenDias />
+
+      {editing && (
+        <SessionModal session={editing === 'new' ? null : editing} items={items} day={day} onClose={() => setEditing(null)} onSaved={load} />
+      )}
+      {creatingItem && <NewItemModal onClose={() => setCreatingItem(false)} onCreated={() => load()} />}
     </div>
+  );
+}
+
+// Serie de los últimos 14 días: pitis y peso (con su hora)
+function ResumenDias() {
+  const [summary, setSummary] = useState<{ date: string; cigarros: number; peso: number | null; pesoTime: string | null }[]>([]);
+
+  useEffect(() => {
+    const today = new Date();
+    const from = new Date(today);
+    from.setDate(from.getDate() - 13);
+    healthApi.summary(isoLocal(from), isoLocal(today)).then(setSummary);
+  }, []);
+
+  if (summary.length === 0) return null;
+  const maxCigs = Math.max(1, ...summary.map((s) => s.cigarros));
+
+  return (
+    <section className="section">
+      <h2>Últimos 14 días</h2>
+      <div className="hl-days">
+        {summary.map((s) => (
+          <div key={s.date} className="hl-day">
+            <span className="hl-day-label">
+              {new Date(`${s.date}T12:00:00`).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}
+            </span>
+            <span className="hl-day-bar">
+              <span className="hl-day-fill pausa" style={{ width: `${(s.cigarros / maxCigs) * 100}%` }} />
+            </span>
+            <span className="hl-day-num">🚬 {s.cigarros}</span>
+            <span className="hl-day-peso">{s.peso != null ? `⚖️ ${s.peso} kg · ${s.pesoTime ?? ''}` : ''}</span>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }

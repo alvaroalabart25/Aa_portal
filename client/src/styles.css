@@ -564,3 +564,53 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   .rt-real { grid-template-columns: repeat(2, 1fr); }
   .rt-real-day { min-height: 60px; }
 }
+
+/* Salud · Diario: radiografía del día */
+.dy-nowbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; background: var(--paper); }
+.dy-nowdot { width: 9px; height: 9px; border-radius: 50%; background: #2f9e44; animation: dy-pulse 1.6s ease-in-out infinite; flex-shrink: 0; }
+@keyframes dy-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.dy-cigbtn { margin-left: auto; }
+.dy-chip { cursor: pointer; font: inherit; }
+.dy-chip.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.dy-chip:disabled { opacity: 0.9; }
+.dy-peso { margin-top: 12px; }
+
+.dy-cal { border: 1px solid var(--line); border-radius: 12px; overflow-y: auto; max-height: 540px; background: var(--paper); }
+.dy-body { display: flex; }
+.dy-gutter { width: 52px; flex-shrink: 0; position: relative; }
+.dy-gutter span { position: absolute; right: 8px; font-size: 10.5px; color: var(--ink-muted); }
+.dy-col {
+  position: relative;
+  flex: 1;
+  border-left: 1px solid var(--line);
+  background-image: linear-gradient(to bottom, var(--line) 1px, transparent 1px);
+  background-size: 100% 40px;
+  margin-right: 8px;
+}
+.dy-evt {
+  position: absolute;
+  left: 6px;
+  right: 64px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--ink);
+  padding: 3px 8px;
+  font-size: 12px;
+  line-height: 1.25;
+  overflow: hidden;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  box-sizing: border-box;
+  box-shadow: 0 1px 3px rgba(10, 10, 10, 0.07);
+}
+.dy-evt.compact { flex-direction: row; align-items: center; gap: 6px; padding-top: 1px; padding-bottom: 1px; }
+.dy-evt.compact .dy-evt-time { margin-left: auto; flex-shrink: 0; }
+.dy-evt.open { border-bottom-style: dashed; }
+.dy-evt-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.dy-evt-time { font-size: 10.5px; color: var(--ink-muted); }
+.dy-live { color: #2f9e44; font-weight: 600; font-size: 10.5px; }
+.dy-cig { position: absolute; right: 4px; font-size: 10.5px; background: var(--paper); border: 1px solid var(--line); border-radius: 20px; padding: 1px 7px; cursor: pointer; z-index: 4; white-space: nowrap; box-shadow: 0 1px 3px rgba(10, 10, 10, 0.08); }
+.dy-now { position: absolute; left: 0; right: 0; height: 2px; background: #c92a2a; z-index: 5; pointer-events: none; }
+.dy-now::before { content: ''; position: absolute; left: -1px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: #c92a2a; }

@@ -6,34 +6,40 @@ import { db } from '../../db';
 import { healthEntries } from '../../db/schema';
 import type { AuthedRequest } from '../../core/auth/middleware';
 
-// Salud · Diario: registro de la realidad diaria. Empezamos con pitis
-// (en pausa / trabajando) y peso; el modelo admite más métricas sin migrar.
+// Salud · Diario: marcas puntuales del día. El cigarro lleva su hora (la
+// radiografía lo pinta sobre la actividad en curso); el peso lleva valor y
+// hora (no es lo mismo pesarse a las 8:00 que a las 10:00).
 export const healthModule = Router();
 
-export const HEALTH_KINDS = ['cig_pausa', 'cig_trabajo', 'peso'] as const;
+export const HEALTH_KINDS = ['cigarro', 'peso'] as const;
 
 // Fecha de hoy en Europa/Madrid (el server corre en UTC en Render)
-function madridToday(): string {
+function madridNow(): { date: string; time: string } {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/Madrid',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
   }).formatToParts(new Date());
   const get = (t: string) => parts.find((p) => p.type === t)!.value;
-  return `${get('year')}-${get('month')}-${get('day')}`;
+  return { date: `${get('year')}-${get('month')}-${get('day')}`, time: `${get('hour')}:${get('minute')}` };
 }
 
 const entryInput = z.object({
   kind: z.enum(HEALTH_KINDS),
   value: z.number().positive().max(500).optional(),
+  time: z.string().regex(/^\d{2}:\d{2}$/).optional(), // por defecto, ahora (Madrid)
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), // por defecto, hoy
 });
 
 // GET /day?date=YYYY-MM-DD (por defecto hoy) -> entradas del día
 healthModule.get('/day', ah(async (req: AuthedRequest, res) => {
   const date = typeof req.query.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date)
     ? req.query.date
-    : madridToday();
+    : madridNow().date;
   const rows = await db
     .select()
     .from(healthEntries)
@@ -49,11 +55,13 @@ healthModule.post('/entries', ah(async (req: AuthedRequest, res) => {
   if (parsed.data.kind === 'peso' && parsed.data.value == null) {
     return res.status(400).json({ error: 'El peso necesita un valor en kg' });
   }
+  const now = madridNow();
   const [result] = await db.insert(healthEntries).values({
     userId: req.userId!,
     kind: parsed.data.kind,
     value: parsed.data.value ?? null,
-    entryDate: madridToday(),
+    entryDate: parsed.data.date ?? now.date,
+    entryTime: parsed.data.time ?? now.time,
   });
   const [row] = await db.select().from(healthEntries).where(eq(healthEntries.id, result.insertId));
   res.status(201).json(row);
@@ -82,13 +90,15 @@ healthModule.get('/summary', ah(async (req: AuthedRequest, res) => {
     .where(and(eq(healthEntries.userId, req.userId!), gte(healthEntries.entryDate, from), lte(healthEntries.entryDate, to)))
     .orderBy(desc(healthEntries.entryDate), asc(healthEntries.createdAt));
 
-  const byDate = new Map<string, { date: string; cigPausa: number; cigTrabajo: number; peso: number | null }>();
+  const byDate = new Map<string, { date: string; cigarros: number; peso: number | null; pesoTime: string | null }>();
   for (const r of rows) {
-    if (!byDate.has(r.entryDate)) byDate.set(r.entryDate, { date: r.entryDate, cigPausa: 0, cigTrabajo: 0, peso: null });
+    if (!byDate.has(r.entryDate)) byDate.set(r.entryDate, { date: r.entryDate, cigarros: 0, peso: null, pesoTime: null });
     const d = byDate.get(r.entryDate)!;
-    if (r.kind === 'cig_pausa') d.cigPausa += 1;
-    if (r.kind === 'cig_trabajo') d.cigTrabajo += 1;
-    if (r.kind === 'peso' && r.value != null) d.peso = r.value; // el último del día gana
+    if (r.kind === 'cigarro') d.cigarros += 1;
+    if (r.kind === 'peso' && r.value != null) {
+      d.peso = r.value; // el último del día gana
+      d.pesoTime = r.entryTime;
+    }
   }
   res.json([...byDate.values()].sort((a, b) => b.date.localeCompare(a.date)));
 }));

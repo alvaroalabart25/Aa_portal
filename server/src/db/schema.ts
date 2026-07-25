@@ -108,6 +108,7 @@ export const events = mysqlTable('events', {
   title: varchar('title', { length: 200 }).notNull(),
   emoji: varchar('emoji', { length: 16 }).notNull().default('📌'),
   eventDate: date('event_date', { mode: 'string' }).notNull(), // fecha (o primera ocurrencia)
+  eventTime: varchar('event_time', { length: 5 }), // HH:MM opcional (se pinta en el Diario)
   recurrence: mysqlEnum('recurrence', ['none', 'monthly', 'yearly']).notNull().default('none'),
   scope: mysqlEnum('scope', ['autonomo', 'space']).notNull(),
   spaceId: bigint('space_id', { mode: 'number' }).references(() => spaces.id),

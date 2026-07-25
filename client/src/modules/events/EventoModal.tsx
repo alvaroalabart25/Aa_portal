@@ -17,6 +17,7 @@ export default function EventoModal({
   const [title, setTitle] = useState(event?.title ?? '');
   const [emoji, setEmoji] = useState(event?.emoji ?? '📌');
   const [eventDate, setEventDate] = useState(event?.eventDate ?? '');
+  const [eventTime, setEventTime] = useState(event?.eventTime ?? '');
   const [recurrence, setRecurrence] = useState<EventRecurrence>(event?.recurrence ?? 'none');
   const [place, setPlace] = useState<string>(event ? (event.scope === 'autonomo' ? 'autonomo' : String(event.spaceId)) : 'autonomo');
   const [spaces, setSpaces] = useState<Space[]>([]);
@@ -36,6 +37,7 @@ export default function EventoModal({
       title: title.trim(),
       emoji: emoji.trim() || '📌',
       eventDate,
+      eventTime: eventTime || null,
       recurrence,
       scope: place === 'autonomo' ? 'autonomo' : 'space',
       spaceId: place === 'autonomo' ? null : Number(place),
@@ -83,6 +85,10 @@ export default function EventoModal({
           <div className="field">
             <label htmlFor="ev-date">Fecha</label>
             <input id="ev-date" type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} />
+          </div>
+          <div className="field">
+            <label htmlFor="ev-time">Hora <span className="muted">(opcional)</span></label>
+            <input id="ev-time" type="time" value={eventTime} onChange={(e) => setEventTime(e.target.value)} />
           </div>
           <div className="field">
             <label htmlFor="ev-rec">Repetición</label>

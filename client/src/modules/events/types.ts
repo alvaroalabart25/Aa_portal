@@ -6,6 +6,7 @@ export interface ImportantEvent {
   title: string;
   emoji: string;
   eventDate: string;
+  eventTime: string | null; // HH:MM opcional (se pinta en el Diario)
   recurrence: EventRecurrence;
   scope: EventScope;
   spaceId: number | null;
@@ -44,6 +45,15 @@ export function nextOccurrence(ev: ImportantEvent): string {
   let candidate = new Date(now.getFullYear(), now.getMonth(), d);
   if (isoLocal(candidate) < today) candidate = new Date(now.getFullYear(), now.getMonth() + 1, d);
   return isoLocal(candidate);
+}
+
+// ¿El evento ocurre en esta fecha concreta? (para pintarlo en el Diario)
+export function occursOn(ev: ImportantEvent, iso: string): boolean {
+  if (ev.recurrence === 'none' || iso <= ev.eventDate) return ev.eventDate === iso;
+  const [, em, ed] = ev.eventDate.split('-').map(Number);
+  const [, m, d] = iso.split('-').map(Number);
+  if (ev.recurrence === 'yearly') return m === em && d === ed;
+  return d === ed; // monthly
 }
 
 export function daysUntil(iso: string): number {

@@ -67,16 +67,6 @@ const icons = {
 export const MODULES: PortalModule[] = [
   { id: 'agenda', title: 'Agenda', path: '/agenda', icon: icons.agenda },
   {
-    id: 'org',
-    title: 'Organización',
-    icon: icons.org,
-    children: [
-      { id: 'spaces', title: 'Espacios', path: '/espacios', icon: icons.spaces },
-      { id: 'projects', title: 'Proyectos', path: '/proyectos', icon: icons.projects },
-      { id: 'tasks', title: 'Tareas', path: '/tareas', icon: icons.tasks },
-    ],
-  },
-  {
     id: 'salud',
     title: 'Salud',
     icon: (
@@ -108,6 +98,16 @@ export const MODULES: PortalModule[] = [
         ),
       },
       // (futuro) { id: 'gimnasio', title: 'Gimnasio', path: '/gimnasio', ... },
+    ],
+  },
+  {
+    id: 'org',
+    title: 'Organización',
+    icon: icons.org,
+    children: [
+      { id: 'spaces', title: 'Espacios', path: '/espacios', icon: icons.spaces },
+      { id: 'projects', title: 'Proyectos', path: '/proyectos', icon: icons.projects },
+      { id: 'tasks', title: 'Tareas', path: '/tareas', icon: icons.tasks },
     ],
   },
   {

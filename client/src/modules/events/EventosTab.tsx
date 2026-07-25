@@ -45,8 +45,8 @@ export default function EventosTab() {
             {days < 0
               ? `venció hace ${Math.abs(days)} ${Math.abs(days) === 1 ? 'día' : 'días'}`
               : days === 0
-                ? 'HOY'
-                : `${fmtEventDate(next)} · en ${days} días`}
+                ? `HOY${e.eventTime ? ` · ${e.eventTime}` : ''}`
+                : `${fmtEventDate(next)}${e.eventTime ? ` · ${e.eventTime}` : ''} · en ${days} días`}
           </span>
           {(days <= 0 && e.recurrence === 'none') && (
             <span

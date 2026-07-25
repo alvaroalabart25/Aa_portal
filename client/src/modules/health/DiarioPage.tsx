@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import Modal from '../../components/Modal';
 import { routineApi, type RoutineItem } from '../routine/api';
+import { eventsApi } from '../events/api';
+import { occursOn, type ImportantEvent } from '../events/types';
 import { diaryApi, healthApi, type DiarySession, type HealthEntry } from './api';
 
 const HOUR_PX = 40; // 1 hora = 40px en la radiografía
@@ -195,6 +197,7 @@ export default function DiarioPage() {
   const [sessions, setSessions] = useState<DiarySession[]>([]);
   const [entries, setEntries] = useState<HealthEntry[]>([]);
   const [items, setItems] = useState<RoutineItem[]>([]);
+  const [eventsList, setEventsList] = useState<ImportantEvent[]>([]);
   const [current, setCurrent] = useState<DiarySession | null>(null);
   const [editing, setEditing] = useState<DiarySession | 'new' | null>(null);
   const [creatingItem, setCreatingItem] = useState(false);
@@ -210,16 +213,18 @@ export default function DiarioPage() {
   const load = useCallback(async () => {
     const from = dayStartOf(day);
     const to = new Date(from.getTime() + 24 * 3600 * 1000);
-    const [s, d, i, c] = await Promise.all([
+    const [s, d, i, c, ev] = await Promise.all([
       diaryApi.sessions(from.toISOString(), to.toISOString()),
       healthApi.day(dayIso),
       routineApi.items(),
       diaryApi.current(),
+      eventsApi.list(),
     ]);
     setSessions(s);
     setEntries(d.entries);
     setItems(i);
     setCurrent(c);
+    setEventsList(ev);
   }, [day, dayIso]);
   useEffect(() => {
     load();
@@ -243,6 +248,10 @@ export default function DiarioPage() {
   }, [sessions, day, isToday, nowMin]);
 
   const cigs = useMemo(() => entries.filter((e) => e.kind === 'cigarro' && e.entryTime), [entries]);
+  // eventos importantes de la Agenda que caen en este día
+  const dayEvents = useMemo(() => eventsList.filter((e) => occursOn(e, dayIso)), [eventsList, dayIso]);
+  const timedEvents = dayEvents.filter((e) => e.eventTime);
+  const untimedEvents = dayEvents.filter((e) => !e.eventTime);
   const peso = useMemo(() => entries.filter((e) => e.kind === 'peso').at(-1) ?? null, [entries]);
 
   // contexto de cada piti: la actividad que corría en ese momento
@@ -401,6 +410,15 @@ export default function DiarioPage() {
             ＋ Añadir bloque
           </button>
         </div>
+        {untimedEvents.length > 0 && (
+          <div className="dy-events-strip">
+            {untimedEvents.map((e) => (
+              <span key={e.id} className="dy-event-chip" title="Evento importante (se edita en Agenda · Eventos)">
+                {e.emoji} {e.title}
+              </span>
+            ))}
+          </div>
+        )}
         {(cigs.length > 0 || !isToday) && (
           <p className="muted" style={{ fontSize: 12.5, margin: '4px 0 10px' }}>
             🚬 {cigs.length} {cigs.length === 1 ? 'piti' : 'pitis'}
@@ -445,6 +463,18 @@ export default function DiarioPage() {
                   </div>
                 );
               })}
+              {timedEvents.map((e) => (
+                <div
+                  key={`ev${e.id}`}
+                  className="dy-event"
+                  style={{ top: (hhmmToMin(e.eventTime!) / 60) * HOUR_PX }}
+                  title={`${e.title} · ${e.eventTime} — evento de la Agenda (se edita allí)`}
+                >
+                  <span className="dy-event-flag">
+                    {e.emoji} {e.title} · {e.eventTime}
+                  </span>
+                </div>
+              ))}
               {cigs.map((c) => (
                 <span
                   key={c.id}

@@ -39,6 +39,7 @@ export const routineApi = {
   createSlot: (data: { itemId: number; weekday: number; time: string }) => post<RoutineSlot>('/routine/slots', data),
   moveSlot: (id: number, data: Partial<{ weekday: number; time: string }>) => patch<RoutineSlot>(`/routine/slots/${id}`, data),
   removeSlot: (id: number) => del<{ archived: boolean }>(`/routine/slots/${id}`),
+  clearSlots: () => del<{ archived: number }>('/routine/slots'),
 
   today: () => get<{ date: string; items: TodayItem[] }>('/routine/today'),
   check: (slotId: number, checked: boolean) => post<{ slotId: number; checked: boolean }>('/routine/check', { slotId, checked }),

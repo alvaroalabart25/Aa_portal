@@ -125,6 +125,16 @@ routineModule.patch('/slots/:id', ah(async (req: AuthedRequest, res) => {
   res.json(row);
 }));
 
+// Limpiar toda la plantilla: archiva todos los slots activos de golpe.
+// El historial no se toca (los checks pasados siguen contando en /stats).
+routineModule.delete('/slots', ah(async (req: AuthedRequest, res) => {
+  const [result] = await db
+    .update(routineSlots)
+    .set({ archivedAt: new Date() })
+    .where(and(eq(routineSlots.userId, req.userId!), isNull(routineSlots.archivedAt)));
+  res.json({ archived: result.affectedRows });
+}));
+
 routineModule.delete('/slots/:id', ah(async (req: AuthedRequest, res) => {
   const id = Number(req.params.id);
   const [result] = await db

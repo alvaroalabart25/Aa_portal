@@ -269,6 +269,12 @@ function WeekTemplate({
     onChanged();
   }
 
+  async function clearAll() {
+    if (!window.confirm('¿Vaciar toda la plantilla semanal? El historial de la cuadrícula se conserva y los eventos del catálogo no se borran.')) return;
+    await routineApi.clearSlots();
+    onChanged();
+  }
+
   const byCell = useMemo(() => {
     const map = new Map<string, RoutineSlot[]>();
     for (const s of slots) {
@@ -283,6 +289,11 @@ function WeekTemplate({
     <section className="section">
       <div className="page-head">
         <h2>Configuración semanal</h2>
+        {slots.length > 0 && (
+          <button className="btn ghost sm" onClick={clearAll} title="Vaciar la plantilla para montarla de cero">
+            🧹 Limpiar todo
+          </button>
+        )}
       </div>
       <p className="muted" style={{ fontSize: 13, margin: '2px 0 12px' }}>
         Arrastra un evento a un día y hora. La hora es orientativa: muévela cuando quieras, lo que puntúa es completar

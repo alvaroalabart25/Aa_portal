@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import Modal from '../../components/Modal';
+import { get, API_BASE } from '../../lib/api';
 import { routineApi, type RoutineItem } from '../routine/api';
 import { eventsApi } from '../events/api';
 import { occursOn, type ImportantEvent } from '../events/types';
@@ -189,6 +190,73 @@ function NewItemModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   );
 }
 
+// Control remoto (Atajos de iOS): URLs con token para registrar sin abrir
+// la app — botones en la pantalla de inicio, widget de Atajos o automatizaciones.
+function ControlRemotoModal({ items, onClose }: { items: RoutineItem[]; onClose: () => void }) {
+  const [secret, setSecret] = useState('');
+  const [copied, setCopied] = useState('');
+
+  useEffect(() => {
+    get<{ secret: string }>('/track-setup').then((r) => setSecret(r.secret));
+  }, []);
+
+  const base = `${API_BASE || window.location.origin}/api/track?t=${secret}`;
+
+  async function copy(label: string, url: string) {
+    await navigator.clipboard.writeText(url);
+    setCopied(label);
+    setTimeout(() => setCopied(''), 1500);
+  }
+
+  const rows: Array<{ label: string; url: string }> = [
+    { label: '🚬 Piti', url: `${base}&action=cigarro` },
+    { label: '■ Parar actividad', url: `${base}&action=stop` },
+    ...items.map((i) => ({ label: `▶ ${i.emoji} ${i.title}`, url: `${base}&action=start&item=${encodeURIComponent(i.title)}` })),
+  ];
+
+  return (
+    <Modal title="🎛️ Control remoto (Atajos de iOS)" onClose={onClose}>
+      <p className="muted" style={{ fontSize: 13, lineHeight: 1.55 }}>
+        Cada URL registra directamente, sin abrir la app. En el iPhone: app <strong>Atajos</strong> → ＋ → acción
+        «Obtener contenido de URL» → pega la URL → ponle nombre y añádelo a la pantalla de inicio (o al widget de
+        Atajos). Un toque = registrado.
+      </p>
+      {!secret && <p className="muted" style={{ fontSize: 13 }}>Generando token…</p>}
+      {secret && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+          {rows.map((r) => (
+            <div key={r.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 13, flex: '0 0 168px' }}>{r.label}</span>
+              <input readOnly value={r.url} style={{ flex: 1, fontSize: 11, color: 'var(--ink-muted)' }} onFocus={(e) => e.target.select()} />
+              <button className="btn ghost sm" onClick={() => copy(r.label, r.url)}>
+                {copied === r.label ? '✓' : 'Copiar'}
+              </button>
+            </div>
+          ))}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 13, flex: '0 0 168px' }}>⚖️ Peso</span>
+            <input readOnly value={`${base}&action=peso&value=`} style={{ flex: 1, fontSize: 11, color: 'var(--ink-muted)' }} onFocus={(e) => e.target.select()} />
+            <button className="btn ghost sm" onClick={() => copy('peso', `${base}&action=peso&value=`)}>
+              {copied === 'peso' ? '✓' : 'Copiar'}
+            </button>
+          </div>
+        </div>
+      )}
+      <p className="muted" style={{ fontSize: 12, marginTop: 12, lineHeight: 1.55 }}>
+        Para el peso: en el atajo añade antes «Solicitar entrada» (número) y pega su resultado al final de la URL.
+        Consejo pro: en Atajos → Automatización puedes disparar «▶ Levantarme» al apagar la alarma, o «🚬 Piti» con un
+        toque en el trasero del iPhone (Ajustes → Accesibilidad → Tocar → Tocar atrás). El token es secreto: no
+        compartas estas URLs.
+      </p>
+      <div className="modal-actions">
+        <button className="btn" onClick={onClose}>
+          Listo
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
 // Salud · Diario: la radiografía del día. Actividades secuenciales (empezar
 // una para la anterior), el cigarro se superpone como marca, y el peso es la
 // pregunta del día. De esta realidad saldrán las rutinas que sí encajan.
@@ -201,6 +269,7 @@ export default function DiarioPage() {
   const [current, setCurrent] = useState<DiarySession | null>(null);
   const [editing, setEditing] = useState<DiarySession | 'new' | null>(null);
   const [creatingItem, setCreatingItem] = useState(false);
+  const [remote, setRemote] = useState(false);
   const [pesoInput, setPesoInput] = useState('');
   const [pesoTime, setPesoTime] = useState(nowHHMM());
   const [busy, setBusy] = useState(false);
@@ -321,6 +390,10 @@ export default function DiarioPage() {
     <div>
       <div className="page-head">
         <h1>Diario</h1>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <button className="btn ghost sm" onClick={() => setRemote(true)} title="Registrar desde el iPhone sin abrir la app">
+          🎛️
+        </button>
         <div className="seg">
           <button onClick={() => moveDay(-1)} title="Día anterior">
             ‹
@@ -331,6 +404,7 @@ export default function DiarioPage() {
           <button onClick={() => moveDay(1)} title="Día siguiente" disabled={dayIso >= today}>
             ›
           </button>
+        </div>
         </div>
       </div>
       {isToday && (
@@ -505,6 +579,7 @@ export default function DiarioPage() {
         <SessionModal session={editing === 'new' ? null : editing} items={items} day={day} onClose={() => setEditing(null)} onSaved={load} />
       )}
       {creatingItem && <NewItemModal onClose={() => setCreatingItem(false)} onCreated={() => load()} />}
+      {remote && <ControlRemotoModal items={items} onClose={() => setRemote(false)} />}
     </div>
   );
 }

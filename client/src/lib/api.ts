@@ -2,7 +2,7 @@ import { clearToken, getToken } from './auth';
 
 // En dev queda vacío (el proxy de Vite manda /api al Express local).
 // En producción, VITE_API_URL apunta a la API en Render.
-const API_BASE = ((import.meta.env.VITE_API_URL as string | undefined) ?? '').replace(/\/$/, '');
+export const API_BASE = ((import.meta.env.VITE_API_URL as string | undefined) ?? '').replace(/\/$/, '');
 
 // Cliente API base: token automático y manejo de sesión caducada.
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {

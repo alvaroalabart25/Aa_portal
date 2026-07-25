@@ -11,6 +11,7 @@ import { routineModule } from './modules/routine';
 import { healthModule } from './modules/health';
 import { diaryModule } from './modules/diary';
 import { pushModule, pushRunner } from './modules/push';
+import { trackModule, trackSetup } from './modules/track';
 
 const app = express();
 
@@ -29,11 +30,13 @@ app.use((req, _res, next) => {
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 app.use('/api/auth', authRouter);
 
-// Disparador de notificaciones: va con secreto propio (sin JWT), por eso
-// se monta antes que los módulos protegidos (tasksModule cuelga de /api).
+// Disparador de notificaciones y control remoto (Atajos iOS): van con secreto
+// propio (sin JWT), por eso se montan antes que los módulos protegidos.
 app.use('/api/push', pushRunner);
+app.use('/api', trackModule);
 
 // Módulos (todos protegidos por login). Añadir un módulo = una línea más aquí.
+app.use('/api', requireAuth, trackSetup);
 app.use('/api', requireAuth, tasksModule);
 app.use('/api/autonomo', requireAuth, autonomoModule);
 app.use('/api/events', requireAuth, eventsModule);

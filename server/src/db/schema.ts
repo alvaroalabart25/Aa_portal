@@ -27,6 +27,7 @@ export const users = mysqlTable('users', {
   id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
   username: varchar('username', { length: 64 }).notNull().unique(),
   passwordHash: varchar('password_hash', { length: 255 }).notNull(),
+  trackSecret: varchar('track_secret', { length: 64 }), // token del control remoto (Atajos iOS)
   createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 

@@ -606,20 +606,26 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   font-size: 12px;
   line-height: 1.25;
   overflow: hidden;
-  cursor: pointer;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
   display: flex;
   flex-direction: column;
   gap: 1px;
   box-sizing: border-box;
   box-shadow: 0 1px 3px rgba(10, 10, 10, 0.07);
 }
+.dy-evt:active { cursor: grabbing; }
+.dy-evt .dy-evt-resize { position: absolute; left: 0; right: 0; bottom: -2px; height: 10px; cursor: ns-resize; touch-action: none; }
 .dy-evt.compact { flex-direction: row; align-items: center; gap: 6px; padding-top: 1px; padding-bottom: 1px; }
 .dy-evt.compact .dy-evt-time { margin-left: auto; flex-shrink: 0; }
 .dy-evt.open { border-bottom-style: dashed; }
 .dy-evt-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .dy-evt-time { font-size: 10.5px; color: var(--ink-muted); }
 .dy-live { color: #2f9e44; font-weight: 600; font-size: 10.5px; }
-.dy-mark { position: absolute; right: 4px; font-size: 10.5px; background: var(--paper); border: 1px solid var(--line); border-radius: 20px; padding: 1px 8px; cursor: pointer; z-index: 6; white-space: nowrap; box-shadow: 0 1px 3px rgba(10, 10, 10, 0.08); }
+.dy-mark { position: absolute; right: 4px; font-size: 10.5px; background: var(--paper); border: 1px solid var(--line); border-radius: 20px; padding: 1px 8px; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; z-index: 6; white-space: nowrap; box-shadow: 0 1px 3px rgba(10, 10, 10, 0.08); }
+.dy-mark.dragging { box-shadow: 0 4px 12px rgba(10, 10, 10, 0.2); z-index: 20; cursor: grabbing; }
 .dy-now { position: absolute; left: 0; right: 0; height: 2px; background: #c92a2a; z-index: 5; pointer-events: none; }
 .dy-now::before { content: ''; position: absolute; left: -1px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: #c92a2a; }
 

@@ -67,6 +67,26 @@ healthModule.post('/entries', ah(async (req: AuthedRequest, res) => {
   res.status(201).json(row);
 }));
 
+// PATCH /entries/:id { time?, value? } -> corregir la hora (arrastrando la
+// marca en la radiografía) o el valor del peso
+healthModule.patch('/entries/:id', ah(async (req: AuthedRequest, res) => {
+  const id = Number(req.params.id);
+  const parsed = z
+    .object({
+      time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+      value: z.number().positive().max(500).optional(),
+    })
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
+  const [result] = await db
+    .update(healthEntries)
+    .set({ ...(parsed.data.time ? { entryTime: parsed.data.time } : {}), ...(parsed.data.value ? { value: parsed.data.value } : {}) })
+    .where(and(eq(healthEntries.id, id), eq(healthEntries.userId, req.userId!)));
+  if (result.affectedRows === 0) return res.status(404).json({ error: 'Registro no encontrado' });
+  const [row] = await db.select().from(healthEntries).where(eq(healthEntries.id, id));
+  res.json(row);
+}));
+
 // DELETE /entries/:id -> corrige un registro erróneo (borrado real: es un tally)
 healthModule.delete('/entries/:id', ah(async (req: AuthedRequest, res) => {
   const id = Number(req.params.id);

@@ -23,6 +23,7 @@ export const healthApi = {
   day: (date?: string) => get<{ date: string; entries: HealthEntry[] }>(`/health-log/day${date ? `?date=${date}` : ''}`),
   add: (kind: HealthKind, opts: { value?: number; time?: string; date?: string } = {}) =>
     post<HealthEntry>('/health-log/entries', { kind, ...opts }),
+  setTime: (id: number, time: string) => patch<HealthEntry>(`/health-log/entries/${id}`, { time }),
   remove: (id: number) => del<{ deleted: boolean }>(`/health-log/entries/${id}`),
   summary: (from: string, to: string) => get<DaySummary[]>(`/health-log/summary?from=${from}&to=${to}`),
 };

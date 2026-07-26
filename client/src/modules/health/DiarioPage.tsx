@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import Modal from '../../components/Modal';
 import { get, API_BASE } from '../../lib/api';
 import { routineApi, type RoutineItem } from '../routine/api';
@@ -25,6 +25,9 @@ function hhmmToMin(t: string): number {
 function nowHHMM(): string {
   const n = new Date();
   return `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`;
+}
+function snap5(m: number): number {
+  return Math.round(m / 5) * 5;
 }
 function itemHue(id: number): number {
   return Math.round((id * 137.508) % 360);
@@ -296,6 +299,10 @@ export default function DiarioPage() {
   const [pesoTime, setPesoTime] = useState(nowHHMM());
   const [busy, setBusy] = useState(false);
   const calRef = useRef<HTMLDivElement>(null);
+  const colRef = useRef<HTMLDivElement>(null);
+  // arrastre en la radiografía: bloques (mover/estirar) y marcas (mover)
+  const [drag, setDrag] = useState<{ id: number; startMin: number; endMin: number | null } | null>(null);
+  const [markDrag, setMarkDrag] = useState<{ key: string; min: number } | null>(null);
 
   const today = isoLocal(new Date());
   const dayIso = isoLocal(day);
@@ -339,9 +346,14 @@ export default function DiarioPage() {
         const sm = (new Date(s.startAt).getTime() - start) / 60000;
         const open = s.endAt === null;
         const em = open ? (isToday ? nowMin : 24 * 60) : (new Date(s.endAt!).getTime() - start) / 60000;
-        return { s, startMin: Math.max(0, sm), endMin: Math.min(24 * 60, Math.max(em, sm + 4)), open };
-      });
-  }, [sessions, day, isToday, nowMin]);
+        const b = { s, startMin: Math.max(0, sm), endMin: Math.min(24 * 60, Math.max(em, sm + 4)), open };
+        if (drag && drag.id === s.id) {
+          return { ...b, startMin: drag.startMin, endMin: drag.endMin ?? (isToday ? Math.max(nowMin, drag.startMin + 4) : 24 * 60) };
+        }
+        return b;
+      })
+      .sort((a, b2) => a.startMin - b2.startMin);
+  }, [sessions, day, isToday, nowMin, drag]);
 
   const moments = useMemo(() => {
     const start = dayStartOf(day).getTime();
@@ -366,6 +378,85 @@ export default function DiarioPage() {
     }
     return [...map.entries()];
   }, [cigs, blocks]);
+
+  // minuto del día mostrado -> ISO para el servidor
+  function isoAt(min: number): string {
+    const d = dayStartOf(day);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate(), Math.floor(min / 60), Math.round(min % 60)).toISOString();
+  }
+
+  // Arrastrar un bloque: mover (cambia la hora manteniendo la duración) o
+  // estirar por el borde inferior. Un toque sin mover abre el detalle.
+  function onBlockDown(e: ReactPointerEvent, b: Block, mode: 'move' | 'resize') {
+    e.preventDefault();
+    e.stopPropagation();
+    const startY = e.clientY;
+    const origStart = b.startMin;
+    const origEnd = b.open ? null : b.endMin;
+    const dur = origEnd != null ? origEnd - origStart : null;
+    let moved = false;
+    let cur = { startMin: origStart, endMin: origEnd };
+
+    const onMove = (ev: PointerEvent) => {
+      const dy = ev.clientY - startY;
+      if (!moved && Math.abs(dy) < 5) return;
+      moved = true;
+      const dmin = snap5((dy / HOUR_PX) * 60);
+      if (mode === 'move') {
+        const ns = Math.max(0, Math.min(origStart + dmin, 24 * 60 - (dur ?? 5)));
+        cur = { startMin: ns, endMin: dur != null ? ns + dur : null };
+      } else {
+        cur = { startMin: origStart, endMin: Math.max(origStart + 5, Math.min((origEnd ?? origStart) + dmin, 24 * 60)) };
+      }
+      setDrag({ id: b.s.id, ...cur });
+    };
+
+    const onUp = async () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      setDrag(null);
+      if (!moved) {
+        setEditing(b.s);
+        return;
+      }
+      await diaryApi.update(b.s.id, {
+        startAt: isoAt(cur.startMin),
+        ...(cur.endMin != null ? { endAt: isoAt(cur.endMin) } : {}),
+      });
+      load();
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }
+
+  // Arrastrar una marca (piti o puntual) para corregir su hora; toque = borrar
+  function onMarkDown(
+    e: ReactPointerEvent,
+    mk: { key: string; min: number; save: (min: number) => Promise<unknown>; del: () => Promise<unknown> },
+  ) {
+    e.preventDefault();
+    e.stopPropagation();
+    const startY = e.clientY;
+    let moved = false;
+    let cur = mk.min;
+    const onMove = (ev: PointerEvent) => {
+      const dy = ev.clientY - startY;
+      if (!moved && Math.abs(dy) < 5) return;
+      moved = true;
+      cur = Math.max(0, Math.min(snap5(mk.min + (dy / HOUR_PX) * 60), 24 * 60 - 5));
+      setMarkDrag({ key: mk.key, min: cur });
+    };
+    const onUp = async () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      setMarkDrag(null);
+      if (!moved) await mk.del();
+      else await mk.save(cur);
+      load();
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }
 
   function moveDay(delta: number) {
     const d = new Date(day);
@@ -567,7 +658,7 @@ export default function DiarioPage() {
                 </span>
               ))}
             </div>
-            <div className="dy-col" style={{ height: COL_HEIGHT }}>
+            <div className="dy-col" ref={colRef} style={{ height: COL_HEIGHT }}>
               {(() => {
                 let prevBottom = -99;
                 let indent = 0;
@@ -592,8 +683,8 @@ export default function DiarioPage() {
                       borderColor: `hsla(${hue}, 45%, 70%, 0.6)`,
                       borderLeftColor: `hsl(${hue}, 55%, 42%)`,
                     }}
-                    onClick={() => setEditing(b.s)}
-                    title="Clic para corregir"
+                    onPointerDown={(e) => onBlockDown(e, b, 'move')}
+                    title="Arrastra para cambiar la hora · toca para editar"
                   >
                     <span className="dy-evt-title">
                       {b.s.emoji} {b.s.title}
@@ -602,6 +693,13 @@ export default function DiarioPage() {
                     <span className="dy-evt-time">
                       {minToHHMM(b.startMin)}–{b.open ? '…' : minToHHMM(b.endMin)}
                     </span>
+                    {!b.open && (
+                      <span
+                        className="dy-evt-resize"
+                        title="Arrastra para cambiar la duración"
+                        onPointerDown={(e) => onBlockDown(e, b, 'resize')}
+                      />
+                    )}
                   </div>
                 );
                 });
@@ -619,12 +717,28 @@ export default function DiarioPage() {
                 </div>
               ))}
               {(() => {
-                // Carril derecho: puntuales y pitis juntos, ordenados por hora.
-                // Si dos caen muy cerca, el segundo baja un escalón (su hora va escrita).
+                // Carril derecho: puntuales y pitis. Se arrastran para corregir
+                // la hora; un toque sin mover los borra.
                 const marks = [
-                  ...moments.map(({ s: m, min }) => ({ key: `m${m.id}`, min, label: `${m.emoji} ${minToHHMM(min)}`, title: `${m.title} · ${minToHHMM(min)} (clic para borrar)`, del: () => diaryApi.remove(m.id) })),
-                  ...cigs.map((c) => ({ key: `c${c.id}`, min: hhmmToMin(c.entryTime!), label: `🚬 ${c.entryTime}`, title: `Cigarro · ${c.entryTime} (clic para borrar)`, del: () => healthApi.remove(c.id) })),
-                ].sort((a, b) => a.min - b.min);
+                  ...moments.map(({ s: m, min }) => ({
+                    key: `m${m.id}`,
+                    min,
+                    label: m.emoji,
+                    save: (nm: number) => diaryApi.update(m.id, { startAt: isoAt(nm), endAt: isoAt(nm) }),
+                    del: () => diaryApi.remove(m.id),
+                    name: m.title,
+                  })),
+                  ...cigs.map((c) => ({
+                    key: `c${c.id}`,
+                    min: hhmmToMin(c.entryTime!),
+                    label: '🚬',
+                    save: (nm: number) => healthApi.setTime(c.id, minToHHMM(nm)),
+                    del: () => healthApi.remove(c.id),
+                    name: 'Cigarro',
+                  })),
+                ]
+                  .map((mk) => (markDrag?.key === mk.key ? { ...mk, min: markDrag.min } : mk))
+                  .sort((a, b2) => a.min - b2.min);
                 let prev = -99;
                 let level = 0;
                 return marks.map((mk) => {
@@ -633,15 +747,12 @@ export default function DiarioPage() {
                   return (
                     <span
                       key={mk.key}
-                      className="dy-mark"
+                      className={`dy-mark${markDrag?.key === mk.key ? ' dragging' : ''}`}
                       style={{ top: (mk.min / 60) * HOUR_PX - 9 + level * 17 }}
-                      title={mk.title}
-                      onClick={async () => {
-                        await mk.del();
-                        load();
-                      }}
+                      title={`${mk.name} · ${minToHHMM(mk.min)} — arrastra para cambiar la hora, toca para borrar`}
+                      onPointerDown={(e) => onMarkDown(e, mk)}
                     >
-                      {mk.label}
+                      {mk.label} {minToHHMM(mk.min)}
                     </span>
                   );
                 });
@@ -651,8 +762,9 @@ export default function DiarioPage() {
           </div>
         </div>
         <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>
-          Cada bloque es lo que estabas haciendo; los 🚬 se superponen a la actividad. Clic en un bloque o en un 🚬
-          para corregirlo.
+          Arrastra un bloque para cambiarlo de hora, o su borde inferior para ajustar cuánto duró; las marcas (🚬 y
+          puntuales) también se arrastran. Un toque abre el detalle del bloque, y en una marca la borra. El imán es de
+          5 minutos.
         </p>
       </section>
 

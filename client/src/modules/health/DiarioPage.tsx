@@ -328,10 +328,21 @@ export default function DiarioPage() {
     load();
   }, [load]);
 
-  // al abrir, centrar la radiografía en la mañana
+  // Al abrir (y al cambiar de día) la radiografía se sitúa en la hora actual;
+  // en días pasados, en su primer registro. Una vez centrado, no se mueve más.
+  const centeredFor = useRef('');
   useEffect(() => {
-    if (calRef.current) calRef.current.scrollTop = 6.5 * HOUR_PX;
-  }, []);
+    const el = calRef.current;
+    if (!el || centeredFor.current === dayIso) return;
+    const first = sessions.length
+      ? Math.min(...sessions.map((x) => (new Date(x.startAt).getTime() - dayStartOf(day).getTime()) / 60000))
+      : null;
+    if (!isToday && first === null) return; // en días pasados, esperar los datos
+    const ahora = new Date();
+    const target = isToday ? ahora.getHours() * 60 + ahora.getMinutes() : first!;
+    el.scrollTop = Math.max(0, (target / 60) * HOUR_PX - el.clientHeight / 2);
+    centeredFor.current = dayIso;
+  }, [dayIso, day, sessions, isToday]);
 
   const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
 

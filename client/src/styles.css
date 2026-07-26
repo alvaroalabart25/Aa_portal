@@ -90,7 +90,7 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 
 @media (max-width: 720px) {
   .sidebar { display: none; }
-  .main { padding: 18px 14px 90px; }
+  .main { padding: 18px 14px calc(124px + env(safe-area-inset-bottom)); }
   .bottombar {
     display: flex; position: fixed; bottom: 0; left: 0; right: 0;
     background: var(--paper); border-top: 1px solid var(--line);
@@ -326,7 +326,11 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .modal {
   background: var(--paper); border-radius: 12px; padding: 20px 22px;
   width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 12px;
+  max-height: calc(100vh - 32px); overflow-y: auto; overscroll-behavior: contain;
 }
+.modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+.modal-head h2 { margin: 0; min-width: 0; }
+.modal-x { flex: 0 0 auto; }
 .modal .form-grid { margin-top: 0; }
 .field { display: flex; flex-direction: column; }
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
@@ -566,7 +570,11 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 }
 
 /* Salud · Diario: radiografía del día */
-.dy-nowbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; background: var(--paper); }
+.dy-nowbar { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--paper); min-width: 0; }
+.dy-now-info { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; overflow: hidden; }
+.dy-now-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.dy-now-time { font-size: 12.5px; color: var(--ink-muted); flex: 0 0 auto; }
+.dy-nowbtn { flex: 0 0 auto; white-space: nowrap; }
 .dy-nowdot { width: 9px; height: 9px; border-radius: 50%; background: #2f9e44; animation: dy-pulse 1.6s ease-in-out infinite; flex-shrink: 0; }
 @keyframes dy-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 .dy-cigbtn { margin-left: auto; }
@@ -584,7 +592,7 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   flex: 1;
   border-left: 1px solid var(--line);
   background-image: linear-gradient(to bottom, var(--line) 1px, transparent 1px);
-  background-size: 100% 52px;
+  background-size: 100% 76px;
   margin-right: 8px;
 }
 .dy-evt {
@@ -625,7 +633,6 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .rt-fav { margin-left: auto; background: none; border: none; font-size: 17px; cursor: pointer; color: var(--ink); padding: 2px 6px; }
 
 /* Diario: barra "ahora" y peso compactos en móvil */
-.dy-cigbtn { margin-left: auto; white-space: nowrap; }
 .dy-peso { margin-top: 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13.5px; }
 .dy-peso-q { white-space: nowrap; }
 .dy-peso-in { display: flex; align-items: center; gap: 6px; }
@@ -640,6 +647,7 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .dy-acts.open { flex-wrap: wrap; overflow: visible; }
 .dy-actsrow:has(.dy-acts.open) { align-items: flex-start; }
 .dy-more { flex: 0 0 auto; background: none; border: none; color: var(--ink-muted); font-size: 12.5px; cursor: pointer; padding: 4px 6px; white-space: nowrap; }
+.dy-more.wide { flex: 1; text-align: left; font-size: 13.5px; color: var(--ink); font-weight: 500; padding: 8px 2px; }
 .dy-more:hover { color: var(--ink); }
 .dy-chip.instant { border-style: dashed; }
 
@@ -652,6 +660,5 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 @media (max-width: 640px) {
   .rc-label { flex: 1; }
   .rc-url { display: none; }
-  .dy-cigbtn { margin-left: 0; }
   .dy-peso { gap: 8px; }
 }

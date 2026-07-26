@@ -6,7 +6,7 @@ import { eventsApi } from '../events/api';
 import { occursOn, type ImportantEvent } from '../events/types';
 import { diaryApi, healthApi, type DiarySession, type HealthEntry } from './api';
 
-const HOUR_PX = 52; // 1 hora = 52px en la radiografía
+const HOUR_PX = 76; // 1 hora = 76px: cada hora se lee cómoda
 const COL_HEIGHT = 24 * HOUR_PX;
 
 function isoLocal(d: Date): string {
@@ -348,12 +348,6 @@ export default function DiarioPage() {
     return sessions.filter(isMoment).map((s) => ({ s, min: (new Date(s.startAt).getTime() - start) / 60000 }));
   }, [sessions, day]);
 
-  // Colapsado se ven solo las ★ favoritas (si no hay, todas en una tira)
-  const shortActs = useMemo(() => {
-    const favs = items.filter((i) => i.isFavorite === 1);
-    return favs.length ? favs : items;
-  }, [items]);
-
   const cigs = useMemo(() => entries.filter((e) => e.kind === 'cigarro' && e.entryTime), [entries]);
   // eventos importantes de la Agenda que caen en este día
   const dayEvents = useMemo(() => eventsList.filter((e) => occursOn(e, dayIso)), [eventsList, dayIso]);
@@ -458,49 +452,59 @@ export default function DiarioPage() {
       {isToday && (
         <section className="section" style={{ marginTop: 16 }}>
           <div className="dy-nowbar">
-            {current ? (
-              <>
-                <span className="dy-nowdot" />
-                <strong>
-                  {current.emoji} {current.title}
-                </strong>
-                <span className="muted" style={{ fontSize: 12.5 }}>
-                  desde las {new Date(current.startAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-                </span>
-                <button className="btn ghost sm" disabled={busy} onClick={stopActivity}>
-                  ■ Parar
-                </button>
-              </>
-            ) : (
-              <span className="muted" style={{ fontSize: 13.5 }}>Sin actividad en curso.</span>
+            <span className="dy-now-info">
+              {current ? (
+                <>
+                  <span className="dy-nowdot" />
+                  <strong className="dy-now-title">
+                    {current.emoji} {current.title}
+                  </strong>
+                  <span className="dy-now-time">
+                    {new Date(current.startAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </>
+              ) : (
+                <span className="muted" style={{ fontSize: 13.5 }}>Sin actividad en curso</span>
+              )}
+            </span>
+            {current && (
+              <button className="btn ghost sm dy-nowbtn" disabled={busy} onClick={stopActivity} title="Parar la actividad">
+                ■ Parar
+              </button>
             )}
-            <button className="btn sm dy-cigbtn" disabled={busy} onClick={addCig}>
+            <button className="btn sm dy-nowbtn" disabled={busy} onClick={addCig} title="Registrar un piti ahora">
               🚬 {cigs.length}
             </button>
           </div>
 
           <div className="dy-actsrow">
-          <div className={`dy-acts${allActs ? ' open' : ''}`}>
-            {(allActs ? items : shortActs).map((i) => (
-              <button
-                key={i.id}
-                className={`rt-chip dy-chip${current?.itemId === i.id ? ' active' : ''}${i.isInstant === 1 ? ' instant' : ''}`}
-                disabled={busy || current?.itemId === i.id}
-                onClick={() => startActivity(i)}
-                title={i.isInstant === 1 ? 'Puntual: deja una marca y no interrumpe nada' : undefined}
-              >
-                {i.emoji} {i.title}
-              </button>
-            ))}
-            {allActs && (
-              <button className="rt-chip dy-chip" onClick={() => setCreatingItem(true)}>
-                ＋ Nueva
+            {allActs ? (
+              <>
+                <div className="dy-acts open">
+                  {items.map((i) => (
+                    <button
+                      key={i.id}
+                      className={`rt-chip dy-chip${current?.itemId === i.id ? ' active' : ''}${i.isInstant === 1 ? ' instant' : ''}`}
+                      disabled={busy || current?.itemId === i.id}
+                      onClick={() => startActivity(i)}
+                      title={i.isInstant === 1 ? 'Puntual: deja una marca y no interrumpe nada' : undefined}
+                    >
+                      {i.emoji} {i.title}
+                    </button>
+                  ))}
+                  <button className="rt-chip dy-chip" onClick={() => setCreatingItem(true)}>
+                    ＋ Nueva
+                  </button>
+                </div>
+                <button className="dy-more" onClick={() => setAllActs(false)} title="Ocultar">
+                  ⌃
+                </button>
+              </>
+            ) : (
+              <button className="dy-more wide" onClick={() => setAllActs(true)}>
+                Eventos principales <span className="muted">⌄ {items.length}</span>
               </button>
             )}
-          </div>
-          <button className="dy-more" onClick={() => setAllActs(!allActs)} title={allActs ? 'Ocultar' : 'Ver todas'}>
-            {allActs ? '⌃' : `⌄ ${items.length}`}
-          </button>
           </div>
 
           <div className="dy-peso">

@@ -20,9 +20,9 @@ export default function Modal({
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" role="dialog" aria-label={title} onClick={(e) => e.stopPropagation()}>
-        <div className="page-head" style={{ marginBottom: 4 }}>
+        <div className="modal-head">
           <h2>{title}</h2>
-          <button className="btn ghost sm" onClick={onClose} aria-label="Cerrar">
+          <button className="btn ghost sm modal-x" onClick={onClose} aria-label="Cerrar">
             ✕
           </button>
         </div>

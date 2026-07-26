@@ -633,24 +633,23 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .rt-fav { margin-left: auto; background: none; border: none; font-size: 17px; cursor: pointer; color: var(--ink); padding: 2px 6px; }
 
 /* Diario: barra "ahora" y peso compactos en móvil */
-.dy-peso { margin-top: 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13.5px; }
-.dy-peso-q { white-space: nowrap; }
+.dy-peso { margin-top: 18px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 14px; }
+.dy-peso-q { white-space: nowrap; font-size: 15.5px; font-weight: 600; color: var(--ink); }
 .dy-peso-in { display: flex; align-items: center; gap: 6px; }
 .dy-peso-in input[inputmode='decimal'] { width: 62px; }
 .dy-peso-in input[type='time'] { width: 104px; }
 
-/* Diario: actividades con conmutador (colapsado = una tira con las ★) */
-.dy-actsrow { display: flex; align-items: center; gap: 6px; margin-top: 12px; min-width: 0; }
-.dy-acts { display: flex; gap: 8px; align-items: center; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; flex: 1; min-width: 0; }
-.dy-acts::-webkit-scrollbar { display: none; }
-.dy-acts > .rt-chip { flex: 0 0 auto; }
-.dy-acts.open { flex-wrap: wrap; overflow: visible; }
-.dy-actsrow:has(.dy-acts.open) { align-items: flex-start; }
-.dy-more { flex: 0 0 auto; background: none; border: none; color: var(--ink-muted); font-size: 12.5px; cursor: pointer; padding: 4px 6px; white-space: nowrap; }
-.dy-more.wide { flex: 1; text-align: left; font-size: 13.5px; color: var(--ink); font-weight: 500; padding: 8px 2px; }
-.dy-more:hover { color: var(--ink); }
+/* Diario: bloque de actividades con cabecera-conmutador a todo el ancho */
+.dy-actsblock { margin-top: 20px; }
+.dy-actshead {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; background: none; border: none; padding: 4px 2px; cursor: pointer;
+  font-family: inherit; font-size: 15.5px; font-weight: 600; color: var(--ink); text-align: left;
+}
+.dy-actshead .dy-chev { color: var(--ink-muted); font-size: 14px; flex: 0 0 auto; }
+.dy-actshead:hover .dy-chev { color: var(--ink); }
+.dy-acts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
 .dy-chip.instant { border-style: dashed; }
-
 
 /* Control remoto: filas minimal (en móvil, solo etiqueta + Copiar) */
 .rc-row { display: flex; align-items: center; gap: 8px; min-width: 0; }

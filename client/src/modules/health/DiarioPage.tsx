@@ -477,33 +477,28 @@ export default function DiarioPage() {
             </button>
           </div>
 
-          <div className="dy-actsrow">
-            {allActs ? (
-              <>
-                <div className="dy-acts open">
-                  {items.map((i) => (
-                    <button
-                      key={i.id}
-                      className={`rt-chip dy-chip${current?.itemId === i.id ? ' active' : ''}${i.isInstant === 1 ? ' instant' : ''}`}
-                      disabled={busy || current?.itemId === i.id}
-                      onClick={() => startActivity(i)}
-                      title={i.isInstant === 1 ? 'Puntual: deja una marca y no interrumpe nada' : undefined}
-                    >
-                      {i.emoji} {i.title}
-                    </button>
-                  ))}
-                  <button className="rt-chip dy-chip" onClick={() => setCreatingItem(true)}>
-                    ＋ Nueva
+          <div className="dy-actsblock">
+            <button className="dy-actshead" onClick={() => setAllActs(!allActs)}>
+              <span>Eventos principales ({items.length})</span>
+              <span className="dy-chev">{allActs ? '⌃' : '⌄'}</span>
+            </button>
+            {allActs && (
+              <div className="dy-acts open">
+                {items.map((i) => (
+                  <button
+                    key={i.id}
+                    className={`rt-chip dy-chip${current?.itemId === i.id ? ' active' : ''}${i.isInstant === 1 ? ' instant' : ''}`}
+                    disabled={busy || current?.itemId === i.id}
+                    onClick={() => startActivity(i)}
+                    title={i.isInstant === 1 ? 'Puntual: deja una marca y no interrumpe nada' : undefined}
+                  >
+                    {i.emoji} {i.title}
                   </button>
-                </div>
-                <button className="dy-more" onClick={() => setAllActs(false)} title="Ocultar">
-                  ⌃
+                ))}
+                <button className="rt-chip dy-chip" onClick={() => setCreatingItem(true)}>
+                  ＋ Nueva
                 </button>
-              </>
-            ) : (
-              <button className="dy-more wide" onClick={() => setAllActs(true)}>
-                Eventos principales <span className="muted">⌄ {items.length}</span>
-              </button>
+              </div>
             )}
           </div>
 

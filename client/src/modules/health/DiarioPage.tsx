@@ -399,7 +399,7 @@ export default function DiarioPage() {
 
     const onMove = (ev: PointerEvent) => {
       const dy = ev.clientY - startY;
-      if (!moved && Math.abs(dy) < 5) return;
+      if (!moved && Math.abs(dy) < 3) return;
       moved = true;
       const dmin = snap5((dy / HOUR_PX) * 60);
       if (mode === 'move') {
@@ -411,19 +411,23 @@ export default function DiarioPage() {
       setDrag({ id: b.s.id, ...cur });
     };
 
-    const onUp = async () => {
+    const onUp = () => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
-      setDrag(null);
       if (!moved) {
+        setDrag(null);
         setEditing(b.s);
         return;
       }
-      await diaryApi.update(b.s.id, {
-        startAt: isoAt(cur.startMin),
-        ...(cur.endMin != null ? { endAt: isoAt(cur.endMin) } : {}),
-      });
-      load();
+      // Optimista: el bloque se queda donde lo has soltado y el guardado va
+      // por detrás; solo si falla se recarga la verdad del servidor.
+      const startAt = isoAt(cur.startMin);
+      const endAt = cur.endMin != null ? isoAt(cur.endMin) : null;
+      setSessions((list) => list.map((x) => (x.id === b.s.id ? { ...x, startAt, endAt: endAt ?? x.endAt } : x)));
+      setDrag(null);
+      diaryApi
+        .update(b.s.id, { startAt, ...(endAt ? { endAt } : {}) })
+        .catch(() => load());
     };
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
@@ -432,7 +436,14 @@ export default function DiarioPage() {
   // Arrastrar una marca (piti o puntual) para corregir su hora; toque = borrar
   function onMarkDown(
     e: ReactPointerEvent,
-    mk: { key: string; min: number; save: (min: number) => Promise<unknown>; del: () => Promise<unknown> },
+    mk: {
+      key: string;
+      min: number;
+      save: (min: number) => Promise<unknown>;
+      del: () => Promise<unknown>;
+      local: (min: number) => void;
+      localDel: () => void;
+    },
   ) {
     e.preventDefault();
     e.stopPropagation();
@@ -441,18 +452,23 @@ export default function DiarioPage() {
     let cur = mk.min;
     const onMove = (ev: PointerEvent) => {
       const dy = ev.clientY - startY;
-      if (!moved && Math.abs(dy) < 5) return;
+      if (!moved && Math.abs(dy) < 3) return;
       moved = true;
       cur = Math.max(0, Math.min(snap5(mk.min + (dy / HOUR_PX) * 60), 24 * 60 - 5));
       setMarkDrag({ key: mk.key, min: cur });
     };
-    const onUp = async () => {
+    const onUp = () => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
+      if (!moved) {
+        mk.localDel();
+        setMarkDrag(null);
+        mk.del().catch(() => load());
+        return;
+      }
+      mk.local(cur);
       setMarkDrag(null);
-      if (!moved) await mk.del();
-      else await mk.save(cur);
-      load();
+      mk.save(cur).catch(() => load());
     };
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
@@ -726,6 +742,9 @@ export default function DiarioPage() {
                     label: m.emoji,
                     save: (nm: number) => diaryApi.update(m.id, { startAt: isoAt(nm), endAt: isoAt(nm) }),
                     del: () => diaryApi.remove(m.id),
+                    local: (nm: number) =>
+                      setSessions((list) => list.map((x) => (x.id === m.id ? { ...x, startAt: isoAt(nm), endAt: isoAt(nm) } : x))),
+                    localDel: () => setSessions((list) => list.filter((x) => x.id !== m.id)),
                     name: m.title,
                   })),
                   ...cigs.map((c) => ({
@@ -734,6 +753,9 @@ export default function DiarioPage() {
                     label: '🚬',
                     save: (nm: number) => healthApi.setTime(c.id, minToHHMM(nm)),
                     del: () => healthApi.remove(c.id),
+                    local: (nm: number) =>
+                      setEntries((list) => list.map((x) => (x.id === c.id ? { ...x, entryTime: minToHHMM(nm) } : x))),
+                    localDel: () => setEntries((list) => list.filter((x) => x.id !== c.id)),
                     name: 'Cigarro',
                   })),
                 ]

@@ -192,7 +192,7 @@ function NewItemModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
 
 // Control remoto (Atajos de iOS): UN solo atajo con menú dinámico. El menú
 // sale de las actividades ★ favoritas del catálogo (o todas si no hay).
-function ControlRemotoModal({ items, onClose }: { items: RoutineItem[]; onClose: () => void }) {
+function ControlRemotoModal({ onClose }: { onClose: () => void }) {
   const [secret, setSecret] = useState('');
   const [copied, setCopied] = useState('');
 
@@ -255,23 +255,6 @@ function ControlRemotoModal({ items, onClose }: { items: RoutineItem[]; onClose:
             ★ en Rutina → Eventos.
           </p>
           <details style={{ marginTop: 12 }}>
-            <summary style={{ fontSize: 13, cursor: 'pointer' }}>Plan B · menú fijo (sin variables ni JSON)</summary>
-            <p className="muted" style={{ fontSize: 12.5, lineHeight: 1.6, margin: '8px 0' }}>
-              Si «Seleccionar de la lista» se resiste: Atajos → ＋ → <strong>«Elegir de un menú»</strong> → escribe una
-              opción por línea (Piti, Parar, y las actividades que quieras). Dentro de cada rama del menú arrastra una
-              acción <strong>«Obtener contenido de URL»</strong> y pega la URL de abajo que corresponda, y detrás
-              «Mostrar notificación» con «Contenido de URL». Sigue siendo un solo atajo y no usa variables; el pero es
-              que hay que editarlo si cambias de actividades.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {row('🚬 Piti', `${base}&action=cigarro&plain=1`)}
-              {row('■ Parar', `${base}&action=stop&plain=1`)}
-              {[...items]
-                .sort((a, b) => b.isFavorite - a.isFavorite || a.title.localeCompare(b.title))
-                .map((i) => row(`${i.isFavorite ? '★ ' : ''}${i.emoji} ${i.title}`, `${base}&action=start&plain=1&item=${encodeURIComponent(i.title)}`))}
-            </div>
-          </details>
-          <details style={{ marginTop: 10 }}>
             <summary style={{ fontSize: 13, cursor: 'pointer' }}>URLs sueltas (Tocar atrás, NFC, Siri o peso)</summary>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
               {row('🚬 Piti', `${base}&action=cigarro&plain=1`)}
@@ -617,7 +600,7 @@ export default function DiarioPage() {
         <SessionModal session={editing === 'new' ? null : editing} items={items} day={day} onClose={() => setEditing(null)} onSaved={load} />
       )}
       {creatingItem && <NewItemModal onClose={() => setCreatingItem(false)} onCreated={() => load()} />}
-      {remote && <ControlRemotoModal items={items} onClose={() => setRemote(false)} />}
+      {remote && <ControlRemotoModal onClose={() => setRemote(false)} />}
     </div>
   );
 }

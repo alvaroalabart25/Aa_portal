@@ -129,10 +129,10 @@ trackModule.all('/track', ah(async (req, res) => {
     }
     // Si llega el menú entero, falta el paso «Elegir de la lista» en el atajo
     if (/piti/i.test(raw) && /parar/i.test(raw)) {
-      return reply(400, 'Parece que el atajo manda la lista entera: añade el paso «Elegir de la lista» antes de esta acción e inserta la variable «Elemento elegido».');
+      return reply(400, 'Parece que el atajo manda la lista entera: añade el paso «Seleccionar de la lista» antes de esta acción e inserta la variable «Ítem seleccionado».');
     }
     const wanted = normalize(raw.replace(/[^\p{L}\p{N} &+]/gu, ' ')).replace(/\s+/g, ' ').trim();
-    if (!wanted) return reply(400, 'Falta la elección: inserta la variable «Elemento elegido» detrás de what=');
+    if (!wanted) return reply(400, 'Falta la elección: inserta la variable «Ítem seleccionado» detrás de what=');
     if (wanted.includes('piti') || wanted.includes('cigarro')) return doCigarro();
     if (wanted.includes('parar') || wanted === 'stop') return doStop();
     return doStart(wanted);

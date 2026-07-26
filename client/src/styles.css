@@ -584,13 +584,13 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   flex: 1;
   border-left: 1px solid var(--line);
   background-image: linear-gradient(to bottom, var(--line) 1px, transparent 1px);
-  background-size: 100% 40px;
+  background-size: 100% 52px;
   margin-right: 8px;
 }
 .dy-evt {
   position: absolute;
   left: 6px;
-  right: 64px;
+  right: 96px;
   border-radius: 7px;
   border: 1px solid var(--line);
   border-left: 3px solid var(--ink);
@@ -611,7 +611,7 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .dy-evt-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .dy-evt-time { font-size: 10.5px; color: var(--ink-muted); }
 .dy-live { color: #2f9e44; font-weight: 600; font-size: 10.5px; }
-.dy-cig { position: absolute; right: 4px; font-size: 10.5px; background: var(--paper); border: 1px solid var(--line); border-radius: 20px; padding: 1px 7px; cursor: pointer; z-index: 4; white-space: nowrap; box-shadow: 0 1px 3px rgba(10, 10, 10, 0.08); }
+.dy-mark { position: absolute; right: 4px; font-size: 10.5px; background: var(--paper); border: 1px solid var(--line); border-radius: 20px; padding: 1px 8px; cursor: pointer; z-index: 6; white-space: nowrap; box-shadow: 0 1px 3px rgba(10, 10, 10, 0.08); }
 .dy-now { position: absolute; left: 0; right: 0; height: 2px; background: #c92a2a; z-index: 5; pointer-events: none; }
 .dy-now::before { content: ''; position: absolute; left: -1px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: #c92a2a; }
 
@@ -623,3 +623,35 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 
 /* Estrella de favorita (menú del control remoto) en el catálogo de Rutina */
 .rt-fav { margin-left: auto; background: none; border: none; font-size: 17px; cursor: pointer; color: var(--ink); padding: 2px 6px; }
+
+/* Diario: barra "ahora" y peso compactos en móvil */
+.dy-cigbtn { margin-left: auto; white-space: nowrap; }
+.dy-peso { margin-top: 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13.5px; }
+.dy-peso-q { white-space: nowrap; }
+.dy-peso-in { display: flex; align-items: center; gap: 6px; }
+.dy-peso-in input[inputmode='decimal'] { width: 62px; }
+.dy-peso-in input[type='time'] { width: 104px; }
+
+/* Diario: actividades con conmutador (colapsado = una tira con las ★) */
+.dy-actsrow { display: flex; align-items: center; gap: 6px; margin-top: 12px; min-width: 0; }
+.dy-acts { display: flex; gap: 8px; align-items: center; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; flex: 1; min-width: 0; }
+.dy-acts::-webkit-scrollbar { display: none; }
+.dy-acts > .rt-chip { flex: 0 0 auto; }
+.dy-acts.open { flex-wrap: wrap; overflow: visible; }
+.dy-actsrow:has(.dy-acts.open) { align-items: flex-start; }
+.dy-more { flex: 0 0 auto; background: none; border: none; color: var(--ink-muted); font-size: 12.5px; cursor: pointer; padding: 4px 6px; white-space: nowrap; }
+.dy-more:hover { color: var(--ink); }
+.dy-chip.instant { border-style: dashed; }
+
+
+/* Control remoto: filas minimal (en móvil, solo etiqueta + Copiar) */
+.rc-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.rc-label { font-size: 13px; flex: 0 0 132px; }
+.rc-url { flex: 1; min-width: 0; font-size: 11px; color: var(--ink-muted); }
+.rc-copy { flex: 0 0 auto; }
+@media (max-width: 640px) {
+  .rc-label { flex: 1; }
+  .rc-url { display: none; }
+  .dy-cigbtn { margin-left: 0; }
+  .dy-peso { gap: 8px; }
+}

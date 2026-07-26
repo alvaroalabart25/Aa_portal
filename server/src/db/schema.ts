@@ -133,6 +133,7 @@ export const routineItems = mysqlTable('routine_items', {
   title: varchar('title', { length: 120 }).notNull(),
   emoji: varchar('emoji', { length: 16 }).notNull().default('🔁'),
   isFavorite: int('is_favorite').notNull().default(0), // sale en el menú del control remoto
+  isInstant: int('is_instant').notNull().default(0), // puntual (sin duración): Levantarme, Pesarme...
   archivedAt: datetime('archived_at'),
   createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime('updated_at')

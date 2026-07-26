@@ -79,6 +79,11 @@ trackModule.all('/track', ah(async (req, res) => {
     const item = items.find((i) => normalize(i.title) === wanted) ?? items.find((i) => normalize(i.title).includes(wanted));
     if (!item) return reply(400, `Actividad "${wanted}" no encontrada. Hay: ${items.map((i) => i.title).join(', ')}`);
     const nowDate = new Date();
+    // Puntual: solo deja la marca, sin interrumpir lo que estuviera en curso
+    if (item.isInstant === 1) {
+      await db.insert(diarySessions).values({ userId: user.id, itemId: item.id, startAt: nowDate, endAt: nowDate });
+      return reply(200, `✓ ${item.emoji} ${item.title} a las ${now.time}`);
+    }
     await db
       .update(diarySessions)
       .set({ endAt: nowDate })

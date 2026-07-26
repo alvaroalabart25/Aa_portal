@@ -14,6 +14,7 @@ function ItemModal({
   const isNew = item === 'new';
   const [title, setTitle] = useState(isNew ? '' : item.title);
   const [emoji, setEmoji] = useState(isNew ? '🔁' : item.emoji);
+  const [instant, setInstant] = useState(isNew ? 0 : item.isInstant);
   const [saving, setSaving] = useState(false);
 
   async function submit(e: FormEvent) {
@@ -21,7 +22,7 @@ function ItemModal({
     if (!title.trim()) return;
     setSaving(true);
     try {
-      const data = { title: title.trim(), emoji: emoji.trim() || '🔁' };
+      const data = { title: title.trim(), emoji: emoji.trim() || '🔁', isInstant: instant };
       if (isNew) await routineApi.createItem(data);
       else await routineApi.updateItem(item.id, data);
       onSaved();
@@ -58,6 +59,15 @@ function ItemModal({
             <input id="ri-title" style={{ width: '100%' }} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="P. ej. Gimnasio" />
           </div>
         </div>
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: 9, fontSize: 13.5, margin: 0, color: 'var(--ink)' }}>
+          <input type="checkbox" checked={instant === 1} onChange={(e) => setInstant(e.target.checked ? 1 : 0)} style={{ marginTop: 2 }} />
+          <span>
+            Es puntual (sin duración)
+            <span className="muted" style={{ display: 'block', fontSize: 12, marginTop: 2 }}>
+              Como «Levantarme»: en el Diario deja una marca con su hora y no interrumpe la actividad en curso.
+            </span>
+          </span>
+        </label>
         <div className="modal-actions" style={{ justifyContent: 'space-between' }}>
           <div>
             {!isNew && (
@@ -104,6 +114,7 @@ export default function RutinaEventosTab() {
             <span style={{ fontSize: 18 }}>{i.emoji}</span>
             <button className="roadmap-title" onClick={() => setEditing(i)} title="Clic para editar">
               {i.title}
+              {i.isInstant === 1 && <span className="muted" style={{ fontSize: 11.5, marginLeft: 8 }}>puntual</span>}
             </button>
             <button
               className="rt-fav"

@@ -6,7 +6,7 @@ import { eventsApi } from '../events/api';
 import { occursOn, type ImportantEvent } from '../events/types';
 import { diaryApi, healthApi, type DiarySession, type HealthEntry } from './api';
 
-const HOUR_PX = 40; // 1 hora = 40px en la radiografía
+const HOUR_PX = 52; // 1 hora = 52px en la radiografía
 const COL_HEIGHT = 24 * HOUR_PX;
 
 function isoLocal(d: Date): string {
@@ -209,11 +209,11 @@ function ControlRemotoModal({ onClose }: { onClose: () => void }) {
   }
 
   const row = (label: string, url: string) => (
-    <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ fontSize: 13, flex: '0 0 140px' }}>{label}</span>
-      <input readOnly value={url} style={{ flex: 1, fontSize: 11, color: 'var(--ink-muted)' }} onFocus={(e) => e.target.select()} />
-      <button className="btn ghost sm" onClick={() => copy(label, url)}>
-        {copied === label ? '✓' : 'Copiar'}
+    <div key={label} className="rc-row">
+      <span className="rc-label">{label}</span>
+      <input className="rc-url" readOnly value={url} onFocus={(e) => e.target.select()} />
+      <button className="btn ghost sm rc-copy" onClick={() => copy(label, url)}>
+        {copied === label ? '✓ Copiado' : 'Copiar'}
       </button>
     </div>
   );
@@ -291,6 +291,7 @@ export default function DiarioPage() {
   const [editing, setEditing] = useState<DiarySession | 'new' | null>(null);
   const [creatingItem, setCreatingItem] = useState(false);
   const [remote, setRemote] = useState(false);
+  const [allActs, setAllActs] = useState(false);
   const [pesoInput, setPesoInput] = useState('');
   const [pesoTime, setPesoTime] = useState(nowHHMM());
   const [busy, setBusy] = useState(false);
@@ -327,15 +328,31 @@ export default function DiarioPage() {
 
   const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
 
+  // Las sesiones con inicio = fin son marcas puntuales, no bloques
+  const isMoment = (x: DiarySession) => x.endAt !== null && new Date(x.endAt).getTime() - new Date(x.startAt).getTime() < 60000;
+
   const blocks: Block[] = useMemo(() => {
     const start = dayStartOf(day).getTime();
-    return sessions.map((s) => {
-      const sm = (new Date(s.startAt).getTime() - start) / 60000;
-      const open = s.endAt === null;
-      const em = open ? (isToday ? nowMin : 24 * 60) : (new Date(s.endAt!).getTime() - start) / 60000;
-      return { s, startMin: Math.max(0, sm), endMin: Math.min(24 * 60, Math.max(em, sm + 4)), open };
-    });
+    return sessions
+      .filter((s) => !isMoment(s))
+      .map((s) => {
+        const sm = (new Date(s.startAt).getTime() - start) / 60000;
+        const open = s.endAt === null;
+        const em = open ? (isToday ? nowMin : 24 * 60) : (new Date(s.endAt!).getTime() - start) / 60000;
+        return { s, startMin: Math.max(0, sm), endMin: Math.min(24 * 60, Math.max(em, sm + 4)), open };
+      });
   }, [sessions, day, isToday, nowMin]);
+
+  const moments = useMemo(() => {
+    const start = dayStartOf(day).getTime();
+    return sessions.filter(isMoment).map((s) => ({ s, min: (new Date(s.startAt).getTime() - start) / 60000 }));
+  }, [sessions, day]);
+
+  // Colapsado se ven solo las ★ favoritas (si no hay, todas en una tira)
+  const shortActs = useMemo(() => {
+    const favs = items.filter((i) => i.isFavorite === 1);
+    return favs.length ? favs : items;
+  }, [items]);
 
   const cigs = useMemo(() => entries.filter((e) => e.kind === 'cigarro' && e.entryTime), [entries]);
   // eventos importantes de la Agenda que caen en este día
@@ -362,10 +379,13 @@ export default function DiarioPage() {
     setDay(dayStartOf(d));
   }
 
-  async function startActivity(itemId: number) {
+  // Puntuales (Levantarme): dejan una marca y no interrumpen lo que haya en
+  // curso. El resto abre bloque y cierra el anterior.
+  async function startActivity(item: RoutineItem) {
     setBusy(true);
     try {
-      await diaryApi.start(itemId);
+      if (item.isInstant === 1) await diaryApi.moment(item.id);
+      else await diaryApi.start(item.id);
       await load();
     } finally {
       setBusy(false);
@@ -455,24 +475,32 @@ export default function DiarioPage() {
               <span className="muted" style={{ fontSize: 13.5 }}>Sin actividad en curso.</span>
             )}
             <button className="btn sm dy-cigbtn" disabled={busy} onClick={addCig}>
-              🚬 Piti ({cigs.length})
+              🚬 {cigs.length}
             </button>
           </div>
 
-          <div className="rt-catalog" style={{ marginTop: 12 }}>
-            {items.map((i) => (
+          <div className="dy-actsrow">
+          <div className={`dy-acts${allActs ? ' open' : ''}`}>
+            {(allActs ? items : shortActs).map((i) => (
               <button
                 key={i.id}
-                className={`rt-chip dy-chip${current?.itemId === i.id ? ' active' : ''}`}
+                className={`rt-chip dy-chip${current?.itemId === i.id ? ' active' : ''}${i.isInstant === 1 ? ' instant' : ''}`}
                 disabled={busy || current?.itemId === i.id}
-                onClick={() => startActivity(i.id)}
+                onClick={() => startActivity(i)}
+                title={i.isInstant === 1 ? 'Puntual: deja una marca y no interrumpe nada' : undefined}
               >
                 {i.emoji} {i.title}
               </button>
             ))}
-            <button className="rt-chip dy-chip" onClick={() => setCreatingItem(true)}>
-              ＋ Nueva
-            </button>
+            {allActs && (
+              <button className="rt-chip dy-chip" onClick={() => setCreatingItem(true)}>
+                ＋ Nueva
+              </button>
+            )}
+          </div>
+          <button className="dy-more" onClick={() => setAllActs(!allActs)} title={allActs ? 'Ocultar' : 'Ver todas'}>
+            {allActs ? '⌃' : `⌄ ${items.length}`}
+          </button>
           </div>
 
           <div className="dy-peso">
@@ -485,14 +513,16 @@ export default function DiarioPage() {
                 </button>
               </span>
             ) : (
-              <span style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 13.5 }}>
-                ⚖️ ¿Te has pesado hoy?
-                <input inputMode="decimal" placeholder="kg" value={pesoInput} onChange={(e) => setPesoInput(e.target.value)} style={{ width: 70 }} />
-                <input type="time" value={pesoTime} onChange={(e) => setPesoTime(e.target.value)} style={{ width: 110 }} />
-                <button className="btn sm" disabled={busy || !pesoInput} onClick={savePeso}>
-                  ✓
-                </button>
-              </span>
+              <>
+                <span className="dy-peso-q">⚖️ ¿Te has pesado hoy?</span>
+                <span className="dy-peso-in">
+                  <input inputMode="decimal" placeholder="kg" value={pesoInput} onChange={(e) => setPesoInput(e.target.value)} />
+                  <input type="time" value={pesoTime} onChange={(e) => setPesoTime(e.target.value)} />
+                  <button className="btn sm" disabled={busy || !pesoInput} onClick={savePeso}>
+                    ✓
+                  </button>
+                </span>
+              </>
             )}
           </div>
         </section>
@@ -531,16 +561,26 @@ export default function DiarioPage() {
               ))}
             </div>
             <div className="dy-col" style={{ height: COL_HEIGHT }}>
-              {blocks.map((b) => {
+              {(() => {
+                let prevBottom = -99;
+                let indent = 0;
+                return blocks.map((b) => {
                 const hue = itemHue(b.s.itemId);
                 const compact = b.endMin - b.startMin < 45;
+                const top = (b.startMin / 60) * HOUR_PX + 1;
+                const height = Math.max(((b.endMin - b.startMin) / 60) * HOUR_PX - 3, 15);
+                // si el bloque anterior aún ocupa este hueco, escalona a la derecha
+                indent = top < prevBottom ? Math.min(indent + 1, 3) : 0;
+                prevBottom = top + height;
                 return (
                   <div
                     key={b.s.id}
                     className={`dy-evt${compact ? ' compact' : ''}${b.open ? ' open' : ''}`}
                     style={{
-                      top: (b.startMin / 60) * HOUR_PX + 1,
-                      height: Math.max(((b.endMin - b.startMin) / 60) * HOUR_PX - 3, 14),
+                      top,
+                      height,
+                      marginLeft: indent * 16,
+                      zIndex: 2 + indent,
                       background: `hsla(${hue}, 65%, 95%, 0.9)`,
                       borderColor: `hsla(${hue}, 45%, 70%, 0.6)`,
                       borderLeftColor: `hsl(${hue}, 55%, 42%)`,
@@ -557,7 +597,8 @@ export default function DiarioPage() {
                     </span>
                   </div>
                 );
-              })}
+                });
+              })()}
               {timedEvents.map((e) => (
                 <div
                   key={`ev${e.id}`}
@@ -570,20 +611,34 @@ export default function DiarioPage() {
                   </span>
                 </div>
               ))}
-              {cigs.map((c) => (
-                <span
-                  key={c.id}
-                  className="dy-cig"
-                  style={{ top: (hhmmToMin(c.entryTime!) / 60) * HOUR_PX - 8 }}
-                  title={`Cigarro · ${c.entryTime} (clic para borrar)`}
-                  onClick={async () => {
-                    await healthApi.remove(c.id);
-                    load();
-                  }}
-                >
-                  🚬 {c.entryTime}
-                </span>
-              ))}
+              {(() => {
+                // Carril derecho: puntuales y pitis juntos, ordenados por hora.
+                // Si dos caen muy cerca, el segundo baja un escalón (su hora va escrita).
+                const marks = [
+                  ...moments.map(({ s: m, min }) => ({ key: `m${m.id}`, min, label: `${m.emoji} ${minToHHMM(min)}`, title: `${m.title} · ${minToHHMM(min)} (clic para borrar)`, del: () => diaryApi.remove(m.id) })),
+                  ...cigs.map((c) => ({ key: `c${c.id}`, min: hhmmToMin(c.entryTime!), label: `🚬 ${c.entryTime}`, title: `Cigarro · ${c.entryTime} (clic para borrar)`, del: () => healthApi.remove(c.id) })),
+                ].sort((a, b) => a.min - b.min);
+                let prev = -99;
+                let level = 0;
+                return marks.map((mk) => {
+                  level = mk.min - prev < 18 ? level + 1 : 0;
+                  prev = mk.min;
+                  return (
+                    <span
+                      key={mk.key}
+                      className="dy-mark"
+                      style={{ top: (mk.min / 60) * HOUR_PX - 9 + level * 17 }}
+                      title={mk.title}
+                      onClick={async () => {
+                        await mk.del();
+                        load();
+                      }}
+                    >
+                      {mk.label}
+                    </span>
+                  );
+                });
+              })()}
               {isToday && <div className="dy-now" style={{ top: (nowMin / 60) * HOUR_PX }} />}
             </div>
           </div>

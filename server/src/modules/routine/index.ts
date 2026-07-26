@@ -28,6 +28,7 @@ const itemInput = z.object({
   title: z.string().trim().min(1).max(120),
   emoji: z.string().trim().min(1).max(16).default('🔁'),
   isFavorite: z.number().int().min(0).max(1).optional(), // 1 = en el menú del control remoto
+  isInstant: z.number().int().min(0).max(1).optional(), // 1 = puntual, sin duración
 });
 
 routineModule.get('/items', ah(async (req: AuthedRequest, res) => {

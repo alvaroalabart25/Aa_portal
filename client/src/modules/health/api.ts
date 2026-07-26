@@ -42,6 +42,7 @@ export const diaryApi = {
     get<DiarySession[]>(`/diary/sessions?from=${encodeURIComponent(fromIso)}&to=${encodeURIComponent(toIso)}`),
   current: () => get<DiarySession | null>('/diary/current'),
   start: (itemId: number) => post<DiarySession>('/diary/start', { itemId }),
+  moment: (itemId: number) => post<DiarySession>('/diary/moment', { itemId }),
   stop: () => post<{ stopped: boolean }>('/diary/stop', {}),
   create: (itemId: number, startAt: string, endAt: string) => post<DiarySession>('/diary/sessions', { itemId, startAt, endAt }),
   update: (id: number, data: Partial<{ itemId: number; startAt: string; endAt: string | null }>) =>

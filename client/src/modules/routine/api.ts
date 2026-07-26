@@ -5,6 +5,7 @@ export interface RoutineItem {
   title: string;
   emoji: string;
   isFavorite: number; // 1 = aparece en el menú del control remoto (Atajos)
+  isInstant: number; // 1 = puntual (sin duración): se registra el instante
 }
 
 export interface RoutineSlot {
@@ -33,8 +34,8 @@ export interface DayStat {
 
 export const routineApi = {
   items: () => get<RoutineItem[]>('/routine/items'),
-  createItem: (data: { title: string; emoji: string }) => post<RoutineItem>('/routine/items', data),
-  updateItem: (id: number, data: Partial<{ title: string; emoji: string; isFavorite: number }>) =>
+  createItem: (data: { title: string; emoji: string; isInstant?: number }) => post<RoutineItem>('/routine/items', data),
+  updateItem: (id: number, data: Partial<{ title: string; emoji: string; isFavorite: number; isInstant: number }>) =>
     patch<RoutineItem>(`/routine/items/${id}`, data),
   removeItem: (id: number) => del<{ archived: boolean }>(`/routine/items/${id}`),
 

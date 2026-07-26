@@ -80,6 +80,20 @@ diaryModule.post('/start', ah(async (req: AuthedRequest, res) => {
   res.status(201).json(row);
 }));
 
+// POST /moment { itemId } -> marca puntual: se registra el instante (inicio =
+// fin) y NO toca la actividad en curso. Levantarme no interrumpe nada.
+diaryModule.post('/moment', ah(async (req: AuthedRequest, res) => {
+  const parsed = z.object({ itemId: z.number().int().positive() }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
+  if (!(await ownItem(req.userId!, parsed.data.itemId))) {
+    return res.status(400).json({ error: 'La actividad indicada no existe' });
+  }
+  const now = new Date();
+  const [result] = await db.insert(diarySessions).values({ userId: req.userId!, itemId: parsed.data.itemId, startAt: now, endAt: now });
+  const [row] = await db.select().from(diarySessions).where(eq(diarySessions.id, result.insertId));
+  res.status(201).json(row);
+}));
+
 // POST /stop -> cierra la sesión en curso (quedarse "sin actividad" es válido)
 diaryModule.post('/stop', ah(async (req: AuthedRequest, res) => {
   const [result] = await db

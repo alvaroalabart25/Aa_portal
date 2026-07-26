@@ -498,6 +498,14 @@ export default function DiarioPage() {
                 <button className="rt-chip dy-chip" onClick={() => setCreatingItem(true)}>
                   ＋ Nueva
                 </button>
+                <button
+                  className="rt-chip dy-chip dy-stopall"
+                  disabled={busy || !current}
+                  onClick={stopActivity}
+                  title={current ? 'Cierra lo que esté en curso' : 'No hay nada en curso'}
+                >
+                  ■ Parar todo
+                </button>
               </div>
             )}
           </div>

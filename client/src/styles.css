@@ -650,6 +650,8 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .dy-actshead:hover .dy-chev { color: var(--ink); }
 .dy-acts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
 .dy-chip.instant { border-style: dashed; }
+.dy-stopall { border-color: var(--ink); font-weight: 600; }
+.dy-stopall:disabled { border-color: var(--line); color: var(--ink-muted); font-weight: 500; opacity: 0.7; }
 
 /* Control remoto: filas minimal (en móvil, solo etiqueta + Copiar) */
 .rc-row { display: flex; align-items: center; gap: 8px; min-width: 0; }

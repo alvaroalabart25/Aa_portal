@@ -82,7 +82,7 @@ export const tasks = mysqlTable('tasks', {
     .notNull()
     .references(() => projects.id),
   title: varchar('title', { length: 255 }).notNull(),
-  status: mysqlEnum('status', ['backlog', 'in_progress', 'blocked', 'completed', 'cancelled'])
+  status: mysqlEnum('status', ['backlog', 'in_progress', 'in_review', 'blocked', 'completed', 'cancelled'])
     .notNull()
     .default('backlog'),
   priority: mysqlEnum('priority', ['low', 'medium', 'high']).notNull().default('medium'),

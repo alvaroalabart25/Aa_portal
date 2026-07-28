@@ -13,6 +13,7 @@ export const STATUS_COLOR: Record<string, string> = {
   backlog: '#8a8a8a',
   active: '#1971c2',
   in_progress: '#1971c2',
+  in_review: '#7048e8',
   blocked: '#e8590c',
   completed: '#2f9e44',
   cancelled: '#adb5bd',

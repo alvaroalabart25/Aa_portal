@@ -18,7 +18,7 @@ function isoLocal(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-const STATUS_ORDER: Record<string, number> = { in_progress: 0, blocked: 1, backlog: 2, completed: 3, cancelled: 4 };
+const STATUS_ORDER: Record<string, number> = { in_progress: 0, in_review: 1, blocked: 2, backlog: 3, completed: 4, cancelled: 5 };
 const PRIORITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 };
 
 // Orden dentro de cada sección: estado > prioridad > fecha

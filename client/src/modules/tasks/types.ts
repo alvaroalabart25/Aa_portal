@@ -1,5 +1,5 @@
 export type ProjectStatus = 'active' | 'completed' | 'cancelled';
-export type TaskStatus = 'backlog' | 'in_progress' | 'blocked' | 'completed' | 'cancelled';
+export type TaskStatus = 'backlog' | 'in_progress' | 'in_review' | 'blocked' | 'completed' | 'cancelled';
 export type Priority = 'low' | 'medium' | 'high';
 
 export interface Space {
@@ -43,6 +43,7 @@ export interface Task {
 export const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
   backlog: 'Backlog',
   in_progress: 'En progreso',
+  in_review: 'En revisión',
   blocked: 'Bloqueada',
   completed: 'Completada',
   cancelled: 'Cancelada',

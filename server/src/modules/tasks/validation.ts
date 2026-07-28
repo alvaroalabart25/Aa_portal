@@ -22,7 +22,7 @@ export const projectInput = z.object({
 export const taskInput = z.object({
   projectId: z.number().int().positive(),
   title: z.string().trim().min(1).max(255),
-  status: z.enum(['backlog', 'in_progress', 'blocked', 'completed', 'cancelled']).optional(),
+  status: z.enum(['backlog', 'in_progress', 'in_review', 'blocked', 'completed', 'cancelled']).optional(),
   priority: z.enum(['low', 'medium', 'high']).optional(),
   notes: z.string().max(65000).nullish(),
   dueDate: isoDate.nullish(),

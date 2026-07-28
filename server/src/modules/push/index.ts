@@ -92,7 +92,7 @@ async function buildPayload(type: string, userId: number, todayIso: string) {
           eq(tasks.userId, userId),
           eq(tasks.dueDate, todayIso),
           isNull(tasks.archivedAt),
-          inArray(tasks.status, ['backlog', 'in_progress', 'blocked']),
+          inArray(tasks.status, ['backlog', 'in_progress', 'in_review', 'blocked']),
         ),
       );
     if (rows.length === 0) return null;

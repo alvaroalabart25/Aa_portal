@@ -8,7 +8,8 @@ import { taskInput, taskUpdate } from './validation';
 
 export const tasksRouter = Router();
 
-const OPEN_STATUSES = ['backlog', 'in_progress', 'blocked'] as const;
+// Una tarea en revisión sigue viva: cuenta como abierta en agenda y contadores
+const OPEN_STATUSES = ['backlog', 'in_progress', 'in_review', 'blocked'] as const;
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);

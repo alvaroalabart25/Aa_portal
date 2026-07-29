@@ -669,3 +669,11 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   .rc-url { display: none; }
   .dy-peso { gap: 8px; }
 }
+
+/* Diario: horas por actividad del día */
+.dy-areas { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0 12px; }
+.dy-area { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 20px; padding: 4px 11px; font-size: 12.5px; background: var(--paper); }
+.dy-area-emoji { font-size: 13px; }
+.dy-area-name { color: var(--ink-soft); }
+.dy-area-time { color: var(--ink); font-weight: 600; }
+.dy-area-total { font-size: 12px; color: var(--ink-muted); margin-left: 2px; }

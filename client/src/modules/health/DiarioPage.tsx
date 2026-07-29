@@ -26,6 +26,12 @@ function nowHHMM(): string {
   const n = new Date();
   return `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`;
 }
+function fmtDur(min: number): string {
+  const h = Math.floor(min / 60);
+  const m = Math.round(min % 60);
+  if (h === 0) return `${m}m`;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
 function snap5(m: number): number {
   return Math.round(m / 5) * 5;
 }
@@ -371,6 +377,21 @@ export default function DiarioPage() {
     return sessions.filter(isMoment).map((s) => ({ s, min: (new Date(s.startAt).getTime() - start) / 60000 }));
   }, [sessions, day]);
 
+  // Tiempo acumulado por actividad en el día (los bloques de una misma
+  // actividad se suman). Lo que no llega a MIN_AREA_MIN no se lista para no
+  // meter ruido, pero sí cuenta en el total.
+  const MIN_AREA_MIN = 15;
+  const areas = useMemo(() => {
+    const map = new Map<number, { emoji: string; title: string; min: number }>();
+    for (const b of blocks) {
+      const prev = map.get(b.s.itemId) ?? { emoji: b.s.emoji, title: b.s.title, min: 0 };
+      prev.min += b.endMin - b.startMin;
+      map.set(b.s.itemId, prev);
+    }
+    const list = [...map.values()].sort((a, b) => b.min - a.min);
+    return { list: list.filter((a) => a.min >= MIN_AREA_MIN), total: list.reduce((n, a) => n + a.min, 0) };
+  }, [blocks]);
+
   const cigs = useMemo(() => entries.filter((e) => e.kind === 'cigarro' && e.entryTime), [entries]);
   // eventos importantes de la Agenda que caen en este día
   const dayEvents = useMemo(() => eventsList.filter((e) => occursOn(e, dayIso)), [eventsList, dayIso]);
@@ -667,6 +688,18 @@ export default function DiarioPage() {
                 {e.emoji} {e.title}
               </span>
             ))}
+          </div>
+        )}
+        {areas.list.length > 0 && (
+          <div className="dy-areas">
+            {areas.list.map((a) => (
+              <span key={a.title} className="dy-area">
+                <span className="dy-area-emoji">{a.emoji}</span>
+                <span className="dy-area-name">{a.title}</span>
+                <strong className="dy-area-time">{fmtDur(a.min)}</strong>
+              </span>
+            ))}
+            <span className="dy-area-total">Total registrado {fmtDur(areas.total)}</span>
           </div>
         )}
         {(cigs.length > 0 || !isToday) && (

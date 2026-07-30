@@ -4,7 +4,7 @@ import { get, API_BASE } from '../../lib/api';
 import { routineApi, type RoutineItem } from '../routine/api';
 import { eventsApi } from '../events/api';
 import { occursOn, type ImportantEvent } from '../events/types';
-import { diaryApi, healthApi, type DiarySession, type HealthEntry } from './api';
+import { checksApi, diaryApi, healthApi, type DailyCheck, type DiarySession, type HealthEntry } from './api';
 
 const HOUR_PX = 76; // 1 hora = 76px: cada hora se lee cómoda
 const COL_HEIGHT = 24 * HOUR_PX;
@@ -199,6 +199,54 @@ function NewItemModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   );
 }
 
+// Alta de un check diario nuevo
+function NewCheckModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const [title, setTitle] = useState('');
+  const [emoji, setEmoji] = useState('✅');
+  const [saving, setSaving] = useState(false);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!title.trim()) return;
+    setSaving(true);
+    try {
+      await checksApi.create(title.trim(), emoji.trim() || '✅');
+      onCreated();
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal title="Nuevo check del día" onClose={onClose}>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <div className="field" style={{ width: 70 }}>
+            <label htmlFor="nc-emoji">Emoji</label>
+            <input id="nc-emoji" value={emoji} onChange={(e) => setEmoji(e.target.value)} />
+          </div>
+          <div className="field" style={{ flex: 1 }}>
+            <label htmlFor="nc-title">Nombre</label>
+            <input id="nc-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Vitamina D, estirar, leer..." />
+          </div>
+        </div>
+        <p className="muted" style={{ fontSize: 12 }}>
+          Aparecerá cada día en «Checks del día» hasta que lo quites.
+        </p>
+        <div className="modal-actions">
+          <button type="button" className="btn ghost" onClick={onClose}>
+            Cancelar
+          </button>
+          <button className="btn" disabled={saving || !title.trim()}>
+            Crear
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 // Control remoto (Atajos de iOS): UN solo atajo con menú dinámico. El menú
 // sale de las actividades ★ favoritas del catálogo (o todas si no hay).
 function ControlRemotoModal({ onClose }: { onClose: () => void }) {
@@ -301,6 +349,9 @@ export default function DiarioPage() {
   const [creatingItem, setCreatingItem] = useState(false);
   const [remote, setRemote] = useState(false);
   const [allActs, setAllActs] = useState(false);
+  const [checks, setChecks] = useState<DailyCheck[]>([]);
+  const [showDone, setShowDone] = useState(false);
+  const [newCheck, setNewCheck] = useState(false);
   const [pesoInput, setPesoInput] = useState('');
   const [pesoTime, setPesoTime] = useState(nowHHMM());
   const [busy, setBusy] = useState(false);
@@ -317,13 +368,15 @@ export default function DiarioPage() {
   const load = useCallback(async () => {
     const from = dayStartOf(day);
     const to = new Date(from.getTime() + 24 * 3600 * 1000);
-    const [s, d, i, c, ev] = await Promise.all([
+    const [s, d, i, c, ev, ch] = await Promise.all([
       diaryApi.sessions(from.toISOString(), to.toISOString()),
       healthApi.day(dayIso),
       routineApi.items(),
       diaryApi.current(),
       eventsApi.list(),
+      checksApi.list(dayIso),
     ]);
+    setChecks(ch.checks);
     setSessions(s);
     setEntries(d.entries);
     setItems(i);
@@ -391,6 +444,10 @@ export default function DiarioPage() {
     const list = [...map.values()].sort((a, b) => b.min - a.min);
     return { list: list.filter((a) => a.min >= MIN_AREA_MIN), total: list.reduce((n, a) => n + a.min, 0) };
   }, [blocks]);
+
+  // Lo hecho se aparta de la lista; se puede ver con el filtro
+  const pendientes = useMemo(() => checks.filter((c) => !c.done), [checks]);
+  const hechos = useMemo(() => checks.filter((c) => c.done), [checks]);
 
   const cigs = useMemo(() => entries.filter((e) => e.kind === 'cigarro' && e.entryTime), [entries]);
   // eventos importantes de la Agenda que caen en este día
@@ -545,6 +602,18 @@ export default function DiarioPage() {
     }
   }
 
+  // Marcar/desmarcar: se aplica en local al instante y se guarda por detrás
+  async function toggleCheck(c: DailyCheck, done: boolean) {
+    setChecks((list) => list.map((x) => (x.id === c.id ? { ...x, done } : x)));
+    checksApi.toggle(c.id, done, dayIso).catch(() => load());
+  }
+
+  async function removeCheck(c: DailyCheck) {
+    if (!window.confirm(`¿Quitar «${c.title}» de los checks del día?`)) return;
+    setChecks((list) => list.filter((x) => x.id !== c.id));
+    await checksApi.remove(c.id);
+  }
+
   async function savePeso() {
     const v = Number(pesoInput.replace(',', '.'));
     if (!v || v <= 0 || v > 400) return;
@@ -649,27 +718,87 @@ export default function DiarioPage() {
             )}
           </div>
 
-          <div className="dy-peso">
-            {peso ? (
-              <span style={{ fontSize: 13.5 }}>
-                ⚖️ <strong>{peso.value} kg</strong>
-                <span className="muted"> · a las {peso.entryTime}</span>
-                <button className="btn ghost sm" style={{ marginLeft: 8 }} onClick={async () => { await healthApi.remove(peso.id); load(); }}>
-                  ↺
-                </button>
+          <div className="dy-checks">
+            <div className="dy-checkshead">
+              <span className="dy-checkstitle">Checks del día</span>
+              <span className="dy-checkscount">
+                {pendientes.length === 0 ? '¡todo hecho!' : `${hechos.length}/${checks.length}`}
               </span>
-            ) : (
-              <>
-                <span className="dy-peso-q">⚖️ ¿Te has pesado hoy?</span>
-                <span className="dy-peso-in">
-                  <input inputMode="decimal" placeholder="kg" value={pesoInput} onChange={(e) => setPesoInput(e.target.value)} />
-                  <input type="time" value={pesoTime} onChange={(e) => setPesoTime(e.target.value)} />
-                  <button className="btn sm" disabled={busy || !pesoInput} onClick={savePeso}>
-                    ✓
-                  </button>
-                </span>
-              </>
+              {hechos.length > 0 && (
+                <button className="dy-more" onClick={() => setShowDone(!showDone)}>
+                  {showDone ? '⌃ ocultar hechos' : `✓ ${hechos.length} ${hechos.length === 1 ? 'hecho' : 'hechos'} ⌄`}
+                </button>
+              )}
+            </div>
+
+            {pendientes.length === 0 && !showDone && (
+              <p className="muted" style={{ fontSize: 13, margin: '2px 0 0' }}>
+                No queda nada por marcar hoy. 🎉
+              </p>
             )}
+
+            {[...pendientes, ...(showDone ? hechos : [])].map((c) => (
+              <div key={c.id} className={`dy-check${c.done ? ' done' : ''}`}>
+                {c.kind === 'peso' ? (
+                  c.done ? (
+                    <>
+                      <span className="dy-check-box">✓</span>
+                      <span className="dy-check-emoji">{c.emoji}</span>
+                      <span className="dy-check-title">
+                        {c.title}
+                        <span className="muted" style={{ marginLeft: 8 }}>
+                          {c.peso?.value} kg · {c.peso?.time}
+                        </span>
+                      </span>
+                      <button
+                        className="btn ghost sm"
+                        title="Borrar el peso de hoy"
+                        onClick={async () => {
+                          if (c.peso) await healthApi.remove(c.peso.id);
+                          load();
+                        }}
+                      >
+                        ↺
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="dy-check-box" />
+                      <span className="dy-check-emoji">{c.emoji}</span>
+                      <span className="dy-check-title">{c.title}</span>
+                      <span className="dy-peso-in">
+                        <input inputMode="decimal" placeholder="kg" value={pesoInput} onChange={(e) => setPesoInput(e.target.value)} />
+                        <input type="time" value={pesoTime} onChange={(e) => setPesoTime(e.target.value)} />
+                        <button className="btn sm" disabled={busy || !pesoInput} onClick={savePeso}>
+                          ✓
+                        </button>
+                      </span>
+                    </>
+                  )
+                ) : (
+                  <>
+                    <button
+                      className="dy-check-box as-btn"
+                      aria-label={c.done ? 'Desmarcar' : 'Marcar'}
+                      onClick={() => toggleCheck(c, !c.done)}
+                    >
+                      {c.done ? '✓' : ''}
+                    </button>
+                    <span className="dy-check-emoji">{c.emoji}</span>
+                    <button className="dy-check-title as-btn" onClick={() => toggleCheck(c, !c.done)}>
+                      {c.title}
+                    </button>
+                    <button className="dy-check-x" title="Quitar de los checks" onClick={() => removeCheck(c)}>
+                      ×
+                    </button>
+                  </>
+                )}
+              </div>
+            ))}
+
+            <button className="dy-check-add" onClick={() => setNewCheck(true)}>
+              ＋ Añadir check
+            </button>
           </div>
         </section>
       )}
@@ -840,6 +969,7 @@ export default function DiarioPage() {
         <SessionModal session={editing === 'new' ? null : editing} items={items} day={day} onClose={() => setEditing(null)} onSaved={load} />
       )}
       {creatingItem && <NewItemModal onClose={() => setCreatingItem(false)} onCreated={() => load()} />}
+      {newCheck && <NewCheckModal onClose={() => setNewCheck(false)} onCreated={load} />}
       {remote && <ControlRemotoModal onClose={() => setRemote(false)} />}
     </div>
   );

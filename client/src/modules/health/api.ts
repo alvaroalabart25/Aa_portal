@@ -28,6 +28,24 @@ export const healthApi = {
   summary: (from: string, to: string) => get<DaySummary[]>(`/health-log/summary?from=${from}&to=${to}`),
 };
 
+// ---------- Checks del día ----------
+export interface DailyCheck {
+  id: number;
+  title: string;
+  emoji: string;
+  kind: 'plain' | 'peso';
+  done: boolean;
+  peso: { id: number; value: number | null; time: string | null } | null;
+}
+
+export const checksApi = {
+  list: (date?: string) => get<{ date: string; checks: DailyCheck[] }>(`/health-log/checks${date ? `?date=${date}` : ''}`),
+  create: (title: string, emoji: string) => post<DailyCheck>('/health-log/checks', { title, emoji }),
+  remove: (id: number) => del<{ archived: boolean }>(`/health-log/checks/${id}`),
+  toggle: (id: number, done: boolean, date?: string) =>
+    post<{ id: number; done: boolean }>(`/health-log/checks/${id}/toggle`, { done, date }),
+};
+
 // ---------- Sesiones de actividad (la radiografía) ----------
 export interface DiarySession {
   id: number;

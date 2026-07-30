@@ -310,6 +310,34 @@ export const healthEntries = mysqlTable('health_entries', {
   createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Salud · Diario: checks del día (cosas que se repiten a diario y se marcan).
+// El catálogo se archiva; lo hecho vive por (check, fecha) y se reinicia solo
+// cada día. El check de tipo 'peso' no se marca: se cumple al registrar el kg.
+export const dailyChecks = mysqlTable('daily_checks', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  title: varchar('title', { length: 120 }).notNull(),
+  emoji: varchar('emoji', { length: 16 }).notNull().default('✅'),
+  kind: varchar('kind', { length: 12 }).notNull().default('plain'), // plain | peso
+  sortOrder: int('sort_order').notNull().default(0),
+  archivedAt: datetime('archived_at'),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const dailyCheckDone = mysqlTable('daily_check_done', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  checkId: bigint('check_id', { mode: 'number' })
+    .notNull()
+    .references(() => dailyChecks.id),
+  checkDate: date('check_date', { mode: 'string' }).notNull(),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 // Salud · Diario: la radiografía del día. Actividades exclusivas y
 // secuenciales: empezar una cierra la anterior (end_at). Solo puede haber
 // una sesión abierta (end_at NULL). Comparte catálogo con Rutina (routine_items).

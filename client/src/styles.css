@@ -677,3 +677,23 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .dy-area-name { color: var(--ink-soft); }
 .dy-area-time { color: var(--ink); font-weight: 600; }
 .dy-area-total { font-size: 12px; color: var(--ink-muted); margin-left: 2px; }
+
+/* Diario: checks del día */
+.dy-checks { margin-top: 20px; }
+.dy-checkshead { display: flex; align-items: center; gap: 10px; padding: 4px 2px 8px; }
+.dy-checkstitle { font-size: 15.5px; font-weight: 600; color: var(--ink); }
+.dy-checkscount { font-size: 12.5px; color: var(--ink-muted); }
+.dy-checkshead .dy-more { margin-left: auto; }
+.dy-check { display: flex; align-items: center; gap: 10px; padding: 7px 2px; border-bottom: 1px solid var(--line); font-size: 14px; }
+.dy-check:last-of-type { border-bottom: none; }
+.dy-check-box { width: 19px; height: 19px; flex: 0 0 auto; border: 1.5px solid var(--ink-muted); border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; color: var(--paper); background: none; }
+.dy-check-box.as-btn { cursor: pointer; padding: 0; font-family: inherit; }
+.dy-check.done .dy-check-box { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.dy-check-emoji { font-size: 15px; flex: 0 0 auto; }
+.dy-check-title { flex: 1; min-width: 0; text-align: left; color: var(--ink); }
+.dy-check-title.as-btn { background: none; border: none; padding: 0; font: inherit; cursor: pointer; }
+.dy-check.done .dy-check-title { color: var(--ink-muted); text-decoration: line-through; }
+.dy-check-x { flex: 0 0 auto; background: none; border: none; color: var(--line); cursor: pointer; font-size: 16px; line-height: 1; padding: 0 4px; }
+.dy-check:hover .dy-check-x { color: var(--ink-muted); }
+.dy-check-add { margin-top: 10px; background: none; border: none; padding: 4px 2px; font-family: inherit; font-size: 13px; color: var(--ink-muted); cursor: pointer; }
+.dy-check-add:hover { color: var(--ink); }

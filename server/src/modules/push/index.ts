@@ -296,10 +296,12 @@ pushRunner.post('/run', ah(async (req, res) => {
     await logSecurityEvent('cron_secreto_invalido', req, 'intento de disparar los avisos sin el secreto');
     return res.status(401).json({ error: 'No autorizado' });
   }
-  if (!vapidConfigured()) return res.json({ sent: 0, reason: 'VAPID no configurado' });
+  // La vigilancia del front es seguridad: se ejecuta siempre, aunque las
+  // notificaciones no estén configuradas.
+  const estadoFront = await comprobarFront().catch((e) => `fallo al comprobar el front: ${(e as Error).message.slice(0, 80)}`);
+  if (!vapidConfigured()) return res.json({ front: estadoFront, sent: 0, reason: 'VAPID no configurado' });
   setupVapid();
 
-  const estadoFront = await comprobarFront().catch((e) => `fallo al comprobar el front: ${(e as Error).message.slice(0, 80)}`);
   const { iso: today, hhmm } = madridNow();
   const allUsers = await db.select({ id: users.id }).from(users);
   const results: Array<{ user: number; type: string; sent: number }> = [];

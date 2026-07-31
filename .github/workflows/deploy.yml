@@ -29,10 +29,26 @@ jobs:
           cat > dist/.htaccess <<'EOF'
           RewriteEngine On
           RewriteBase /
+          # Solo https: sin esto, el primer acceso podría ir en claro
+          RewriteCond %{HTTPS} !=on
+          RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
           RewriteCond %{REQUEST_URI} !^/api
           RewriteCond %{REQUEST_FILENAME} !-f
           RewriteCond %{REQUEST_FILENAME} !-d
           RewriteRule . /index.html [L]
+
+          <IfModule mod_headers.c>
+            Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+            Header always set X-Content-Type-Options "nosniff"
+            Header always set X-Frame-Options "DENY"
+            Header always set Referrer-Policy "strict-origin-when-cross-origin"
+            Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=()"
+            Header always set Cross-Origin-Opener-Policy "same-origin"
+            # El index nunca se cachea: así un despliegue nuevo llega siempre
+            <FilesMatch "index\.html$">
+              Header always set Cache-Control "no-cache, must-revalidate"
+            </FilesMatch>
+          </IfModule>
           EOF
 
       # La API se despliega sola en Render con cada push (ver render.yaml).

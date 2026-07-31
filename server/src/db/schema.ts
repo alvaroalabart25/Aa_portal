@@ -28,6 +28,7 @@ export const users = mysqlTable('users', {
   username: varchar('username', { length: 64 }).notNull().unique(),
   passwordHash: varchar('password_hash', { length: 255 }).notNull(),
   trackSecret: varchar('track_secret', { length: 64 }), // token del control remoto (Atajos iOS)
+  tokenVersion: int('token_version').notNull().default(0), // subirlo invalida todas las sesiones
   createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { clearToken } from '../lib/auth';
+import { clearToken, setToken } from '../lib/auth';
+import { post } from '../lib/api';
 import { MODULES, type PortalModule } from './modules';
 
 function SidebarItem({ mod }: { mod: PortalModule }) {
@@ -109,6 +110,19 @@ export default function Layout() {
     navigate('/login');
   }
 
+  // Invalida los tokens de todos los dispositivos y renueva el de este, para
+  // que un móvil perdido o una sesión robada dejen de servir al instante.
+  async function revokeAll() {
+    if (!confirm('¿Cerrar la sesión en todos los dispositivos? Tendrás que volver a entrar en el resto (aquí no).')) return;
+    try {
+      const r = await post<{ token: string }>('/auth/revoke-all', {});
+      setToken(r.token);
+      alert('Hecho: las demás sesiones ya no valen.');
+    } catch {
+      alert('No se ha podido completar. Inténtalo de nuevo.');
+    }
+  }
+
   return (
     <div className="shell">
       <aside className="sidebar">
@@ -133,6 +147,13 @@ export default function Layout() {
         </NavLink>
         <button className="btn ghost sm" onClick={logout}>
           Cerrar sesión
+        </button>
+        <button className="nav-item subtle" onClick={revokeAll} title="Invalida la sesión en cualquier otro dispositivo">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+            <rect x="4" y="10" width="16" height="11" rx="2" />
+            <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+          </svg>
+          <span>Cerrar en todos</span>
         </button>
       </aside>
 

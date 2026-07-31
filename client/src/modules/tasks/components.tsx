@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import {
   PRIORITY_LABEL,
   PROJECT_STATUS_LABEL,
@@ -247,11 +248,25 @@ export function Progress({ done, total }: { done: number; total: number }) {
   );
 }
 
+// Etiquetas permitidas en las notas: solo formato, nada ejecutable. Todo lo
+// que entra y sale del editor pasa por aquí, así un texto con <script> o con
+// un onerror= (por ejemplo, si algún día importamos datos de terceros) se
+// queda en texto inofensivo en lugar de ejecutarse con tu sesión delante.
+const NOTES_HTML = {
+  ALLOWED_TAGS: ['b', 'strong', 'i', 'em', 'u', 's', 'br', 'p', 'div', 'span', 'ul', 'ol', 'li', 'a', 'code', 'pre', 'blockquote', 'h1', 'h2', 'h3'],
+  ALLOWED_ATTR: ['href', 'target', 'rel'],
+  ALLOWED_URI_REGEXP: /^(?:https?|mailto):/i,
+};
+
+export function sanitizeNotes(html: string): string {
+  return DOMPurify.sanitize(html, NOTES_HTML);
+}
+
 function notesToHtml(value: string | null): string {
   if (!value) return '';
-  if (/<[a-z][\s\S]*>/i.test(value)) return value; // ya es HTML (formato nuevo)
+  if (/<[a-z][\s\S]*>/i.test(value)) return sanitizeNotes(value); // ya es HTML (formato nuevo)
   // notas antiguas en Markdown; breaks: los saltos de línea simples cuentan
-  return marked.parse(value, { breaks: true, async: false }) as string;
+  return sanitizeNotes(marked.parse(value, { breaks: true, async: false }) as string);
 }
 
 // Notas: editor enriquecido siempre activo (negrita/cursiva/subrayado/listas)
@@ -280,7 +295,7 @@ export function NotesBox({
     // si solo quedan <br> y etiquetas vacías, guardar vacío de verdad
     const html = ref.current.innerHTML;
     const textOnly = html.replace(/<br\s*\/?>/gi, '').replace(/&nbsp;/g, ' ').replace(/<[^>]+>/g, '').trim();
-    const toSave = textOnly === '' ? '' : html;
+    const toSave = textOnly === '' ? '' : sanitizeNotes(html);
     setStatus('saving');
     try {
       await onSave(toSave);

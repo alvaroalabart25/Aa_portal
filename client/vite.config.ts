@@ -2,9 +2,35 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// Política de contenido: se inyecta SOLO al construir. En desarrollo el HMR
+// necesita scripts en línea, así que ahí no se aplica.
+const API = process.env.VITE_API_URL ?? '';
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'", // React usa atributos style en línea
+  "img-src 'self' data:",
+  "font-src 'self'",
+  `connect-src 'self'${API ? ` ${API}` : ''}`,
+  "manifest-src 'self'",
+  "worker-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+  'upgrade-insecure-requests',
+].join('; ');
+
 export default defineConfig({
   plugins: [
     react(),
+    {
+      name: 'csp-en-produccion',
+      apply: 'build',
+      transformIndexHtml(html) {
+        return html.replace('<head>', `<head>\n    <meta http-equiv="Content-Security-Policy" content="${CSP}">`);
+      },
+    },
     VitePWA({
       // SW propio (src/sw.ts): precaché + manejadores de notificaciones push
       strategies: 'injectManifest',
@@ -38,5 +64,10 @@ export default defineConfig({
       // En dev, el front llama a /api y Vite lo reenvía al Express local
       '/api': 'http://localhost:3001',
     },
+  },
+  // `vite preview` sirve la build real (con su CSP) para poder comprobarla
+  preview: {
+    port: 4173,
+    proxy: { '/api': 'http://localhost:3001' },
   },
 });

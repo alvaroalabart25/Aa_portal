@@ -14,6 +14,7 @@ import { healthModule } from './modules/health';
 import { diaryModule } from './modules/diary';
 import { pushModule, pushRunner } from './modules/push';
 import { trackModule, trackSetup } from './modules/track';
+import { logSecurityEvent } from './lib/security';
 
 const app = express();
 
@@ -42,7 +43,16 @@ if (!origins.length) {
   }
   origins.push('http://localhost:5173');
 }
-app.use(cors({ origin: origins }));
+app.use(
+  cors({
+    origin(origin, cb) {
+      // sin origen = misma web o herramienta local (curl, atajos del iPhone)
+      if (!origin || origins.includes(origin)) return cb(null, true);
+      void logSecurityEvent('origen_no_permitido', null, `origen rechazado: ${origin.slice(0, 120)}`);
+      cb(null, false);
+    },
+  }),
+);
 app.use(express.json({ limit: '256kb' }));
 
 // Límites de tráfico: el del login frena la fuerza bruta (es la puerta de
@@ -53,9 +63,21 @@ const loginLimiter = rateLimit({
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   skipSuccessfulRequests: true,
-  message: { error: 'Demasiados intentos. Prueba de nuevo en unos minutos.' },
+  handler: (req, res) => {
+    void logSecurityEvent('limite_trafico', req, 'login bloqueado por demasiados intentos');
+    res.status(429).json({ error: 'Demasiados intentos. Prueba de nuevo en unos minutos.' });
+  },
 });
-const trackLimiter = rateLimit({ windowMs: 60 * 1000, limit: 60, standardHeaders: 'draft-7', legacyHeaders: false });
+const trackLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  handler: (req, res) => {
+    void logSecurityEvent('limite_trafico', req, 'control remoto bloqueado por exceso de llamadas');
+    res.status(429).json({ error: 'Demasiadas llamadas' });
+  },
+});
 const generalLimiter = rateLimit({ windowMs: 60 * 1000, limit: 300, standardHeaders: 'draft-7', legacyHeaders: false });
 app.use(generalLimiter);
 
@@ -92,6 +114,7 @@ app.use((err: Error, req: express.Request, res: express.Response, _next: express
   // Solo tipo y mensaje: los errores de mysql2 arrastran la consulta con sus
   // valores, y eso no debe acabar en los logs de la plataforma.
   console.error(`[${req.method} ${req.path}] ${err.name}: ${String(err.message).slice(0, 200)}`);
+  void logSecurityEvent('error_servidor', req, `${req.method} ${req.path}: ${err.name}`);
   res.status(500).json({ error: 'Error interno del servidor' });
 });
 

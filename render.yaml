@@ -46,3 +46,8 @@ services:
         sync: false
       - key: CRON_SECRET
         sync: false
+      - key: FRONT_URL
+        value: https://portal.alvaroalabart.es/
+      # Correo donde llegan los avisos de seguridad (se pone a mano: el repo es público)
+      - key: SECURITY_ALERT_TO
+        sync: false

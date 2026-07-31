@@ -6,6 +6,7 @@ import { ah } from '../../lib/async';
 import { db } from '../../db';
 import {
   events,
+  frontIntegrity,
   notificationPrefs,
   pushSubscriptions,
   routineChecks,
@@ -15,6 +16,8 @@ import {
   users,
 } from '../../db/schema';
 import type { AuthedRequest } from '../../core/auth/middleware';
+import { logSecurityEvent } from '../../lib/security';
+import crypto from 'crypto';
 
 // Notificaciones push (Web Push a la PWA instalada).
 // - El usuario activa el dispositivo desde el configurador (suscripción).
@@ -241,16 +244,62 @@ pushModule.post('/test', ah(async (req: AuthedRequest, res) => {
   res.json({ sent });
 }));
 
+// ---------- Vigilancia del front publicado ----------
+// El HTML de producción se resume en un hash. Cada despliegue nuestro lo
+// actualiza (POST /front-hash con el secreto del cron); el runner horario
+// compara lo que hay publicado con lo esperado. Si no cuadra, alguien ha
+// escrito en el servidor web sin pasar por el despliegue.
+async function comprobarFront(): Promise<string> {
+  const url = process.env.FRONT_URL;
+  if (!url) return 'sin FRONT_URL: vigilancia desactivada';
+  const res = await fetch(url, { headers: { 'cache-control': 'no-cache' } });
+  if (!res.ok) return `no se pudo leer el front (HTTP ${res.status})`;
+  const hash = crypto.createHash('sha256').update(await res.text()).digest('hex');
+
+  const [fila] = await db.select().from(frontIntegrity).where(eq(frontIntegrity.id, 1));
+  if (!fila) {
+    await db.insert(frontIntegrity).values({ id: 1, expectedHash: hash });
+    return 'primera huella guardada';
+  }
+  if (fila.expectedHash === hash) return 'front intacto';
+
+  await logSecurityEvent(
+    'front_modificado',
+    null,
+    `el HTML publicado no coincide con el del último despliegue (esperado ${fila.expectedHash.slice(0, 12)}…, encontrado ${hash.slice(0, 12)}…)`,
+  );
+  return 'FRONT MODIFICADO: avisado por correo';
+}
+
 // ---------- Disparador horario (GitHub Actions, con secreto) ----------
 export const pushRunner = Router();
 
+// El despliegue llama aquí al terminar para fijar la huella buena
+pushRunner.post('/front-hash', ah(async (req, res) => {
+  if (!process.env.CRON_SECRET || req.headers['x-cron-secret'] !== process.env.CRON_SECRET) {
+    await logSecurityEvent('cron_secreto_invalido', req, 'intento de fijar la huella del front sin el secreto');
+    return res.status(401).json({ error: 'No autorizado' });
+  }
+  const url = process.env.FRONT_URL;
+  if (!url) return res.status(400).json({ error: 'Falta FRONT_URL' });
+  const front = await fetch(url, { headers: { 'cache-control': 'no-cache' } });
+  if (!front.ok) return res.status(502).json({ error: `No se pudo leer el front (HTTP ${front.status})` });
+  const hash = crypto.createHash('sha256').update(await front.text()).digest('hex');
+  const [fila] = await db.select().from(frontIntegrity).where(eq(frontIntegrity.id, 1));
+  if (fila) await db.update(frontIntegrity).set({ expectedHash: hash, updatedAt: new Date() }).where(eq(frontIntegrity.id, 1));
+  else await db.insert(frontIntegrity).values({ id: 1, expectedHash: hash });
+  res.json({ ok: true, hash: hash.slice(0, 12) });
+}));
+
 pushRunner.post('/run', ah(async (req, res) => {
   if (!process.env.CRON_SECRET || req.headers['x-cron-secret'] !== process.env.CRON_SECRET) {
+    await logSecurityEvent('cron_secreto_invalido', req, 'intento de disparar los avisos sin el secreto');
     return res.status(401).json({ error: 'No autorizado' });
   }
   if (!vapidConfigured()) return res.json({ sent: 0, reason: 'VAPID no configurado' });
   setupVapid();
 
+  const estadoFront = await comprobarFront().catch((e) => `fallo al comprobar el front: ${(e as Error).message.slice(0, 80)}`);
   const { iso: today, hhmm } = madridNow();
   const allUsers = await db.select({ id: users.id }).from(users);
   const results: Array<{ user: number; type: string; sent: number }> = [];
@@ -279,7 +328,7 @@ pushRunner.post('/run', ah(async (req, res) => {
       }
     }
   }
-  res.json({ time: `${today} ${hhmm}`, results });
+  res.json({ time: `${today} ${hhmm}`, front: estadoFront, results });
 }));
 
 // referencia usada solo para tipado/documentación del radar

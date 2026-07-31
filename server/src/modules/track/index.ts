@@ -5,6 +5,7 @@ import { ah } from '../../lib/async';
 import { db } from '../../db';
 import { diarySessions, healthEntries, routineItems, users } from '../../db/schema';
 import type { AuthedRequest } from '../../core/auth/middleware';
+import { logSecurityEvent } from '../../lib/security';
 
 // Control remoto del Diario (Atajos de iOS): un GET/POST con token propio
 // registra sin abrir la app. El token vive en la BD (users.track_secret),
@@ -49,7 +50,10 @@ trackModule.all('/track', ah(async (req, res) => {
   const t = String(q.t ?? req.headers['x-track-secret'] ?? '');
   if (!t) return res.status(401).json({ ok: false, message: 'Falta el token' });
   const [user] = await db.select().from(users).where(eq(users.trackSecret, t));
-  if (!user) return res.status(401).json({ ok: false, message: 'Token inválido' });
+  if (!user) {
+    await logSecurityEvent('track_token_invalido', req, `acción pedida: ${String(q.action ?? '(ninguna)').slice(0, 40)}`);
+    return res.status(401).json({ ok: false, message: 'Token inválido' });
+  }
 
   const action = String(q.action ?? '');
   const now = madridNow();

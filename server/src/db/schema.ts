@@ -355,6 +355,27 @@ export const diarySessions = mysqlTable('diary_sessions', {
   createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Seguridad: bitácora de lo anómalo (accesos fallidos, tokens inválidos,
+// límites de tráfico...). De aquí salen los avisos por correo.
+export const securityEvents = mysqlTable('security_events', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  kind: varchar('kind', { length: 40 }).notNull(),
+  severity: varchar('severity', { length: 10 }).notNull(),
+  ip: varchar('ip', { length: 64 }),
+  userAgent: varchar('user_agent', { length: 255 }),
+  detail: varchar('detail', { length: 500 }),
+  notified: int('notified').notNull().default(0),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Huella del front publicado: si el HTML en producción cambia sin que haya
+// habido un despliegue nuestro, alguien ha tocado los ficheros del servidor.
+export const frontIntegrity = mysqlTable('front_integrity', {
+  id: int('id').primaryKey(),
+  expectedHash: varchar('expected_hash', { length: 64 }).notNull(),
+  updatedAt: datetime('updated_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export type User = typeof users.$inferSelect;
 export type Space = typeof spaces.$inferSelect;
 export type Project = typeof projects.$inferSelect;

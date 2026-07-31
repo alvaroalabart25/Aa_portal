@@ -68,3 +68,14 @@ jobs:
         run: |
           code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 https://portal.alvaroalabart.es/ || true)
           echo "Front -> HTTP $code"
+
+      # Deja constancia de la huella del HTML recién publicado: a partir de
+      # ahora, cualquier cambio en el servidor que no venga de un despliegue
+      # dispara un aviso por correo.
+      - name: Fijar huella del front
+        run: |
+          sleep 10
+          curl -fsS -X POST \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            --max-time 60 --retry 3 --retry-delay 15 \
+            https://aa-portal-api.onrender.com/api/push/front-hash || echo "aviso: no se pudo fijar la huella"

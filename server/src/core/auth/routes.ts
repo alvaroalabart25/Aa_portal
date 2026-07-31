@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '../../db';
 import { users } from '../../db/schema';
 import { bumpTokenVersion, requireAuth, type AuthedRequest } from './middleware';
+import { clientIp, esOrigenNuevo, logSecurityEvent } from '../../lib/security';
 
 export const authRouter = Router();
 
@@ -25,7 +26,14 @@ authRouter.post('/login', ah(async (req, res) => {
   }
   const [user] = await db.select().from(users).where(eq(users.username, username));
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+    await logSecurityEvent('login_fallido', req, `usuario probado: ${username.slice(0, 40)}`);
     return res.status(401).json({ error: 'Credenciales incorrectas' });
+  }
+
+  // Aviso inmediato si es la primera vez que se entra desde esta IP
+  const ip = clientIp(req);
+  if (await esOrigenNuevo(ip)) {
+    await logSecurityEvent('login_nuevo_origen', req, 'acceso correcto desde una IP no vista antes');
   }
   res.json({ token: signToken(user.id, user.tokenVersion), username: user.username });
 }));
@@ -38,5 +46,6 @@ authRouter.post('/revoke-all', requireAuth, ah(async (req: AuthedRequest, res) =
   const nextVersion = user.tokenVersion + 1;
   await db.update(users).set({ tokenVersion: nextVersion }).where(eq(users.id, user.id));
   bumpTokenVersion(user.id, nextVersion);
+  await logSecurityEvent('sesiones_revocadas', req, 'se han invalidado las sesiones de todos los dispositivos');
   res.json({ token: signToken(user.id, nextVersion) });
 }));

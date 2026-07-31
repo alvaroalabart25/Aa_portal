@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { eq } from 'drizzle-orm';
 import { db } from '../../db';
 import { users } from '../../db/schema';
+import { logSecurityEvent } from '../../lib/security';
 
 export interface AuthedRequest extends Request {
   userId?: number;
@@ -37,7 +38,10 @@ export async function requireAuth(req: AuthedRequest, res: Response, next: NextF
   try {
     // Algoritmo fijado: no se negocia con lo que traiga el token
     payload = jwt.verify(token, process.env.JWT_SECRET as string, { algorithms: ['HS256'] }) as typeof payload;
-  } catch {
+  } catch (e) {
+    // Un token caducado es normal; una firma inválida es un intento de forjarlo
+    const motivo = (e as Error).name === 'TokenExpiredError' ? 'caducado' : 'firma inválida';
+    if (motivo !== 'caducado') void logSecurityEvent('token_invalido', req, `token rechazado: ${motivo}`);
     return res.status(401).json({ error: 'Token inválido o caducado' });
   }
 
@@ -49,6 +53,7 @@ export async function requireAuth(req: AuthedRequest, res: Response, next: NextF
   // Un token emitido antes de la última revocación ya no sirve
   const version = await currentTokenVersion(userId);
   if (version === null || (payload.tv ?? 0) !== version) {
+    void logSecurityEvent('sesion_revocada_uso', req, 'se ha usado un token de una sesión ya invalidada');
     return res.status(401).json({ error: 'Sesión revocada, vuelve a entrar' });
   }
 

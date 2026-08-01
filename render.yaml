@@ -48,6 +48,11 @@ services:
         sync: false
       - key: FRONT_URL
         value: https://portal.alvaroalabart.es/
+      # Dominio al que se atan las llaves de acceso (Face ID)
+      - key: WEBAUTHN_RP_ID
+        value: portal.alvaroalabart.es
+      - key: WEBAUTHN_ORIGINS
+        value: https://portal.alvaroalabart.es
       # Correo donde llegan los avisos de seguridad (se pone a mano: el repo es público)
       - key: SECURITY_ALERT_TO
         sync: false

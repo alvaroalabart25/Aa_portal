@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { clearToken } from '../lib/auth';
+import { entrarConPasskey, marcarActividad, tocaBloquear } from '../lib/passkeys';
 import { MODULES, type PortalModule } from './modules';
 
 function SidebarItem({ mod }: { mod: PortalModule }) {
@@ -101,8 +102,77 @@ function BottomBar() {
   );
 }
 
+// Pantalla de bloqueo: tapa el portal hasta pasar Face ID. Solo aparece si has
+// activado el bloqueo y la app llevaba un rato cerrada.
+function Bloqueo({ onAbrir }: { onAbrir: () => void }) {
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  async function desbloquear() {
+    setBusy(true);
+    setError('');
+    try {
+      await entrarConPasskey(); // renueva la sesión de paso
+      marcarActividad();
+      onAbrir();
+    } catch (e) {
+      const err = e as Error;
+      setError(err.name === 'NotAllowedError' ? '' : err.message || 'No se pudo desbloquear');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="lock-wrap">
+      <div className="lock-card">
+        <div className="brand">Aa</div>
+        <p className="muted" style={{ fontSize: 14, margin: '0 0 4px' }}>Portal bloqueado</p>
+        <button className="btn" disabled={busy} onClick={desbloquear}>
+          🔓 Desbloquear con Face ID
+        </button>
+        {error && <div className="error-msg">{error}</div>}
+        <button
+          className="btn ghost sm"
+          onClick={() => {
+            clearToken();
+            window.location.href = '/login';
+          }}
+        >
+          Entrar con contraseña
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function Layout() {
   const navigate = useNavigate();
+  const [bloqueado, setBloqueado] = useState(() => tocaBloquear());
+
+  // Se marca actividad mientras usas el portal, y al volver de segundo plano
+  // se comprueba si toca pedir la cara otra vez.
+  useEffect(() => {
+    if (!bloqueado) marcarActividad();
+    const alVolver = () => {
+      if (document.visibilityState === 'visible') {
+        if (tocaBloquear()) setBloqueado(true);
+        else marcarActividad();
+      } else {
+        marcarActividad();
+      }
+    };
+    const tic = setInterval(() => {
+      if (document.visibilityState === 'visible' && !bloqueado) marcarActividad();
+    }, 60_000);
+    document.addEventListener('visibilitychange', alVolver);
+    return () => {
+      document.removeEventListener('visibilitychange', alVolver);
+      clearInterval(tic);
+    };
+  }, [bloqueado]);
+
+  if (bloqueado) return <Bloqueo onAbrir={() => setBloqueado(false)} />;
 
   function logout() {
     clearToken();

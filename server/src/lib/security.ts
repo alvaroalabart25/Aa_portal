@@ -25,7 +25,9 @@ export type EventKind =
   | 'front_modificado'
   | 'contrasena_cambiada'
   | '2fa_activado'
-  | '2fa_desactivado';
+  | '2fa_desactivado'
+  | 'passkey_registrada'
+  | 'passkey_borrada';
 
 interface Regla {
   severidad: 'alta' | 'media' | 'baja';
@@ -52,6 +54,8 @@ const REGLAS: Record<EventKind, Regla> = {
   contrasena_cambiada: { severidad: 'alta', umbral: 1, ventanaMin: 1, enfriamientoMin: 0, asunto: 'Tu contraseña ha cambiado' },
   '2fa_activado': { severidad: 'alta', umbral: 1, ventanaMin: 1, enfriamientoMin: 0, asunto: 'Segundo factor activado' },
   '2fa_desactivado': { severidad: 'alta', umbral: 1, ventanaMin: 1, enfriamientoMin: 0, asunto: 'Segundo factor DESACTIVADO' },
+  passkey_registrada: { severidad: 'alta', umbral: 1, ventanaMin: 1, enfriamientoMin: 0, asunto: 'Nueva llave de acceso (Face ID) registrada' },
+  passkey_borrada: { severidad: 'alta', umbral: 1, ventanaMin: 1, enfriamientoMin: 0, asunto: 'Llave de acceso eliminada' },
 };
 
 const ultimoAviso = new Map<EventKind, number>();

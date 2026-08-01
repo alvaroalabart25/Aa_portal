@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { setToken } from '../lib/auth';
+import { entrarConPasskey, marcarActividad, passkeysSoportadas } from '../lib/passkeys';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -11,6 +12,22 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const conFaceId = passkeysSoportadas();
+
+  async function entrarConCara() {
+    setError('');
+    setLoading(true);
+    try {
+      await entrarConPasskey();
+      marcarActividad();
+      navigate('/agenda');
+    } catch (e) {
+      const err = e as Error;
+      setError(err.name === 'NotAllowedError' ? '' : err.message || 'No se pudo entrar con Face ID');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -24,6 +41,7 @@ export default function Login() {
         skipAuthRedirect: true,
       });
       setToken(res.token);
+      marcarActividad();
       navigate('/agenda');
     } catch (err) {
       const e = err as Error & { need2fa?: boolean };
@@ -86,6 +104,14 @@ export default function Login() {
         <button className="btn" disabled={loading || (pide2fa && code.trim().length < 6)}>
           {loading ? 'Entrando…' : pide2fa ? 'Verificar y entrar' : 'Entrar'}
         </button>
+        {conFaceId && !pide2fa && (
+          <>
+            <div className="login-sep">o</div>
+            <button type="button" className="btn ghost" disabled={loading} onClick={entrarConCara}>
+              🔓 Entrar con Face ID
+            </button>
+          </>
+        )}
       </form>
     </div>
   );

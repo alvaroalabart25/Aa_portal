@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import { desc, eq } from 'drizzle-orm';
 import { db } from '../../db';
 import { securityEvents, users } from '../../db/schema';
+import { passkeysRouter, usarFirmador } from './passkeys';
 import { bumpTokenVersion, requireAuth, type AuthedRequest } from './middleware';
 import { clientIp, esOrigenNuevo, logSecurityEvent } from '../../lib/security';
 import { z } from 'zod';
@@ -20,6 +21,10 @@ function signToken(userId: number, tokenVersion: number): string {
     expiresIn: '30d',
   });
 }
+
+// Las passkeys viven en su propio fichero pero comparten la firma del token
+usarFirmador(signToken);
+authRouter.use(passkeysRouter);
 
 // POST /api/auth/login  { username, password } -> { token }
 authRouter.post('/login', ah(async (req, res) => {

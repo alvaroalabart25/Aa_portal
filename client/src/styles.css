@@ -711,3 +711,9 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   .sg-event { grid-template-columns: 1fr auto; }
   .sg-event-when { grid-column: 1 / -1; }
 }
+
+/* Pantalla de bloqueo (Face ID) y separador del login */
+.lock-wrap { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: var(--paper); }
+.lock-card { display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; max-width: 300px; width: 100%; }
+.login-sep { display: flex; align-items: center; gap: 10px; color: var(--ink-muted); font-size: 12px; margin: 2px 0; }
+.login-sep::before, .login-sep::after { content: ''; flex: 1; height: 1px; background: var(--line); }

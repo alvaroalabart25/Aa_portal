@@ -357,6 +357,22 @@ export const diarySessions = mysqlTable('diary_sessions', {
   createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Passkeys (Face ID / Touch ID): llaves públicas registradas por dispositivo.
+// La privada nunca sale del móvil, así que aquí no hay nada que robar.
+export const webauthnCredentials = mysqlTable('webauthn_credentials', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  credentialId: varchar('credential_id', { length: 255 }).notNull().unique(),
+  publicKey: text('public_key').notNull(),
+  counter: bigint('counter', { mode: 'number' }).notNull().default(0),
+  transports: varchar('transports', { length: 120 }),
+  deviceName: varchar('device_name', { length: 80 }).notNull().default('Dispositivo'),
+  lastUsedAt: datetime('last_used_at'),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 // Seguridad: bitácora de lo anómalo (accesos fallidos, tokens inválidos,
 // límites de tráfico...). De aquí salen los avisos por correo.
 export const securityEvents = mysqlTable('security_events', {

@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { get, post } from '../../lib/api';
 import { setToken } from '../../lib/auth';
+import {
+  activarBloqueo,
+  bloqueoActivado,
+  MINUTOS_PARA_BLOQUEAR,
+  passkeysApi,
+  passkeysSoportadas,
+  registrarPasskey,
+  type Passkey,
+} from '../../lib/passkeys';
 
 interface EventoSeguridad {
   id: number;
@@ -30,6 +39,120 @@ const NOMBRES: Record<string, string> = {
 
 function fecha(iso: string): string {
   return new Date(iso).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+// Llaves de acceso (Face ID / Touch ID) y bloqueo de la app
+function LlavesDeAcceso() {
+  const [llaves, setLlaves] = useState<Passkey[]>([]);
+  const [nombre, setNombre] = useState('');
+  const [bloqueo, setBloqueo] = useState(bloqueoActivado());
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
+  const soportado = passkeysSoportadas();
+
+  const cargar = useCallback(async () => setLlaves(await passkeysApi.lista()), []);
+  useEffect(() => {
+    cargar();
+  }, [cargar]);
+
+  async function registrar() {
+    setBusy(true);
+    setMsg('');
+    try {
+      await registrarPasskey(nombre.trim() || 'Este dispositivo');
+      setNombre('');
+      setMsg('✅ Llave registrada. Ya puedes entrar con Face ID.');
+      await cargar();
+    } catch (e) {
+      const err = e as Error;
+      // si el usuario cancela el diálogo del sistema no es un error que contar
+      setMsg(err.name === 'NotAllowedError' ? 'Cancelado.' : err.message || 'No se pudo registrar');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function borrar(k: Passkey) {
+    if (!confirm(`¿Eliminar la llave «${k.deviceName}»? Ese dispositivo dejará de poder entrar con Face ID.`)) return;
+    await passkeysApi.borrar(k.id);
+    await cargar();
+  }
+
+  function cambiarBloqueo(v: boolean) {
+    activarBloqueo(v);
+    setBloqueo(v);
+  }
+
+  return (
+    <section className="section">
+      <div className="page-head">
+        <h2>Entrar con Face ID</h2>
+        <span className="badge" style={{ color: llaves.length ? '#2f9e44' : 'var(--ink-muted)', fontWeight: 600 }}>
+          <span className="dot" style={{ background: llaves.length ? '#2f9e44' : 'var(--line)' }} />
+          {llaves.length ? `${llaves.length} llave${llaves.length === 1 ? '' : 's'}` : 'Sin llaves'}
+        </span>
+      </div>
+
+      {!soportado ? (
+        <p className="muted" style={{ fontSize: 13.5, marginTop: 6 }}>
+          Este navegador no admite llaves de acceso. En iPhone funciona desde Safari y desde la app instalada.
+        </p>
+      ) : (
+        <>
+          <p className="muted" style={{ fontSize: 13.5, lineHeight: 1.6, marginTop: 6 }}>
+            Registra este dispositivo y entrarás con tu cara o tu huella, sin escribir nada. La llave se guarda en el
+            llavero del dispositivo (y se sincroniza con iCloud), nunca en el portal, y solo sirve para este dominio:
+            una web falsa no puede usarla. Tu contraseña sigue funcionando como respaldo.
+          </p>
+
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 12 }}>
+            <input
+              placeholder="Nombre (iPhone, Mac…)"
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              style={{ width: 190 }}
+            />
+            <button className="btn" disabled={busy} onClick={registrar}>
+              Registrar este dispositivo
+            </button>
+          </div>
+
+          {llaves.length > 0 && (
+            <div className="roadmap-list" style={{ marginTop: 14 }}>
+              {llaves.map((k) => (
+                <div key={k.id} className="roadmap-row" style={{ justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 13.5, color: 'var(--ink)' }}>
+                    🔑 {k.deviceName}
+                    <span className="muted" style={{ marginLeft: 8, fontSize: 12 }}>
+                      {k.lastUsedAt ? `usada ${fecha(k.lastUsedAt)}` : 'sin usar todavía'}
+                    </span>
+                  </span>
+                  <button className="btn ghost sm" onClick={() => borrar(k)}>
+                    Eliminar
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {llaves.length > 0 && (
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 9, margin: '16px 0 0', fontSize: 13.5, color: 'var(--ink)' }}>
+              <input type="checkbox" checked={bloqueo} onChange={(e) => cambiarBloqueo(e.target.checked)} style={{ marginTop: 2 }} />
+              <span>
+                Bloquear la app con Face ID
+                <span className="muted" style={{ display: 'block', fontSize: 12.5, marginTop: 2 }}>
+                  Al abrirla tras {MINUTOS_PARA_BLOQUEAR} minutos sin usarla pedirá tu cara antes de mostrar nada. Recomendado
+                  para cuando entren los datos del banco.
+                </span>
+              </span>
+            </label>
+          )}
+
+          {msg && <p style={{ fontSize: 13.5, marginTop: 12 }}>{msg}</p>}
+        </>
+      )}
+    </section>
+  );
 }
 
 // Contraseña: exige la actual y cierra las demás sesiones al cambiarla
@@ -253,6 +376,7 @@ export default function SeguridadPage() {
 
   return (
     <div>
+      <LlavesDeAcceso />
       <SegundoFactor activo={activo} onCambio={cargar} />
       <CambiarContrasena />
 

@@ -42,7 +42,7 @@ jobs:
             Header always set X-Content-Type-Options "nosniff"
             Header always set X-Frame-Options "DENY"
             Header always set Referrer-Policy "strict-origin-when-cross-origin"
-            Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=()"
+            Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(), publickey-credentials-get=(self)"
             Header always set Cross-Origin-Opener-Policy "same-origin"
             # El index nunca se cachea: así un despliegue nuevo llega siempre
             <FilesMatch "index\.html$">

@@ -253,10 +253,6 @@ export default function SeguridadPage() {
 
   return (
     <div>
-      <div className="page-head">
-        <h1>Seguridad</h1>
-      </div>
-
       <SegundoFactor activo={activo} onCambio={cargar} />
       <CambiarContrasena />
 

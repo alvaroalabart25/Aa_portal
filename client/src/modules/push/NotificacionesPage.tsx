@@ -110,10 +110,6 @@ export default function NotificacionesPage() {
 
   return (
     <div>
-      <div className="page-head">
-        <h1>Notificaciones</h1>
-      </div>
-
       {!supported && (
         <p className="quarter-result" style={{ marginTop: 18 }}>
           Este navegador no soporta notificaciones push. En iPhone: instala la app (Safari → Compartir → «Añadir a

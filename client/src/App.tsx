@@ -13,9 +13,8 @@ import FacturasPage from './modules/autonomo/FacturasPage';
 import CuentasPage from './modules/autonomo/CuentasPage';
 import RoadmapPage from './modules/roadmap/RoadmapPage';
 import RutinaPage from './modules/routine/RutinaPage';
-import NotificacionesPage from './modules/push/NotificacionesPage';
 import DiarioPage from './modules/health/DiarioPage';
-import SeguridadPage from './modules/security/SeguridadPage';
+import Configuracion from './pages/Configuracion';
 
 function RequireAuth() {
   return isLoggedIn() ? <Outlet /> : <Navigate to="/login" replace />;
@@ -41,9 +40,11 @@ export default function App() {
             <Route path="/autonomo/cuentas" element={<CuentasPage />} />
             <Route path="/roadmap" element={<RoadmapPage />} />
             <Route path="/rutina" element={<RutinaPage />} />
-            <Route path="/notificaciones" element={<NotificacionesPage />} />
+            <Route path="/configuracion" element={<Configuracion />} />
+            {/* enlaces antiguos: siguen funcionando */}
+            <Route path="/notificaciones" element={<Navigate to="/configuracion?tab=notificaciones" replace />} />
+            <Route path="/seguridad" element={<Navigate to="/configuracion" replace />} />
             <Route path="/diario" element={<DiarioPage />} />
-            <Route path="/seguridad" element={<SeguridadPage />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

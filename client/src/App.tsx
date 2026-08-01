@@ -15,6 +15,7 @@ import RoadmapPage from './modules/roadmap/RoadmapPage';
 import RutinaPage from './modules/routine/RutinaPage';
 import NotificacionesPage from './modules/push/NotificacionesPage';
 import DiarioPage from './modules/health/DiarioPage';
+import SeguridadPage from './modules/security/SeguridadPage';
 
 function RequireAuth() {
   return isLoggedIn() ? <Outlet /> : <Navigate to="/login" replace />;
@@ -42,6 +43,7 @@ export default function App() {
             <Route path="/rutina" element={<RutinaPage />} />
             <Route path="/notificaciones" element={<NotificacionesPage />} />
             <Route path="/diario" element={<DiarioPage />} />
+            <Route path="/seguridad" element={<SeguridadPage />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

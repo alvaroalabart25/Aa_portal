@@ -22,7 +22,10 @@ export type EventKind =
   | 'origen_no_permitido'
   | 'error_servidor'
   | 'sesiones_revocadas'
-  | 'front_modificado';
+  | 'front_modificado'
+  | 'contrasena_cambiada'
+  | '2fa_activado'
+  | '2fa_desactivado';
 
 interface Regla {
   severidad: 'alta' | 'media' | 'baja';
@@ -46,6 +49,9 @@ const REGLAS: Record<EventKind, Regla> = {
   error_servidor: { severidad: 'baja', umbral: 10, ventanaMin: 15, enfriamientoMin: 120, asunto: 'Errores repetidos en la API' },
   sesiones_revocadas: { severidad: 'alta', umbral: 1, ventanaMin: 1, enfriamientoMin: 0, asunto: 'Se han cerrado todas las sesiones' },
   front_modificado: { severidad: 'alta', umbral: 1, ventanaMin: 1, enfriamientoMin: 60, asunto: 'El portal ha cambiado sin despliegue' },
+  contrasena_cambiada: { severidad: 'alta', umbral: 1, ventanaMin: 1, enfriamientoMin: 0, asunto: 'Tu contraseña ha cambiado' },
+  '2fa_activado': { severidad: 'alta', umbral: 1, ventanaMin: 1, enfriamientoMin: 0, asunto: 'Segundo factor activado' },
+  '2fa_desactivado': { severidad: 'alta', umbral: 1, ventanaMin: 1, enfriamientoMin: 0, asunto: 'Segundo factor DESACTIVADO' },
 };
 
 const ultimoAviso = new Map<EventKind, number>();

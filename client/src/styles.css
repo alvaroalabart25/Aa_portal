@@ -697,3 +697,17 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .dy-check:hover .dy-check-x { color: var(--ink-muted); }
 .dy-check-add { margin-top: 10px; background: none; border: none; padding: 4px 2px; font-family: inherit; font-size: 13px; color: var(--ink-muted); cursor: pointer; }
 .dy-check-add:hover { color: var(--ink); }
+
+/* Seguridad */
+.sg-form { display: flex; flex-direction: column; gap: 12px; max-width: 340px; margin-top: 12px; }
+.sg-events { display: flex; flex-direction: column; gap: 2px; margin-top: 10px; }
+.sg-event { display: grid; grid-template-columns: 108px 1fr 118px; gap: 10px; align-items: center; font-size: 13px; padding: 6px 8px; border-radius: 6px; border-left: 3px solid var(--line); }
+.sg-event.alta { border-left-color: var(--danger); background: #fdf5f5; }
+.sg-event.media { border-left-color: #e8590c; background: var(--paper-soft); }
+.sg-event.baja { border-left-color: var(--line); }
+.sg-event-when { color: var(--ink-muted); font-size: 12px; }
+.sg-event-ip { color: var(--ink-muted); font-size: 12px; text-align: right; }
+@media (max-width: 640px) {
+  .sg-event { grid-template-columns: 1fr auto; }
+  .sg-event-when { grid-column: 1 / -1; }
+}

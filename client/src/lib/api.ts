@@ -5,7 +5,10 @@ import { clearToken, getToken } from './auth';
 export const API_BASE = ((import.meta.env.VITE_API_URL as string | undefined) ?? '').replace(/\/$/, '');
 
 // Cliente API base: token automático y manejo de sesión caducada.
-export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
+export async function api<T>(
+  path: string,
+  options: RequestInit & { skipAuthRedirect?: boolean } = {},
+): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
@@ -15,14 +18,16 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
 
   const res = await fetch(`${API_BASE}/api${path}`, { ...options, headers });
 
-  if (res.status === 401) {
+  if (res.status === 401 && !options.skipAuthRedirect) {
     clearToken();
     window.location.href = '/login';
     throw new Error('Sesión caducada');
   }
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error((body as { error?: string }).error ?? `Error ${res.status}`);
+    const body = (await res.json().catch(() => ({}))) as { error?: string; need2fa?: boolean };
+    // el login necesita distinguir "falta el código" de "credenciales mal"
+    const err = Object.assign(new Error(body.error ?? `Error ${res.status}`), { need2fa: body.need2fa });
+    throw err;
   }
   return res.json();
 }

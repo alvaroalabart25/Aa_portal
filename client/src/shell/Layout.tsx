@@ -103,9 +103,13 @@ function BottomBar() {
     </NavLink>
   );
 
+  // Cuando todo cabe (los submenús son cortos) se reparte el ancho entre los
+  // que hay; solo el primer nivel, con seis apartados, necesita desplazarse.
+  const CABEN = 4;
+
   if (group === null) {
     return (
-      <nav className="bottombar">
+      <nav className={`bottombar${enOrden.length + 1 <= CABEN ? ' llena' : ''}`}>
         {/* se recorre MODULES entero: un módulo sin hijos es un enlace directo,
             uno con hijos abre su segundo nivel */}
         {enOrden.map((m) =>
@@ -138,15 +142,17 @@ function BottomBar() {
   }
 
   const g = groups.find((x) => x.id === group)!;
+  const hijos = g.children!.filter((c) => !HIDDEN_ON_MOBILE.has(c.id));
+  // «Volver» + los hijos (+ Agenda si es Organización)
+  const cuantos = hijos.length + 1 + (group === 'org' ? 1 : 0);
   return (
-    <nav className="bottombar">
+    <nav className={`bottombar${cuantos <= CABEN ? ' llena' : ''}`}>
       <button className="nav-item" aria-label="Volver" onClick={() => setGroup(null)}>
         <span style={{ fontSize: 17, lineHeight: '18px' }}>‹</span>
         <span>Volver</span>
       </button>
       {group === 'org' && agendaLink}
-      {g.children!
-        .filter((c) => !HIDDEN_ON_MOBILE.has(c.id))
+      {hijos
         .map((c) => (
           // to={destino(c)} y el activo calculado a mano: sin esto, los tres
           // subapartados de Sueños llevaban todos a la misma pestaña y salían

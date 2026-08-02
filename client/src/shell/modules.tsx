@@ -91,7 +91,7 @@ const iconoSub = (d: string) => (
  * hoy, así que delante va lo del día a día y las metas quedan en cuarto lugar.
  * Lo que no esté aquí va detrás, en el orden en que esté declarado.
  */
-export const ORDEN_MOVIL = ['agenda', 'salud', 'org', 'suenos'];
+export const ORDEN_MOVIL = ['agenda', 'org', 'salud', 'suenos'];
 
 export const MODULES: PortalModule[] = [
   { id: 'agenda', title: 'Agenda', path: '/agenda', icon: icons.agenda },

@@ -34,19 +34,28 @@ export default function TaskPage() {
 
   return (
     <div>
-      <div className="crumbs">
-        <Link to="/agenda" className="btn ghost sm" style={{ marginRight: 8 }}>
+      {/* Una sola línea: volver + dónde estás. El proyecto no va aquí, va de
+          antetítulo justo encima del nombre, y el nombre de la tarea no se
+          repite: ya es el título. */}
+      <div className="tk-crumbs">
+        <Link to="/agenda" className="btn ghost sm tk-back">
           ‹ Agenda
         </Link>
-        <Link to="/espacios">Espacios</Link> ›{' '}
-        <Link to={`/espacios/${task.spaceId}`}>{task.spaceName}</Link> ›{' '}
-        <Link to={`/proyectos/${task.projectId}`}>{task.projectName}</Link> ›{' '}
-        <span style={{ color: 'var(--ink)' }}>{task.title}</span>
+        <span className="tk-path">
+          <Link to="/espacios">Espacios</Link>
+          <span className="tk-sep">›</span>
+          <Link to={`/espacios/${task.spaceId}`}>{task.spaceName}</Link>
+        </span>
       </div>
 
-      <div className="page-head">
+      <div className="tk-head">
+        <div className="tk-eyebrow-row">
+          <Link to={`/proyectos/${task.projectId}`} className="tk-eyebrow">
+            {task.projectName}
+          </Link>
+          <KebabMenu items={[{ label: 'Eliminar tarea', danger: true, onClick: archive }]} />
+        </div>
         <EditableTitle value={task.title} onSave={async (title) => update({ title })} />
-        <KebabMenu items={[{ label: 'Eliminar tarea', danger: true, onClick: archive }]} />
       </div>
 
       <div className="form-grid" style={{ marginTop: 18 }}>

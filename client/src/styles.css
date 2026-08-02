@@ -94,9 +94,9 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 @media (max-width: 720px) {
   .sidebar { display: none; }
   .main { padding: 18px 14px calc(124px + env(safe-area-inset-bottom)); }
-  /* Cuatro apartados a la vista y el resto desplazando a la derecha. El ancho
-     está calculado para que en una pantalla de 375 px entren cuatro enteros y
-     asome el quinto: ese trozo es lo que avisa de que hay más. */
+  /* Cuatro apartados ocupando el ancho justo y el resto desplazando a la
+     derecha. Nada asoma por el borde: un trozo de icono cortado parece un fallo.
+     Con `.llena` (los submenús, que son cortos) se reparten todo el ancho. */
   .bottombar {
     display: flex; position: fixed; bottom: 0; left: 0; right: 0;
     background: var(--paper); border-top: 1px solid var(--line);
@@ -109,12 +109,15 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   }
   .bottombar::-webkit-scrollbar { display: none; }
   .bottombar .nav-item {
-    flex: 0 0 auto; min-width: 86px;
+    flex: 0 0 25%; min-width: 0;
     scroll-snap-align: start;
     justify-content: flex-end; align-items: center;
-    flex-direction: column; gap: 3px; font-size: 11.5px; padding: 7px 6px;
+    flex-direction: column; gap: 3px; font-size: 11.5px; padding: 7px 4px;
     border: none; background: none; color: var(--ink-muted);
   }
+  .bottombar.llena { overflow-x: visible; }
+  .bottombar.llena .nav-item { flex: 1 1 0; }
+  .bottombar .nav-item span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
   .bottombar .nav-item span { white-space: nowrap; }
   .bottombar .nav-item.active { background: none; color: var(--ink); font-weight: 700; }
 }
@@ -273,6 +276,29 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .date-btn:hover { background: var(--paper-soft); border-color: var(--line); }
 .date-inline { padding: 3px 6px; font-size: 13px; max-width: 150px; }
 
+/* ---------- Ficha de tarea: migas, antetítulo y título ---------- */
+/* Todo en una línea, y si el nombre del espacio es largo se recorta él, no la
+   línea entera. El proyecto va de antetítulo debajo, no aquí. */
+.tk-crumbs { display: flex; align-items: center; gap: 10px; min-width: 0; margin-bottom: 22px; }
+.tk-back { flex: 0 0 auto; }
+.tk-path {
+  display: flex; align-items: center; gap: 6px; min-width: 0;
+  font-size: 13px; color: var(--ink-muted); white-space: nowrap;
+}
+.tk-path a { overflow: hidden; text-overflow: ellipsis; }
+.tk-path a:hover { color: var(--ink); text-decoration: underline; }
+.tk-sep { flex: 0 0 auto; }
+
+.tk-head { display: flex; flex-direction: column; gap: 4px; }
+/* El antetítulo y los tres puntos comparten línea: así el botón queda pegado al
+   borde derecho y su menú se abre hacia dentro en vez de salirse. */
+.tk-eyebrow-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
+.tk-eyebrow {
+  font-size: 11.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--ink-muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.tk-eyebrow:hover { color: var(--ink); }
+
 /* ---------- Menú de tres puntos ---------- */
 .kebab-btn {
   width: 32px; height: 32px; border-radius: 99px;
@@ -281,6 +307,9 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   display: inline-flex; align-items: center; justify-content: center;
 }
 .kebab-btn:hover { background: var(--paper-soft); border-color: var(--ink-muted); }
+/* El menú se abre hacia dentro y nunca más ancho que la pantalla: alineado a la
+   derecha del botón, si el botón estaba a la izquierda se salía por el borde. */
+.status-menu { max-width: calc(100vw - 28px); }
 
 
 

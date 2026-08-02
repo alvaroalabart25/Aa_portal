@@ -109,7 +109,7 @@ function BottomBar() {
 
   if (group === null) {
     return (
-      <nav className={`bottombar${enOrden.length + 1 <= CABEN ? ' llena' : ''}`}>
+      <nav className={`bottombar${enOrden.length + 2 <= CABEN ? ' llena' : ''}`}>
         {/* se recorre MODULES entero: un módulo sin hijos es un enlace directo,
             uno con hijos abre su segundo nivel */}
         {enOrden.map((m) =>
@@ -130,6 +130,13 @@ function BottomBar() {
             </NavLink>
           ),
         )}
+        <NavLink to="/roadmap" onClick={() => setGroup(null)} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 4l-5 2v14l5-2 6 2 5-2V4l-5 2-6-2z" />
+            <path d="M9 4v14M15 6v14" />
+          </svg>
+          <span>Road Map</span>
+        </NavLink>
         <NavLink to="/configuracion" onClick={() => setGroup(null)} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3" />

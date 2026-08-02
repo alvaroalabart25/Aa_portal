@@ -350,6 +350,7 @@ function ListaDeseos({ categorias, onGestionar }: { categorias: Categoria[]; onG
   const [total, setTotal] = useState('0');
   const [verComprados, setVerComprados] = useState(false);
   const [creando, setCreando] = useState(false);
+  const [editando, setEditando] = useState<Deseo | null>(null);
 
   const cargar = useCallback(async () => {
     const r = await dreamsApi.deseos();
@@ -363,12 +364,6 @@ function ListaDeseos({ categorias, onGestionar }: { categorias: Categoria[]; onG
 
   const arrastre = useArrastre(pendientes, setPendientes, (ids) => dreamsApi.reordenarDeseos(ids));
   const catPorId = useMemo(() => new Map(categorias.map((c) => [c.id, c])), [categorias]);
-
-  async function convertir(d: Deseo) {
-    if (!confirm(`¿Convertir «${d.title}» en micrometa? Se irá de esta lista y podrás desarrollarla.`)) return;
-    await dreamsApi.deseoASueno(d.id);
-    await cargar();
-  }
 
   return (
     <>
@@ -411,15 +406,12 @@ function ListaDeseos({ categorias, onGestionar }: { categorias: Categoria[]; onG
                     await cargar();
                   }}
                 />
-                <span className="dr-wl-title">
-                  {d.url ? (
-                    <a href={d.url} target="_blank" rel="noopener noreferrer">
-                      {d.title}
-                    </a>
-                  ) : (
-                    d.title
-                  )}
-                </span>
+                {/* la fila entera abre la ficha: el enlace y las acciones viven
+                    dentro, para que la lista se quede en lo esencial */}
+                <button className="dr-wl-title" onClick={() => setEditando(d)} title="Ver y editar">
+                  {d.title}
+                  {d.url && <span className="dr-wl-link" title="Tiene enlace"> ↗</span>}
+                </button>
                 {cat && (
                   <span className="dr-cat">
                     <span className="dot" style={{ background: cat.color }} />
@@ -427,24 +419,6 @@ function ListaDeseos({ categorias, onGestionar }: { categorias: Categoria[]; onG
                   </span>
                 )}
                 <span className="dr-wl-eur">{euros(d.price) ?? '—'}</span>
-                <button
-                  className="btn ghost sm dr-wl-aseuno"
-                  onClick={() => convertir(d)}
-                  title="Es más que una compra: convertir en micrometa"
-                  aria-label="Convertir en micrometa"
-                >
-                  ↗<span className="dr-wl-aseuno-largo"> A meta</span>
-                </button>
-                <button
-                  className="dr-wl-x"
-                  aria-label="Quitar de la lista"
-                  onClick={async () => {
-                    await dreamsApi.borrarDeseo(d.id);
-                    await cargar();
-                  }}
-                >
-                  ✕
-                </button>
               </div>
             );
           })}
@@ -452,11 +426,23 @@ function ListaDeseos({ categorias, onGestionar }: { categorias: Categoria[]; onG
       )}
 
       {creando && (
-        <NuevoDeseoModal
+        <DeseoModal
           categorias={categorias}
           onClose={() => setCreando(false)}
-          onCreado={() => {
+          onGuardado={() => {
             setCreando(false);
+            cargar();
+          }}
+        />
+      )}
+
+      {editando && (
+        <DeseoModal
+          deseo={editando}
+          categorias={categorias}
+          onClose={() => setEditando(null)}
+          onGuardado={() => {
+            setEditando(null);
             cargar();
           }}
         />
@@ -496,19 +482,29 @@ function ListaDeseos({ categorias, onGestionar }: { categorias: Categoria[]; onG
 
 // ---------------------------------------------------------------- modales
 
-function NuevoDeseoModal({
+/**
+ * Ficha de un deseo: la misma ventana sirve para crearlo y para corregirlo.
+ *
+ * El enlace y las acciones (ascenderlo a micrometa, quitarlo) viven aquí y no en
+ * la fila: la lista se queda en lo esencial —qué es y cuánto cuesta— y lo demás
+ * aparece cuando lo pides.
+ */
+function DeseoModal({
+  deseo,
   categorias,
   onClose,
-  onCreado,
+  onGuardado,
 }: {
+  deseo?: Deseo;
   categorias: Categoria[];
   onClose: () => void;
-  onCreado: () => void;
+  onGuardado: () => void;
 }) {
-  const [titulo, setTitulo] = useState('');
-  const [precio, setPrecio] = useState('');
-  const [enlace, setEnlace] = useState('');
-  const [catId, setCatId] = useState('');
+  const editando = Boolean(deseo);
+  const [titulo, setTitulo] = useState(deseo?.title ?? '');
+  const [precio, setPrecio] = useState(deseo?.price != null ? String(Number(deseo.price)) : '');
+  const [enlace, setEnlace] = useState(deseo?.url ?? '');
+  const [catId, setCatId] = useState(deseo?.categoryId != null ? String(deseo.categoryId) : '');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -516,27 +512,43 @@ function NuevoDeseoModal({
     e.preventDefault();
     setError('');
     setBusy(true);
+    const datos = {
+      title: titulo.trim(),
+      price: precio.trim() || null,
+      url: enlace.trim() || null,
+      categoryId: catId ? Number(catId) : null,
+    };
     try {
-      await dreamsApi.crearDeseo({
-        title: titulo.trim(),
-        price: precio.trim() || null,
-        url: enlace.trim() || null,
-        categoryId: catId ? Number(catId) : null,
-      });
-      onCreado();
+      if (deseo) await dreamsApi.editarDeseo(deseo.id, datos);
+      else await dreamsApi.crearDeseo(datos);
+      onGuardado();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo añadir');
+      setError(err instanceof Error ? err.message : 'No se pudo guardar');
     } finally {
       setBusy(false);
     }
   }
 
+  async function ascender() {
+    if (!deseo) return;
+    if (!confirm(`¿Convertir «${deseo.title}» en micrometa? Se irá de esta lista y podrás desarrollarla.`)) return;
+    await dreamsApi.deseoASueno(deseo.id);
+    onGuardado();
+  }
+
+  async function quitar() {
+    if (!deseo) return;
+    if (!confirm(`¿Quitar «${deseo.title}» de la lista?`)) return;
+    await dreamsApi.borrarDeseo(deseo.id);
+    onGuardado();
+  }
+
   return (
-    <Modal title="Nuevo deseo" onClose={onClose}>
+    <Modal title={editando ? 'Deseo' : 'Nuevo deseo'} onClose={onClose}>
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div className="field">
           <label htmlFor="nd-t">Qué quieres comprar</label>
-          <input id="nd-t" value={titulo} onChange={(e) => setTitulo(e.target.value)} autoFocus />
+          <input id="nd-t" value={titulo} onChange={(e) => setTitulo(e.target.value)} autoFocus={!editando} />
         </div>
         <div className="field">
           <label htmlFor="nd-p">Precio aproximado (€)</label>
@@ -545,6 +557,17 @@ function NuevoDeseoModal({
         <div className="field">
           <label htmlFor="nd-u">Enlace (opcional)</label>
           <input id="nd-u" placeholder="https://…" value={enlace} onChange={(e) => setEnlace(e.target.value)} />
+          {deseo?.url && (
+            <a
+              href={deseo.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="muted"
+              style={{ fontSize: 12.5, marginTop: 5, textDecoration: 'underline' }}
+            >
+              Abrir el enlace ↗
+            </a>
+          )}
         </div>
         <div className="field">
           <label htmlFor="nd-c">Categoría</label>
@@ -557,13 +580,26 @@ function NuevoDeseoModal({
             ))}
           </select>
         </div>
+
         {error && <div className="error-msg">{error}</div>}
+
+        {editando && (
+          <div className="dr-wl-acciones">
+            <button type="button" className="btn ghost sm" onClick={ascender} title="Si además de dinero necesita plan">
+              Convertir en micrometa
+            </button>
+            <button type="button" className="btn danger sm" onClick={quitar}>
+              Quitar de la lista
+            </button>
+          </div>
+        )}
+
         <div className="modal-actions">
           <button type="button" className="btn ghost" onClick={onClose}>
             Cancelar
           </button>
           <button className="btn" disabled={busy || !titulo.trim()}>
-            {busy ? 'Añadiendo…' : 'Añadir'}
+            {busy ? 'Guardando…' : editando ? 'Guardar' : 'Añadir'}
           </button>
         </div>
       </form>

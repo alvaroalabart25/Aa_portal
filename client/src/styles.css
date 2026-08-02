@@ -946,7 +946,9 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .dr-wl-add { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 4px; }
 .dr-wl-add input { flex: 1; min-width: 140px; }
 .dr-wl-add .dr-wl-price { flex: 0 0 80px; min-width: 0; }
-.dr-wl { display: flex; flex-direction: column; gap: 2px; margin-top: 12px; }
+/* Aire entre los controles de arriba y la lista: pegada parecía parte de la
+   misma pieza */
+.dr-wl { display: flex; flex-direction: column; gap: 2px; margin-top: 28px; }
 .dr-wl-row {
   display: flex; align-items: center; gap: 10px;
   padding: 9px 8px; border-bottom: 1px solid var(--line); font-size: 14px;
@@ -960,8 +962,13 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 }
 .dr-wl-check:hover { border-color: var(--ink); background: var(--paper-soft); }
 .dr-wl-done { color: #2f9e44; font-weight: 700; flex: 0 0 19px; text-align: center; }
-.dr-wl-title { flex: 1; min-width: 0; }
-.dr-wl-title a { text-decoration: underline; }
+.dr-wl-title {
+  flex: 1; min-width: 0; text-align: left;
+  border: none; background: none; padding: 0; font: inherit; cursor: pointer;
+}
+.dr-wl-title:hover { text-decoration: underline; }
+.dr-wl-link { color: var(--ink-muted); font-size: 12px; }
+.dr-wl-acciones { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 4px; border-top: 1px solid var(--line); margin-top: 2px; }
 .dr-wl-when { font-size: 12px; flex: 0 0 auto; }
 .dr-wl-eur { flex: 0 0 auto; font-variant-numeric: tabular-nums; }
 .dr-wl-x { flex: 0 0 auto; background: none; border: none; color: var(--line); font-size: 15px; cursor: pointer; padding: 0 4px; }
@@ -1009,8 +1016,6 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   .dr-wl-row .dr-cat { display: none; }
   .dr-wl-title { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .dr-wl-eur { font-size: 13.5px; }
-  .dr-wl-aseuno { padding: 3px 8px; font-size: 12px; }
-  .dr-wl-aseuno-largo { display: none; }
   .dr-wl-when { font-size: 11.5px; }
 
   /* Las pestañas sobran: el menú de abajo ya lleva los tres subapartados, y

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import EnDesarrollo from '../../components/EnDesarrollo';
 import MiDiaTab from './MiDiaTab';
 import RutinaEventosTab from './RutinaEventosTab';
 
@@ -22,6 +23,11 @@ export default function RutinaPage() {
           </button>
         </div>
       </div>
+
+      <EnDesarrollo>
+        Pendiente de darle una vuelta: la plantilla semanal es demasiado trabajo para lo que devuelve. La idea es que
+        el plan salga en buena parte de lo que el Diario ya registra, en vez de tener que escribirlo a mano.
+      </EnDesarrollo>
 
       {sub === 'dia' ? <MiDiaTab /> : <RutinaEventosTab />}
     </div>

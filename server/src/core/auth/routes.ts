@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 import { desc, eq } from 'drizzle-orm';
 import { db } from '../../db';
 import { and, isNull, gt } from 'drizzle-orm';
-import { passwordResets, securityEvents, users } from '../../db/schema';
+import { passwordResets, securityEvents, totpRecoveryCodes, users } from '../../db/schema';
 import { enviarCorreo } from '../../lib/mail';
 import { passkeysRouter, usarFirmador } from './passkeys';
 import { bumpTokenVersion, requireAuth, type AuthedRequest } from './middleware';
@@ -49,8 +49,24 @@ authRouter.post('/login', ah(async (req, res) => {
       return res.status(401).json({ error: 'Falta el código de verificación', need2fa: true });
     }
     if (!verificarTotp(user.totpSecret, code)) {
-      await logSecurityEvent('login_fallido', req, 'contraseña correcta pero código de verificación incorrecto');
-      return res.status(401).json({ error: 'Código de verificación incorrecto', need2fa: true });
+      // Puede ser un código de recuperación: se gasta y se avisa, porque usar
+      // uno significa que algo ha pasado con el móvil (o que no eres tú).
+      if (await usarCodigoDeRecuperacion(user.id, code)) {
+        const [quedan] = [
+          await db
+            .select({ id: totpRecoveryCodes.id })
+            .from(totpRecoveryCodes)
+            .where(and(eq(totpRecoveryCodes.userId, user.id), isNull(totpRecoveryCodes.usedAt))),
+        ];
+        await logSecurityEvent(
+          'codigo_recuperacion_usado',
+          req,
+          `se ha entrado con un código de recuperación; quedan ${quedan.length}`,
+        );
+      } else {
+        await logSecurityEvent('login_fallido', req, 'contraseña correcta pero código de verificación incorrecto');
+        return res.status(401).json({ error: 'Código de verificación incorrecto', need2fa: true });
+      }
     }
   }
 
@@ -216,9 +232,79 @@ function verificarTotp(secretBase32: string | null, code: string): boolean {
   return totp.validate({ token: code, window: 1 }) !== null;
 }
 
+/**
+ * Códigos de recuperación: la salida de emergencia del segundo factor.
+ *
+ * Sin ellos, perder el móvil con la app autenticadora deja fuera del portal,
+ * porque el correo de recuperación cambia la contraseña pero NO quita el
+ * segundo factor. Se guarda solo la huella de cada código y sirve una vez.
+ */
+const CODIGOS_POR_TANDA = 8;
+// Sin I, O, 0 ni 1: se van a copiar a mano y esos caracteres se confunden
+const ALFABETO = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+function generarCodigo(): string {
+  const bytes = crypto.randomBytes(10);
+  const cuerpo = [...bytes].map((b) => ALFABETO[b % ALFABETO.length]).join('');
+  return `${cuerpo.slice(0, 5)}-${cuerpo.slice(5)}`;
+}
+
+function normalizarCodigo(v: string): string {
+  return v.toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+function huellaCodigo(v: string): string {
+  return crypto.createHash('sha256').update(normalizarCodigo(v)).digest('hex');
+}
+
+/** Rehace la tanda entera: los anteriores dejan de valer. */
+async function nuevaTandaDeCodigos(userId: number): Promise<string[]> {
+  await db.delete(totpRecoveryCodes).where(eq(totpRecoveryCodes.userId, userId));
+  const codigos = Array.from({ length: CODIGOS_POR_TANDA }, generarCodigo);
+  await db.insert(totpRecoveryCodes).values(codigos.map((c) => ({ userId, codeHash: huellaCodigo(c) })));
+  return codigos;
+}
+
+/** Gasta un código si es válido. Devuelve true solo si lo ha consumido. */
+async function usarCodigoDeRecuperacion(userId: number, code: string): Promise<boolean> {
+  const normalizado = normalizarCodigo(code);
+  if (normalizado.length !== 10) return false;
+  const [fila] = await db
+    .select({ id: totpRecoveryCodes.id })
+    .from(totpRecoveryCodes)
+    .where(
+      and(
+        eq(totpRecoveryCodes.userId, userId),
+        eq(totpRecoveryCodes.codeHash, huellaCodigo(normalizado)),
+        isNull(totpRecoveryCodes.usedAt),
+      ),
+    );
+  if (!fila) return false;
+  // el UPDATE condicionado a que siga sin usar evita gastarlo dos veces si
+  // llegan dos intentos a la vez
+  const [result] = await db
+    .update(totpRecoveryCodes)
+    .set({ usedAt: new Date() })
+    .where(and(eq(totpRecoveryCodes.id, fila.id), isNull(totpRecoveryCodes.usedAt)));
+  return result.affectedRows === 1;
+}
+
 authRouter.get('/2fa/status', requireAuth, ah(async (req: AuthedRequest, res) => {
   const [user] = await db.select().from(users).where(eq(users.id, req.userId!));
-  res.json({ enabled: user?.totpEnabled === 1 });
+  const restantes = await db
+    .select({ id: totpRecoveryCodes.id })
+    .from(totpRecoveryCodes)
+    .where(and(eq(totpRecoveryCodes.userId, req.userId!), isNull(totpRecoveryCodes.usedAt)));
+  res.json({ enabled: user?.totpEnabled === 1, recoveryLeft: restantes.length });
+}));
+
+// Rehacer la tanda de códigos (por ejemplo si se pierden o se gastan)
+authRouter.post('/2fa/recovery-codes', requireAuth, ah(async (req: AuthedRequest, res) => {
+  const [user] = await db.select().from(users).where(eq(users.id, req.userId!));
+  if (user?.totpEnabled !== 1) return res.status(400).json({ error: 'El segundo factor no está activado' });
+  const codigos = await nuevaTandaDeCodigos(user.id);
+  await logSecurityEvent('codigos_recuperacion_nuevos', req, 'se han generado códigos de recuperación nuevos');
+  res.json({ codes: codigos });
 }));
 
 // Genera un secreto nuevo (aún sin activar) y su QR para la app autenticadora
@@ -253,8 +339,10 @@ authRouter.post('/2fa/enable', requireAuth, ah(async (req: AuthedRequest, res) =
     return res.status(400).json({ error: 'El código no coincide. Comprueba la hora del móvil e inténtalo otra vez.' });
   }
   await db.update(users).set({ totpEnabled: 1 }).where(eq(users.id, user.id));
+  const codigos = await nuevaTandaDeCodigos(user.id);
   await logSecurityEvent('2fa_activado', req, 'segundo factor activado');
-  res.json({ enabled: true });
+  // Los códigos se devuelven UNA vez: después solo queda su huella
+  res.json({ enabled: true, codes: codigos });
 }));
 
 // Desactivarlo exige contraseña Y código: que un token robado no baste
@@ -271,6 +359,7 @@ authRouter.post('/2fa/disable', requireAuth, ah(async (req: AuthedRequest, res) 
     return res.status(400).json({ error: 'El código no es correcto' });
   }
   await db.update(users).set({ totpEnabled: 0, totpSecret: null }).where(eq(users.id, user.id));
+  await db.delete(totpRecoveryCodes).where(eq(totpRecoveryCodes.userId, user.id));
   await logSecurityEvent('2fa_desactivado', req, 'segundo factor desactivado');
   res.json({ enabled: false });
 }));

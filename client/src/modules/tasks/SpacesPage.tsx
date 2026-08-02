@@ -1,15 +1,20 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { repartirPortadas } from '../../lib/portadas';
 import { spacesApi } from './api';
 import { AddSpaceModal } from './modals';
 import type { Space } from './types';
 
+// Espacios en tarjetas con portada: un espacio es un contexto entero de tu vida
+// (un cliente, un área), y se reconoce antes por una imagen que por una fila.
 export default function SpacesPage() {
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [adding, setAdding] = useState(false);
   const navigate = useNavigate();
 
   const load = useCallback(async () => setSpaces(await spacesApi.list()), []);
+  // reparto sin repetir dentro de la rejilla
+  const portadas = useMemo(() => repartirPortadas(spaces.map((s) => s.id)), [spaces]);
   useEffect(() => {
     load();
   }, [load]);
@@ -23,26 +28,26 @@ export default function SpacesPage() {
         </button>
       </div>
 
-      <table className="table" style={{ marginTop: 24 }}>
-        <thead>
-          <tr>
-            <th>Nombre</th>
-            <th style={{ width: 160 }}>Proyectos activos</th>
-          </tr>
-        </thead>
-        <tbody>
+      {spaces.length === 0 ? (
+        <div className="empty">Crea tu primer espacio (p. ej. «Autónomos»).</div>
+      ) : (
+        <div className="cg-grid">
           {spaces.map((s) => (
-            <tr key={s.id} className="row" onClick={() => navigate(`/espacios/${s.id}`)}>
-              <td style={{ fontWeight: 500 }}>
-                <span className="dot" style={{ background: s.color, display: 'inline-block', marginRight: 10 }} />
-                {s.name}
-              </td>
-              <td className="num">{s.activeProjects ?? 0} proyectos</td>
-            </tr>
+            <button key={s.id} className="cg-card" onClick={() => navigate(`/espacios/${s.id}`)}>
+              <span className="cg-cover">
+                <img src={portadas.get(s.id)} alt="" loading="lazy" />
+                <span className="cg-badge">{s.activeProjects ?? 0} proyectos</span>
+              </span>
+              <span className="cg-body">
+                <span className="cg-title">
+                  <span className="dot" style={{ background: s.color }} />
+                  {s.name}
+                </span>
+              </span>
+            </button>
           ))}
-        </tbody>
-      </table>
-      {spaces.length === 0 && <div className="empty">Crea tu primer espacio (p. ej. «Autónomos»).</div>}
+        </div>
+      )}
 
       {adding && <AddSpaceModal onClose={() => setAdding(false)} onCreated={load} />}
     </div>

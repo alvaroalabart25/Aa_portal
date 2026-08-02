@@ -2,20 +2,34 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import Modal from '../../components/Modal';
 import { del, get, patch, post } from '../../lib/api';
 
-type RoadmapCategory = 'agenda' | 'organizacion' | 'autonomo' | 'futuros';
+type RoadmapCategory =
+  | 'agenda'
+  | 'suenos'
+  | 'salud'
+  | 'organizacion'
+  | 'autonomo'
+  | 'seguridad'
+  | 'portal'
+  | 'futuros';
 type RoadmapStatus = 'pending' | 'in_progress' | 'done';
 
 interface RoadmapItem {
   id: number;
   title: string;
+  notes: string | null;
   category: RoadmapCategory;
   status: RoadmapStatus;
 }
 
+// Siguen el orden del menú del portal, y al final lo que no es un módulo
 const CATEGORIES: Array<{ id: RoadmapCategory; label: string }> = [
   { id: 'agenda', label: 'Agenda' },
+  { id: 'suenos', label: 'Sueños' },
+  { id: 'salud', label: 'Salud' },
   { id: 'organizacion', label: 'Organización' },
-  { id: 'autonomo', label: 'Autónomo' },
+  { id: 'autonomo', label: 'Finanzas' },
+  { id: 'seguridad', label: 'Seguridad' },
+  { id: 'portal', label: 'El portal' },
   { id: 'futuros', label: 'Futuros' },
 ];
 
@@ -67,6 +81,54 @@ function StatusSelect({ value, onChange }: { value: RoadmapStatus; onChange: (s:
   );
 }
 
+/**
+ * Descripción de la mejora, con autoguardado al dejar de escribir.
+ * Aquí caben tanto un párrafo explicando qué implica como una lista de
+ * submejoras: es texto libre a propósito, porque en esta fase todavía no se
+ * sabe qué forma va a tener cada cosa.
+ */
+function Descripcion({ item, onGuardado }: { item: RoadmapItem; onGuardado: (notes: string) => void }) {
+  const [txt, setTxt] = useState(item.notes ?? '');
+  const [estado, setEstado] = useState<'' | 'guardando' | 'guardado'>('');
+  const timer = useRef<number | undefined>(undefined);
+  const ultimo = useRef(item.notes ?? '');
+
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+
+  function cambiar(v: string) {
+    setTxt(v);
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(async () => {
+      if (v === ultimo.current) return;
+      ultimo.current = v;
+      setEstado('guardando');
+      try {
+        await patch(`/roadmap/${item.id}`, { notes: v });
+        onGuardado(v);
+        setEstado('guardado');
+        window.setTimeout(() => setEstado(''), 1500);
+      } catch {
+        setEstado('');
+      }
+    }, 700);
+  }
+
+  return (
+    <div className="rm-notes">
+      <textarea
+        value={txt}
+        onChange={(e) => cambiar(e.target.value)}
+        rows={5}
+        autoFocus
+        placeholder={'Qué implica esta mejora, o la lista de cosas que incluye.\n\n- una\n- otra'}
+      />
+      <div className="rm-notes-foot">
+        <span className="muted">{estado === 'guardando' ? 'Guardando…' : estado === 'guardado' ? 'Guardado' : ''}</span>
+      </div>
+    </div>
+  );
+}
+
 function ItemModal({
   item,
   onClose,
@@ -78,7 +140,7 @@ function ItemModal({
 }) {
   const isNew = item === 'new';
   const [title, setTitle] = useState(isNew ? '' : item.title);
-  const [category, setCategory] = useState<RoadmapCategory>(isNew ? 'agenda' : item.category);
+  const [category, setCategory] = useState<RoadmapCategory>(isNew ? 'portal' : item.category);
   const [saving, setSaving] = useState(false);
 
   async function submit(e: FormEvent) {
@@ -146,6 +208,7 @@ function ItemModal({
 export default function RoadmapPage() {
   const [items, setItems] = useState<RoadmapItem[]>([]);
   const [editing, setEditing] = useState<RoadmapItem | 'new' | null>(null);
+  const [abierta, setAbierta] = useState<number | null>(null);
 
   const load = useCallback(async () => setItems(await get<RoadmapItem[]>('/roadmap')), []);
   useEffect(() => {
@@ -177,7 +240,7 @@ export default function RoadmapPage() {
       </div>
       {items.length > 0 && (
         <p className="muted" style={{ fontSize: 13.5, margin: '4px 0 0' }}>
-          {doneCount} de {items.length} mejoras hechas
+          {doneCount} de {items.length} mejoras hechas · pulsa una para escribir qué implica
         </p>
       )}
 
@@ -192,21 +255,38 @@ export default function RoadmapPage() {
               </span>
             </h2>
             <div className="roadmap-list">
-              {c.items.map((item) => (
-                <div key={item.id} className="roadmap-row">
-                  <span onClick={(e) => e.stopPropagation()}>
-                    <StatusSelect value={item.status} onChange={(s) => changeStatus(item, s)} />
-                  </span>
-                  <button
-                    className="roadmap-title"
-                    style={item.status === 'done' ? { textDecoration: 'line-through', color: 'var(--ink-muted)' } : undefined}
-                    onClick={() => setEditing(item)}
-                    title="Clic para editar"
-                  >
-                    {item.title}
-                  </button>
-                </div>
-              ))}
+              {c.items.map((item) => {
+                const abierto = abierta === item.id;
+                return (
+                  <div key={item.id}>
+                    <div className="roadmap-row">
+                      <span onClick={(e) => e.stopPropagation()}>
+                        <StatusSelect value={item.status} onChange={(s) => changeStatus(item, s)} />
+                      </span>
+                      <button
+                        className="roadmap-title"
+                        style={item.status === 'done' ? { textDecoration: 'line-through', color: 'var(--ink-muted)' } : undefined}
+                        onClick={() => setAbierta(abierto ? null : item.id)}
+                        title="Pulsa para ver o escribir la descripción"
+                      >
+                        {item.title}
+                        {item.notes && !abierto && <span className="rm-hasnotes" title="Tiene descripción" />}
+                      </button>
+                      <button className="btn ghost sm" onClick={() => setEditing(item)}>
+                        Editar
+                      </button>
+                    </div>
+                    {abierto && (
+                      <Descripcion
+                        item={item}
+                        onGuardado={(notes) =>
+                          setItems((prev) => prev.map((x) => (x.id === item.id ? { ...x, notes } : x)))
+                        }
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </section>
         ))}

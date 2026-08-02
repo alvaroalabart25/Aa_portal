@@ -29,7 +29,9 @@ export type EventKind =
   | 'passkey_registrada'
   | 'passkey_borrada'
   | 'recuperacion_solicitada'
-  | 'contrasena_restablecida';
+  | 'contrasena_restablecida'
+  | 'codigo_recuperacion_usado'
+  | 'codigos_recuperacion_nuevos';
 
 interface Regla {
   severidad: 'alta' | 'media' | 'baja';
@@ -60,6 +62,8 @@ const REGLAS: Record<EventKind, Regla> = {
   passkey_borrada: { severidad: 'alta', umbral: 1, ventanaMin: 1, enfriamientoMin: 0, asunto: 'Llave de acceso eliminada' },
   recuperacion_solicitada: { severidad: 'alta', umbral: 1, ventanaMin: 1, enfriamientoMin: 0, asunto: 'Alguien ha pedido restablecer tu contraseña' },
   contrasena_restablecida: { severidad: 'alta', umbral: 1, ventanaMin: 1, enfriamientoMin: 0, asunto: 'Tu contraseña se ha restablecido por correo' },
+  codigo_recuperacion_usado: { severidad: 'alta', umbral: 1, ventanaMin: 1, enfriamientoMin: 0, asunto: 'Se ha entrado con un código de recuperación' },
+  codigos_recuperacion_nuevos: { severidad: 'alta', umbral: 1, ventanaMin: 1, enfriamientoMin: 0, asunto: 'Códigos de recuperación nuevos' },
 };
 
 const ultimoAviso = new Map<EventKind, number>();

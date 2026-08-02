@@ -222,7 +222,17 @@ export const roadmapItems = mysqlTable('roadmap_items', {
     .notNull()
     .references(() => users.id),
   title: varchar('title', { length: 255 }).notNull(),
-  category: mysqlEnum('category', ['agenda', 'organizacion', 'autonomo', 'futuros']).notNull(),
+  notes: text('notes'), // qué implica la mejora, o su lista de submejoras
+  category: mysqlEnum('category', [
+    'agenda',
+    'organizacion',
+    'autonomo',
+    'futuros',
+    'salud',
+    'suenos',
+    'seguridad',
+    'portal',
+  ]).notNull(),
   status: mysqlEnum('status', ['pending', 'in_progress', 'done']).notNull().default('pending'),
   archivedAt: datetime('archived_at'),
   createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
@@ -377,6 +387,24 @@ export const passwordResets = mysqlTable('password_resets', {
   tokenHash: varchar('token_hash', { length: 64 }).notNull(),
   ip: varchar('ip', { length: 64 }),
   expiresAt: datetime('expires_at').notNull(),
+  usedAt: datetime('used_at'),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+/**
+ * Códigos de recuperación del segundo factor: la salida de emergencia si se
+ * pierde el móvil con la app autenticadora.
+ *
+ * Hacen falta porque el correo de «olvidé mi contraseña» NO quita el segundo
+ * factor: sin estos códigos, perder la app dejaría fuera del portal para
+ * siempre. Se guarda solo su huella y cada uno sirve una vez.
+ */
+export const totpRecoveryCodes = mysqlTable('totp_recovery_codes', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  codeHash: varchar('code_hash', { length: 64 }).notNull(),
   usedAt: datetime('used_at'),
   createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 });

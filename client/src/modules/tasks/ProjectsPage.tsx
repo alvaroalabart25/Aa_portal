@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Modal from '../../components/Modal';
+import { repartirPortadas } from '../../lib/portadas';
 import { projectsApi } from './api';
 import { KebabMenu, Progress, StatusBadge } from './components';
 import { AddProjectModal, AddSpaceModal } from './modals';
@@ -72,6 +73,8 @@ export default function ProjectsPage() {
 
       {groups.map((g) => {
         const isOpen = open.has(g.spaceId);
+        // por grupo: dentro de un espacio no se repite ninguna portada
+        const portadas = repartirPortadas(g.items.map((p) => p.id));
         return (
           <section key={g.spaceId} className="section" style={{ marginTop: 26 }}>
             <button className="space-acc" onClick={() => toggle(g.spaceId)} aria-expanded={isOpen}>
@@ -84,28 +87,20 @@ export default function ProjectsPage() {
             </button>
 
             {isOpen && (
-              <table className="table" style={{ marginTop: 10 }}>
-                <thead>
-                  <tr>
-                    <th style={{ width: '14%' }}>Estado</th>
-                    <th>Nombre</th>
-                    <th style={{ width: '24%' }}>Progreso</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {g.items.map((p) => (
-                    <tr key={p.id} className="row" onClick={() => navigate(`/proyectos/${p.id}`)}>
-                      <td>
-                        <StatusBadge status={p.status} />
-                      </td>
-                      <td style={{ fontWeight: 500 }}>{p.name}</td>
-                      <td>
-                        <Progress done={p.doneTasks ?? 0} total={p.totalTasks ?? 0} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div className="cg-grid" style={{ marginTop: 12 }}>
+                {g.items.map((p) => (
+                  <button key={p.id} className="cg-card" onClick={() => navigate(`/proyectos/${p.id}`)}>
+                    <span className="cg-cover">
+                      <img src={portadas.get(p.id)} alt="" loading="lazy" />
+                    </span>
+                    <span className="cg-body">
+                      <StatusBadge status={p.status} />
+                      <span className="cg-title">{p.name}</span>
+                      <Progress done={p.doneTasks ?? 0} total={p.totalTasks ?? 0} />
+                    </span>
+                  </button>
+                ))}
+              </div>
             )}
           </section>
         );

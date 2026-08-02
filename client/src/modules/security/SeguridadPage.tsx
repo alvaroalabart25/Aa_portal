@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { get, post } from '../../lib/api';
-import { setToken } from '../../lib/auth';
+import { clearToken, setToken } from '../../lib/auth';
 import {
   activarBloqueo,
   bloqueoActivado,
@@ -35,6 +35,8 @@ const NOMBRES: Record<string, string> = {
   contrasena_cambiada: 'Contraseña cambiada',
   '2fa_activado': 'Segundo factor activado',
   '2fa_desactivado': 'Segundo factor desactivado',
+  codigo_recuperacion_usado: 'Entrada con código de recuperación',
+  codigos_recuperacion_nuevos: 'Códigos de recuperación regenerados',
 };
 
 function fecha(iso: string): string {
@@ -65,8 +67,16 @@ function LlavesDeAcceso() {
       await cargar();
     } catch (e) {
       const err = e as Error;
-      // si el usuario cancela el diálogo del sistema no es un error que contar
-      setMsg(err.name === 'NotAllowedError' ? 'Cancelado.' : err.message || 'No se pudo registrar');
+      // InvalidStateError = este dispositivo YA tiene una llave para el portal.
+      // Pasa en el Mac cuando la del iPhone se ha sincronizado por iCloud: no es
+      // un fallo, simplemente no hace falta registrar otra.
+      if (err.name === 'InvalidStateError') {
+        setMsg('Este dispositivo ya tiene llave (te ha llegado por iCloud). Puedes entrar con Touch ID sin registrar nada.');
+      } else if (err.name === 'NotAllowedError') {
+        setMsg('Cancelado.');
+      } else {
+        setMsg(err.message || 'No se pudo registrar');
+      }
     } finally {
       setBusy(false);
     }
@@ -113,7 +123,7 @@ function LlavesDeAcceso() {
               style={{ width: 190 }}
             />
             <button className="btn" disabled={busy} onClick={registrar}>
-              Registrar este dispositivo
+              {busy ? 'Esperando al dispositivo…' : 'Registrar este dispositivo'}
             </button>
           </div>
 
@@ -212,7 +222,42 @@ function CambiarContrasena() {
 }
 
 // Segundo factor con app autenticadora (TOTP)
-function SegundoFactor({ activo, onCambio }: { activo: boolean; onCambio: () => void }) {
+function CodigosRecuperacion({ codigos, onCerrar }: { codigos: string[]; onCerrar: () => void }) {
+  const texto = codigos.join('\n');
+  return (
+    <div className="rec-box">
+      <h3 className="rec-title">Guarda estos códigos ahora</h3>
+      <p className="rec-intro">
+        Son tu única forma de entrar si pierdes el móvil con la app autenticadora. Cada uno sirve una vez. No se pueden
+        volver a ver: si los pierdes, tendrás que generar una tanda nueva desde aquí.
+      </p>
+      <ul className="rec-list">
+        {codigos.map((c) => (
+          <li key={c}>{c}</li>
+        ))}
+      </ul>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button className="btn ghost sm" onClick={() => navigator.clipboard?.writeText(texto)}>
+          Copiar los ocho
+        </button>
+        <button className="btn sm" onClick={onCerrar}>
+          Ya los he guardado
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SegundoFactor({
+  activo,
+  restantes,
+  onCambio,
+}: {
+  activo: boolean;
+  restantes: number;
+  onCambio: () => void;
+}) {
+  const [codigos, setCodigos] = useState<string[] | null>(null);
   const [qr, setQr] = useState('');
   const [secreto, setSecreto] = useState('');
   const [code, setCode] = useState('');
@@ -239,10 +284,11 @@ function SegundoFactor({ activo, onCambio }: { activo: boolean; onCambio: () => 
     setBusy(true);
     setMsg('');
     try {
-      await post('/auth/2fa/enable', { code });
+      const r = await post<{ enabled: boolean; codes: string[] }>('/auth/2fa/enable', { code });
       setQr('');
       setSecreto('');
       setCode('');
+      setCodigos(r.codes);
       setMsg('✅ Segundo factor activado. La próxima vez que entres te pedirá el código.');
       onCambio();
     } catch (err) {
@@ -288,7 +334,7 @@ function SegundoFactor({ activo, onCambio }: { activo: boolean; onCambio: () => 
             bancarios.
           </p>
           <button className="btn" disabled={busy} onClick={empezar} style={{ marginTop: 12 }}>
-            Empezar
+            {busy ? 'Preparando el código…' : 'Empezar'}
           </button>
         </>
       )}
@@ -315,7 +361,7 @@ function SegundoFactor({ activo, onCambio }: { activo: boolean; onCambio: () => 
               style={{ width: 110, letterSpacing: 2, textAlign: 'center' }}
             />
             <button className="btn" disabled={busy || code.length < 6}>
-              Activar
+              {busy ? 'Comprobando…' : 'Activar'}
             </button>
             <button type="button" className="btn ghost" onClick={() => { setQr(''); setSecreto(''); }}>
               Cancelar
@@ -339,6 +385,38 @@ function SegundoFactor({ activo, onCambio }: { activo: boolean; onCambio: () => 
         </form>
       )}
 
+      {codigos && <CodigosRecuperacion codigos={codigos} onCerrar={() => setCodigos(null)} />}
+
+      {activo && !codigos && (
+        <div className="rec-status">
+          <span className={restantes === 0 ? 'overdue' : 'muted'} style={{ fontSize: 13 }}>
+            {restantes === 0
+              ? '⚠ No te queda ningún código de recuperación. Si pierdes el móvil no podrás entrar.'
+              : `Te quedan ${restantes} códigos de recuperación sin usar.`}
+          </span>
+          <button
+            className="btn ghost sm"
+            disabled={busy}
+            onClick={async () => {
+              if (!confirm('¿Generar códigos nuevos? Los anteriores dejarán de valer.')) return;
+              setBusy(true);
+              setMsg('');
+              try {
+                const r = await post<{ codes: string[] }>('/auth/2fa/recovery-codes', {});
+                setCodigos(r.codes);
+                onCambio();
+              } catch (err) {
+                setMsg(err instanceof Error ? err.message : 'Error');
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            Generar códigos nuevos
+          </button>
+        </div>
+      )}
+
       {msg && <p style={{ fontSize: 13.5, marginTop: 12 }}>{msg}</p>}
     </section>
   );
@@ -347,15 +425,17 @@ function SegundoFactor({ activo, onCambio }: { activo: boolean; onCambio: () => 
 // Salud · Seguridad: contraseña, segundo factor, sesiones y bitácora
 export default function SeguridadPage() {
   const [activo, setActivo] = useState(false);
+  const [restantes, setRestantes] = useState(0);
   const [eventos, setEventos] = useState<EventoSeguridad[]>([]);
   const [msg, setMsg] = useState('');
 
   const cargar = useCallback(async () => {
     const [st, ev] = await Promise.all([
-      get<{ enabled: boolean }>('/auth/2fa/status'),
+      get<{ enabled: boolean; recoveryLeft: number }>('/auth/2fa/status'),
       get<EventoSeguridad[]>('/auth/security-events'),
     ]);
     setActivo(st.enabled);
+    setRestantes(st.recoveryLeft ?? 0);
     setEventos(ev);
   }, []);
   useEffect(() => {
@@ -377,7 +457,7 @@ export default function SeguridadPage() {
   return (
     <div>
       <LlavesDeAcceso />
-      <SegundoFactor activo={activo} onCambio={cargar} />
+      <SegundoFactor activo={activo} restantes={restantes} onCambio={cargar} />
       <CambiarContrasena />
 
       <section className="section">
@@ -385,9 +465,22 @@ export default function SeguridadPage() {
         <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>
           La sesión dura 30 días en cada dispositivo. Si pierdes el móvil o sospechas de algo, ciérralas todas.
         </p>
-        <button className="btn ghost" onClick={revocar} style={{ marginTop: 10 }}>
-          Cerrar sesión en todos los dispositivos
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+          {/* Salir de este dispositivo vive aquí, no en el menú: es algo que se
+              hace una vez al año y no merece un botón permanente a la vista */}
+          <button
+            className="btn ghost"
+            onClick={() => {
+              clearToken();
+              window.location.href = '/login';
+            }}
+          >
+            Cerrar sesión aquí
+          </button>
+          <button className="btn ghost" onClick={revocar}>
+            Cerrar sesión en todos los dispositivos
+          </button>
+        </div>
         {msg && <p style={{ fontSize: 13.5, marginTop: 10 }}>{msg}</p>}
       </section>
 

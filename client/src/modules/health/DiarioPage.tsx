@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import EnDesarrollo from '../../components/EnDesarrollo';
 import Modal from '../../components/Modal';
 import { get, API_BASE } from '../../lib/api';
 import { routineApi, type RoutineItem } from '../routine/api';
@@ -650,6 +651,12 @@ export default function DiarioPage() {
         </div>
         </div>
       </div>
+
+      <EnDesarrollo>
+        Pendiente de darle una vuelta: hay que registrar demasiado a mano. La idea es que la mayoría del día se capture
+        solo y que lo poco que quede se haga en un toque.
+      </EnDesarrollo>
+
       {isToday && (
         <p className="muted" style={{ fontSize: 13, marginTop: 6 }}>
           {dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1)} · tu día tal y como está pasando. Toca una actividad

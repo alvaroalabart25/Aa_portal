@@ -82,7 +82,7 @@ export function eventColor(ev: ImportantEvent): string {
 }
 
 export function eventPlace(ev: ImportantEvent): string {
-  return ev.scope === 'autonomo' ? 'Autónomo' : (ev.spaceName ?? 'Espacio');
+  return ev.scope === 'autonomo' ? 'Finanzas' : (ev.spaceName ?? 'Espacio');
 }
 
 export const fmtEventDate = (iso: string) => {

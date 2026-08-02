@@ -14,7 +14,10 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME,
   ssl: process.env.DB_SSL === 'true' ? { minVersion: 'TLSv1.2', rejectUnauthorized: true } : undefined,
   connectionLimit: 5,
-  maxIdle: 2,
+  // Se guardan tantas conexiones libres como el tope: cuando una petición hace
+  // varias consultas en paralelo, las reutiliza en vez de abrir conexiones
+  // nuevas (con la base al otro lado del Atlántico, un saludo TLS cuesta caro).
+  maxIdle: 5,
   idleTimeout: 55_000,
   enableKeepAlive: true,
   keepAliveInitialDelay: 10_000,

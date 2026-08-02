@@ -725,6 +725,8 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .login-sep::before, .login-sep::after { content: ''; flex: 1; height: 1px; background: var(--line); }
 
 /* ---------- Sueños ---------- */
+/* Crear + pestañas en la misma línea del título, con las pestañas al borde */
+.dr-head-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
 .dr-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 16px 0 6px; }
 .dr-orden { display: inline-flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; color: var(--ink-muted); }
 .dr-orden select { font-size: 13px; padding: 5px 8px; }

@@ -104,7 +104,7 @@ export default function EventoModal({
         <div className="field">
           <label htmlFor="ev-place">Vinculado a</label>
           <select id="ev-place" value={place} onChange={(e) => setPlace(e.target.value)}>
-            <option value="autonomo">Autónomo</option>
+            <option value="autonomo">Finanzas</option>
             {spaces.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}

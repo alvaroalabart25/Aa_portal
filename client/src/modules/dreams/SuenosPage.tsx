@@ -30,45 +30,63 @@ export default function SuenosPage() {
 
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [gestionando, setGestionando] = useState(false);
+  const [creando, setCreando] = useState(false);
 
   const cargarCategorias = useCallback(async () => setCategorias(await dreamsApi.categorias()), []);
   useEffect(() => {
     cargarCategorias();
   }, [cargarCategorias]);
 
+  // La pestaña viaja siempre en la URL, incluso la de por defecto: así el menú
+  // lateral sabe cuál marcar y el enlace se puede compartir tal cual.
   function ir(t: Tab) {
-    setParams(t === 'micro' ? {} : { tab: t }, { replace: true });
+    setParams({ tab: t }, { replace: true });
   }
 
   return (
     <div>
       <div className="page-head">
         <h1>Sueños</h1>
-        <div className="seg" role="tablist">
-          {(
-            [
-              ['macro', 'Macro'],
-              ['micro', 'Micro'],
-              ['deseos', 'Lista de deseos'],
-            ] as [Tab, string][]
-          ).map(([v, label]) => (
-            <button
-              key={v}
-              role="tab"
-              aria-selected={tab === v}
-              className={tab === v ? 'active' : ''}
-              onClick={() => ir(v)}
-            >
-              {label}
+        {/* El botón de crear va en línea con las pestañas, y las pestañas
+            pegadas al borde derecho */}
+        <div className="dr-head-right">
+          {tab !== 'deseos' && (
+            <button className="btn" onClick={() => setCreando(true)}>
+              + {tab === 'macro' ? 'Nuevo macrosueño' : 'Nuevo microsueño'}
             </button>
-          ))}
+          )}
+          <div className="seg" role="tablist">
+            {(
+              [
+                ['macro', 'Macro'],
+                ['micro', 'Micro'],
+                ['deseos', 'Lista de deseos'],
+              ] as [Tab, string][]
+            ).map(([v, label]) => (
+              <button
+                key={v}
+                role="tab"
+                aria-selected={tab === v}
+                className={tab === v ? 'active' : ''}
+                onClick={() => ir(v)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {tab === 'deseos' ? (
         <ListaDeseos categorias={categorias} onGestionar={() => setGestionando(true)} />
       ) : (
-        <Tablero kind={tab} categorias={categorias} onGestionar={() => setGestionando(true)} />
+        <Tablero
+          kind={tab}
+          categorias={categorias}
+          onGestionar={() => setGestionando(true)}
+          creando={creando}
+          onCerrarCreacion={() => setCreando(false)}
+        />
       )}
 
       {gestionando && (
@@ -88,14 +106,17 @@ function Tablero({
   kind,
   categorias,
   onGestionar,
+  creando,
+  onCerrarCreacion,
 }: {
   kind: DreamKind;
   categorias: Categoria[];
   onGestionar: () => void;
+  creando: boolean;
+  onCerrarCreacion: () => void;
 }) {
   const [cards, setCards] = useState<DreamCard[]>([]);
   const [orden, setOrden] = useState<Orden>('prioridad');
-  const [creando, setCreando] = useState(false);
   const [cargando, setCargando] = useState(true);
 
   const cargar = useCallback(async () => {
@@ -150,9 +171,6 @@ function Tablero({
   return (
     <>
       <div className="dr-toolbar">
-        <button className="btn" onClick={() => setCreando(true)}>
-          + {kind === 'macro' ? 'Nuevo macrosueño' : 'Nuevo microsueño'}
-        </button>
         <label className="dr-orden">
           Ordenar por
           <select value={orden} onChange={(e) => setOrden(e.target.value as Orden)}>
@@ -220,9 +238,9 @@ function Tablero({
         <NuevoSuenoModal
           kind={kind}
           categorias={categorias}
-          onClose={() => setCreando(false)}
+          onClose={onCerrarCreacion}
           onCreado={() => {
-            setCreando(false);
+            onCerrarCreacion();
             cargar();
           }}
         />

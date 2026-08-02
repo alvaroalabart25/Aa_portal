@@ -2,7 +2,7 @@ import { Router } from 'express';
 import express from 'express';
 import crypto from 'crypto';
 import { z } from 'zod';
-import { and, asc, desc, eq, inArray, isNull, max, sql } from 'drizzle-orm';
+import { and, asc, eq, getTableColumns, isNull, max, sql } from 'drizzle-orm';
 import { ah } from '../../lib/async';
 import { db } from '../../db';
 import {
@@ -160,76 +160,45 @@ dreamsModule.get('/templates', (_req, res) => {
 
 // ---------- Sueños ----------
 
-// GET /?kind=macro|micro -> tarjetas del tablero, ya ordenadas por prioridad
+/**
+ * GET /?kind=macro|micro -> tarjetas del tablero, ordenadas por prioridad.
+ *
+ * UNA sola consulta. Antes eran cinco seguidas y con la base en Oregón cada
+ * ida y vuelta cuesta ~165 ms desde España, así que el listado tardaba más de
+ * 800 ms en puro viaje. Los recuentos van como subconsultas: las tablas son
+ * diminutas y salen gratis comparado con otro salto de red.
+ */
 dreamsModule.get('/', ah(async (req: AuthedRequest, res) => {
   const kind = req.query.kind === 'macro' ? 'macro' : 'micro';
 
+  // OJO con las subconsultas: la columna de la tabla de fuera va escrita a mano
+  // como `dreams.id`, NO interpolada. Drizzle la interpolaría sin cualificar
+  // (`id`) y entonces la captura la tabla de dentro —que también tiene `id`—
+  // convirtiendo la condición en `s.dream_id = s.id`: siempre cero, sin error.
   const filas = await db
-    .select()
+    .select({
+      ...getTableColumns(dreams),
+      parentTitle: sql<string | null>`(select p.title from dreams p where p.id = dreams.parent_id)`,
+      // portada = la primera imagen por orden; solo su id, nunca los bytes
+      coverImageId: sql<
+        number | null
+      >`(select i.id from dream_images i where i.dream_id = dreams.id order by i.sort_order, i.id limit 1)`,
+      stepsTotal: sql<number>`(select count(*) from dream_steps s where s.dream_id = dreams.id)`,
+      stepsDone: sql<number>`(select count(*) from dream_steps s where s.dream_id = dreams.id and s.done = 1)`,
+      microsTotal: sql<number>`(select count(*) from dreams m where m.parent_id = dreams.id and m.archived_at is null)`,
+      microsDone: sql<number>`(select count(*) from dreams m where m.parent_id = dreams.id and m.archived_at is null and m.status = 'cumplido')`,
+    })
     .from(dreams)
     .where(and(eq(dreams.userId, req.userId!), eq(dreams.kind, kind), isNull(dreams.archivedAt)))
     .orderBy(asc(dreams.sortOrder), asc(dreams.id));
 
-  const ids = filas.map((d) => d.id);
-
-  // Portada = la primera imagen por orden. Se piden solo las fichas: los bytes
-  // viven en otra tabla, así que esto no arrastra ni un kilobyte de imagen.
-  const portadas = new Map<number, number>();
-  const pasos = new Map<number, { done: number; total: number }>();
-  if (ids.length) {
-    const imgs = await db
-      .select({ id: dreamImages.id, dreamId: dreamImages.dreamId })
-      .from(dreamImages)
-      .where(inArray(dreamImages.dreamId, ids))
-      .orderBy(asc(dreamImages.sortOrder), asc(dreamImages.id));
-    for (const i of imgs) if (!portadas.has(i.dreamId)) portadas.set(i.dreamId, i.id);
-
-    const st = await db
-      .select({
-        dreamId: dreamSteps.dreamId,
-        total: sql<number>`count(*)`,
-        done: sql<number>`sum(case when done = 1 then 1 else 0 end)`,
-      })
-      .from(dreamSteps)
-      .where(inArray(dreamSteps.dreamId, ids))
-      .groupBy(dreamSteps.dreamId);
-    for (const s of st) pasos.set(s.dreamId, { done: Number(s.done ?? 0), total: Number(s.total) });
-  }
-
-  // Los macros se necesitan siempre: un micro enseña de qué sueño cuelga
-  const macros = await db
-    .select({ id: dreams.id, title: dreams.title })
-    .from(dreams)
-    .where(and(eq(dreams.userId, req.userId!), eq(dreams.kind, 'macro'), isNull(dreams.archivedAt)));
-  const titulosMacro = new Map(macros.map((m) => [m.id, m.title]));
-
-  // Cuántos micros cuelgan de cada macro (y cuántos cumplidos)
-  const hijos = new Map<number, { done: number; total: number }>();
-  if (kind === 'macro' && ids.length) {
-    const rows = await db
-      .select({ parentId: dreams.parentId, status: dreams.status })
-      .from(dreams)
-      .where(and(eq(dreams.userId, req.userId!), eq(dreams.kind, 'micro'), isNull(dreams.archivedAt)));
-    for (const r of rows) {
-      if (r.parentId == null) continue;
-      const acc = hijos.get(r.parentId) ?? { done: 0, total: 0 };
-      acc.total += 1;
-      if (r.status === 'cumplido') acc.done += 1;
-      hijos.set(r.parentId, acc);
-    }
-  }
-
   res.json(
-    filas.map((d) => {
-      const portada = portadas.get(d.id);
-      return {
-        ...d,
-        parentTitle: d.parentId != null ? (titulosMacro.get(d.parentId) ?? null) : null,
-        coverUrl: portada ? urlImagen(portada, 'thumb') : null,
-        steps: pasos.get(d.id) ?? { done: 0, total: 0 },
-        micros: hijos.get(d.id) ?? null,
-      };
-    }),
+    filas.map(({ coverImageId, stepsTotal, stepsDone, microsTotal, microsDone, ...d }) => ({
+      ...d,
+      coverUrl: coverImageId ? urlImagen(Number(coverImageId), 'thumb') : null,
+      steps: { done: Number(stepsDone ?? 0), total: Number(stepsTotal ?? 0) },
+      micros: kind === 'macro' ? { done: Number(microsDone ?? 0), total: Number(microsTotal ?? 0) } : null,
+    })),
   );
 }));
 
@@ -295,7 +264,9 @@ dreamsModule.get('/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
     .where(and(eq(dreams.id, id), eq(dreams.userId, req.userId!), isNull(dreams.archivedAt)));
   if (!sueno) return res.status(404).json({ error: 'Sueño no encontrado' });
 
-  const [pasos, enlaces, imagenes] = await Promise.all([
+  // Todo lo demás en paralelo: son consultas independientes y cada ida y vuelta
+  // a la base cuesta lo mismo, así que en serie se pagaría cuatro veces.
+  const [pasos, enlaces, imagenes, hijos, macros] = await Promise.all([
     db.select().from(dreamSteps).where(eq(dreamSteps.dreamId, id)).orderBy(asc(dreamSteps.sortOrder), asc(dreamSteps.id)),
     db.select().from(dreamLinks).where(eq(dreamLinks.dreamId, id)).orderBy(asc(dreamLinks.sortOrder), asc(dreamLinks.id)),
     db
@@ -303,23 +274,23 @@ dreamsModule.get('/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
       .from(dreamImages)
       .where(eq(dreamImages.dreamId, id))
       .orderBy(asc(dreamImages.sortOrder), asc(dreamImages.id)),
-  ]);
-
-  // Un macro enseña sus micros; un micro, de qué macro cuelga
-  const hijos =
+    // un macro enseña sus micros
     sueno.kind === 'macro'
-      ? await db
+      ? db
           .select({ id: dreams.id, title: dreams.title, status: dreams.status, targetDate: dreams.targetDate })
           .from(dreams)
           .where(and(eq(dreams.userId, req.userId!), eq(dreams.parentId, id), isNull(dreams.archivedAt)))
           .orderBy(asc(dreams.sortOrder), asc(dreams.id))
-      : [];
-
-  const macros = await db
-    .select({ id: dreams.id, title: dreams.title })
-    .from(dreams)
-    .where(and(eq(dreams.userId, req.userId!), eq(dreams.kind, 'macro'), isNull(dreams.archivedAt)))
-    .orderBy(asc(dreams.sortOrder), asc(dreams.id));
+      : Promise.resolve([]),
+    // un micro necesita la lista de macros para el selector de «cuelga de»
+    sueno.kind === 'micro'
+      ? db
+          .select({ id: dreams.id, title: dreams.title })
+          .from(dreams)
+          .where(and(eq(dreams.userId, req.userId!), eq(dreams.kind, 'macro'), isNull(dreams.archivedAt)))
+          .orderBy(asc(dreams.sortOrder), asc(dreams.id))
+      : Promise.resolve([]),
+  ]);
 
   res.json({
     ...sueno,

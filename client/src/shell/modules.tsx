@@ -9,6 +9,9 @@ export interface PortalLink {
   id: string;
   title: string;
   path: string;
+  // Para páginas con pestañas internas (Sueños): el enlace lleva a una pestaña
+  // concreta y el menú se marca activo comparando también esta parte.
+  search?: string;
   icon: ReactElement;
 }
 
@@ -64,8 +67,59 @@ const icons = {
   ),
 };
 
+// Nube de pensamiento en el mismo trazo monocromo que el resto: el emoji 💭 a
+// color rompería la coherencia visual del menú.
+const iconoSuenos = (
+  <svg width="18" height="18" viewBox="0 0 24 24" {...stroke}>
+    <path d="M9 15.5h7a3.4 3.4 0 0 0 .4-6.8 4.5 4.5 0 0 0-8.6-1.4A3.5 3.5 0 0 0 9 15.5z" />
+    <circle cx="6" cy="19" r="1.5" />
+    <circle cx="3.2" cy="21.4" r="0.9" />
+  </svg>
+);
+
+const iconoSub = (d: string) => (
+  <svg width="16" height="16" viewBox="0 0 24 24" {...stroke}>
+    <path d={d} />
+  </svg>
+);
+
 export const MODULES: PortalModule[] = [
   { id: 'agenda', title: 'Agenda', path: '/agenda', icon: icons.agenda },
+  {
+    id: 'suenos',
+    title: 'Sueños',
+    icon: iconoSuenos,
+    children: [
+      {
+        id: 'macro',
+        title: 'Macrosueños',
+        path: '/suenos',
+        search: '?tab=macro',
+        // montaña: lo grande y lejano
+        icon: iconoSub('M3 19l6-9 4 5.5 2.5-3.5L21 19z'),
+      },
+      {
+        id: 'micro',
+        title: 'Microsueños',
+        path: '/suenos',
+        search: '?tab=micro',
+        // diana: algo concreto y alcanzable
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" {...stroke}>
+            <circle cx="12" cy="12" r="8" />
+            <circle cx="12" cy="12" r="3.2" />
+          </svg>
+        ),
+      },
+      {
+        id: 'deseos',
+        title: 'Lista de deseos',
+        path: '/suenos',
+        search: '?tab=deseos',
+        icon: iconoSub('M5 5h14l-1.2 13a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8zM9 5V3.8A2 2 0 0 1 11 2h2a2 2 0 0 1 2 1.8V5'),
+      },
+    ],
+  },
   {
     id: 'salud',
     title: 'Salud',
@@ -111,8 +165,10 @@ export const MODULES: PortalModule[] = [
     ],
   },
   {
+    // El id y las rutas siguen siendo /autonomo: renombrar direcciones rompería
+    // enlaces guardados sin ganar nada. Lo que cambia es el nombre visible.
     id: 'autonomo',
-    title: 'Autónomo',
+    title: 'Finanzas',
     icon: icons.autonomo,
     children: [
       {
@@ -138,18 +194,6 @@ export const MODULES: PortalModule[] = [
         ),
       },
     ],
-  },
-  // Enlace único con pestañas dentro (Macro / Micro / Lista de deseos), igual
-  // que Configuración: el menú no se llena de subapartados.
-  {
-    id: 'suenos',
-    title: 'Sueños',
-    path: '/suenos',
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" {...stroke}>
-        <path d="M12 3l2.2 5.2 5.6.5-4.3 3.7 1.3 5.5L12 15l-4.8 2.9 1.3-5.5-4.3-3.7 5.6-.5z" />
-      </svg>
-    ),
   },
   // (futuro) { id: 'wiki', title: 'Wiki', ... },
 ];

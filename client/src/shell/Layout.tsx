@@ -2,12 +2,30 @@ import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { clearToken } from '../lib/auth';
 import { entrarConPasskey, marcarActividad, tocaBloquear } from '../lib/passkeys';
-import { MODULES, type PortalModule } from './modules';
+import { MODULES, type PortalLink, type PortalModule } from './modules';
 
 function SidebarItem({ mod }: { mod: PortalModule }) {
   const location = useLocation();
-  const hasActiveChild = mod.children?.some((c) => location.pathname.startsWith(c.path)) ?? false;
-  const [open, setOpen] = useState(true);
+
+  /**
+   * Un hijo está activo si coincide la ruta y, cuando el enlace apunta a una
+   * pestaña concreta (Sueños), también la pestaña. La pestaña por defecto de
+   * Sueños es «micro», así que una URL sin parámetro cuenta como esa.
+   */
+  const esActivo = (c: PortalLink) => {
+    if (!location.pathname.startsWith(c.path)) return false;
+    if (!c.search) return true;
+    const actual = new URLSearchParams(location.search).get('tab') ?? 'micro';
+    return `?tab=${actual}` === c.search;
+  };
+
+  const hayHijoActivo = mod.children?.some((c) => location.pathname.startsWith(c.path)) ?? false;
+  // Colapsados por defecto: solo se abre el grupo en el que estás. Y si navegas
+  // a otro módulo, ese se abre y el anterior se recoge.
+  const [open, setOpen] = useState(hayHijoActivo);
+  useEffect(() => {
+    setOpen(hayHijoActivo);
+  }, [hayHijoActivo]);
 
   if (!mod.children) {
     return (
@@ -22,13 +40,20 @@ function SidebarItem({ mod }: { mod: PortalModule }) {
     <div>
       <button className="nav-group-head" onClick={() => setOpen(!open)} aria-expanded={open}>
         {mod.icon}
-        <span style={hasActiveChild ? { color: 'var(--ink)', fontWeight: 600 } : undefined}>{mod.title}</span>
+        <span style={hayHijoActivo ? { color: 'var(--ink)', fontWeight: 600 } : undefined}>{mod.title}</span>
         <span className={`chev${open ? ' open' : ''}`}>›</span>
       </button>
       {open && (
         <div className="nav-children">
           {mod.children.map((c) => (
-            <NavLink key={c.id} to={c.path} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+            <NavLink
+              key={c.id}
+              to={`${c.path}${c.search ?? ''}`}
+              // className como función a propósito: con una cadena, NavLink
+              // añade su propio `active` mirando solo la ruta, y las tres
+              // pestañas de Sueños comparten ruta (se marcarían todas).
+              className={() => `nav-item${esActivo(c) ? ' active' : ''}`}
+            >
               {c.icon}
               <span>{c.title}</span>
             </NavLink>

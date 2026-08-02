@@ -14,6 +14,8 @@ import CuentasPage from './modules/autonomo/CuentasPage';
 import RoadmapPage from './modules/roadmap/RoadmapPage';
 import RutinaPage from './modules/routine/RutinaPage';
 import DiarioPage from './modules/health/DiarioPage';
+import SuenosPage from './modules/dreams/SuenosPage';
+import SuenoDetallePage from './modules/dreams/SuenoDetallePage';
 import Configuracion from './pages/Configuracion';
 import Recuperar from './pages/Recuperar';
 
@@ -42,6 +44,8 @@ export default function App() {
             <Route path="/autonomo/cuentas" element={<CuentasPage />} />
             <Route path="/roadmap" element={<RoadmapPage />} />
             <Route path="/rutina" element={<RutinaPage />} />
+            <Route path="/suenos" element={<SuenosPage />} />
+            <Route path="/suenos/:id" element={<SuenoDetallePage />} />
             <Route path="/configuracion" element={<Configuracion />} />
             {/* enlaces antiguos: siguen funcionando */}
             <Route path="/notificaciones" element={<Navigate to="/configuracion?tab=notificaciones" replace />} />

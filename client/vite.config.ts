@@ -9,7 +9,8 @@ function cspFor(api: string): string {
     "default-src 'self'",
     "script-src 'self'",
     "style-src 'self' 'unsafe-inline'", // React usa atributos style en línea
-    "img-src 'self' data:",
+    // blob: son las vistas previas al subir una imagen; la API sirve las de Sueños
+    `img-src 'self' data: blob:${api ? ` ${api}` : ''}`,
     "font-src 'self'",
     `connect-src 'self'${api ? ` ${api}` : ''}`,
     "manifest-src 'self'",

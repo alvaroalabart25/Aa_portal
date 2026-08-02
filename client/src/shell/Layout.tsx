@@ -43,10 +43,10 @@ function SidebarItem({ mod }: { mod: PortalModule }) {
 const HIDDEN_ON_MOBILE = new Set(['spaces']);
 
 // Barra inferior móvil con navegación en 2 niveles:
-// raíz = Agenda + grupos; al tocar un grupo se muestran sus hijos (+ Agenda y volver).
+// raíz = enlaces directos + grupos; al tocar un grupo se muestran sus hijos.
 function BottomBar() {
   const [group, setGroup] = useState<string | null>(null);
-  const agenda = MODULES.find((m) => !m.children)!;
+  const agenda = MODULES.find((m) => m.id === 'agenda')!;
   const groups = MODULES.filter((m) => m.children);
 
   const agendaLink = (
@@ -64,13 +64,26 @@ function BottomBar() {
   if (group === null) {
     return (
       <nav className="bottombar">
-        {agendaLink}
-        {groups.map((g) => (
-          <button key={g.id} className="nav-item" onClick={() => setGroup(g.id)}>
-            {g.icon}
-            <span>{g.title}</span>
-          </button>
-        ))}
+        {/* se recorre MODULES entero: un módulo sin hijos es un enlace directo,
+            uno con hijos abre su segundo nivel */}
+        {MODULES.map((m) =>
+          m.children ? (
+            <button key={m.id} className="nav-item" onClick={() => setGroup(m.id)}>
+              {m.icon}
+              <span>{m.title}</span>
+            </button>
+          ) : (
+            <NavLink
+              key={m.id}
+              to={m.path!}
+              onClick={() => setGroup(null)}
+              className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+            >
+              {m.icon}
+              <span>{m.title}</span>
+            </NavLink>
+          ),
+        )}
         <NavLink to="/configuracion" onClick={() => setGroup(null)} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3" />

@@ -14,6 +14,7 @@ import { healthModule } from './modules/health';
 import { diaryModule } from './modules/diary';
 import { pushModule, pushRunner } from './modules/push';
 import { trackModule, trackSetup } from './modules/track';
+import { dreamImagesRouter, dreamsModule } from './modules/dreams';
 import { logSecurityEvent } from './lib/security';
 
 const app = express();
@@ -53,7 +54,12 @@ app.use(
     },
   }),
 );
-app.use(express.json({ limit: '256kb' }));
+// Cuerpos JSON pequeños en toda la API: 256 kb sobra para datos y corta de raíz
+// los envíos gigantes. La única excepción es subir la imagen de un sueño, que
+// lleva su propio analizador con más margen en su ruta (ver módulo dreams).
+const cuerpoJson = express.json({ limit: '256kb' });
+const esSubidaDeImagen = (url: string) => /\/dreams\/\d+\/images(\?|$)/.test(url);
+app.use((req, res, next) => (esSubidaDeImagen(req.url) ? next() : cuerpoJson(req, res, next)));
 
 // Límites de tráfico: el del login frena la fuerza bruta (es la puerta de
 // entrada más probable); el general es un tope de abuso para el resto.
@@ -112,6 +118,10 @@ app.use('/api/auth', authRouter);
 app.use('/api/push', pushRunner);
 app.use('/api', trackLimiter, trackModule);
 
+// Imágenes de Sueños: sin JWT porque una etiqueta <img> no puede mandar
+// cabeceras. Van firmadas en la propia dirección y así el navegador las cachea.
+app.use('/api/dreams', dreamImagesRouter);
+
 // Módulos (todos protegidos por login). Añadir un módulo = una línea más aquí.
 app.use('/api', requireAuth, trackSetup);
 app.use('/api', requireAuth, tasksModule);
@@ -121,6 +131,7 @@ app.use('/api/roadmap', requireAuth, roadmapModule);
 app.use('/api/routine', requireAuth, routineModule);
 app.use('/api/health-log', requireAuth, healthModule);
 app.use('/api/diary', requireAuth, diaryModule);
+app.use('/api/dreams', requireAuth, dreamsModule);
 app.use('/api/push', requireAuth, pushModule);
 
 // Errores no controlados -> 500 JSON

@@ -139,5 +139,17 @@ export const MODULES: PortalModule[] = [
       },
     ],
   },
+  // Enlace único con pestañas dentro (Macro / Micro / Lista de deseos), igual
+  // que Configuración: el menú no se llena de subapartados.
+  {
+    id: 'suenos',
+    title: 'Sueños',
+    path: '/suenos',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" {...stroke}>
+        <path d="M12 3l2.2 5.2 5.6.5-4.3 3.7 1.3 5.5L12 15l-4.8 2.9 1.3-5.5-4.3-3.7 5.6-.5z" />
+      </svg>
+    ),
+  },
   // (futuro) { id: 'wiki', title: 'Wiki', ... },
 ];

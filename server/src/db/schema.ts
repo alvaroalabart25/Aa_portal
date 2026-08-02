@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   bigint,
+  customType,
   datetime,
   date,
   decimal,
@@ -10,7 +11,15 @@ import {
   mysqlTable,
   text,
   varchar,
+  type AnyMySqlColumn,
 } from 'drizzle-orm/mysql-core';
+
+// LONGBLOB: bytes de imagen tal cual. mysql2 los entrega como Buffer.
+const longblob = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() {
+    return 'longblob';
+  },
+});
 
 /**
  * Modelo de datos del portal.
@@ -409,6 +418,140 @@ export const frontIntegrity = mysqlTable('front_integrity', {
   updatedAt: datetime('updated_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+// ============================================================
+// Módulo Sueños: macro (sueños de vida), micro (concretos) y lista de deseos
+// ============================================================
+
+// Categorías compartidas por los tres apartados del módulo (Viajes, Casa, Deporte...)
+export const dreamCategories = mysqlTable('dream_categories', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  name: varchar('name', { length: 80 }).notNull(),
+  color: varchar('color', { length: 7 }).notNull().default('#0a0a0a'), // hex
+  sortOrder: int('sort_order').notNull().default(0),
+  archivedAt: datetime('archived_at'),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+/**
+ * Sueños. `kind` separa los dos tableros: macro son sueños de vida, micro son
+ * concretos y alcanzables. Un micro PUEDE colgar de un macro (parent_id) o ir
+ * suelto: la relación es opcional a propósito.
+ *
+ * `sort_order` es la prioridad: se ordena arrastrando las tarjetas, así que el
+ * orden es un dato del usuario, no algo derivado de la fecha.
+ *
+ * Los cumplidos NO se ocultan (se quieren ver), por eso `status` y
+ * `achieved_at` son datos de primera clase y no un archivado.
+ */
+export const dreams = mysqlTable('dreams', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  kind: mysqlEnum('kind', ['macro', 'micro']).notNull(),
+  // solo para micros: el macro del que cuelgan (NULL = suelto)
+  parentId: bigint('parent_id', { mode: 'number' }).references((): AnyMySqlColumn => dreams.id),
+  categoryId: bigint('category_id', { mode: 'number' }).references(() => dreamCategories.id),
+  title: varchar('title', { length: 200 }).notNull(),
+  description: text('description'), // texto plano con saltos de línea
+  status: mysqlEnum('status', ['sonando', 'en_marcha', 'cumplido', 'aparcado']).notNull().default('sonando'),
+  targetDate: date('target_date', { mode: 'string' }), // para cuándo lo quieres
+  achievedAt: date('achieved_at', { mode: 'string' }), // cuándo lo conseguiste
+  costEstimated: decimal('cost_estimated', { precision: 12, scale: 2 }),
+  costSaved: decimal('cost_saved', { precision: 12, scale: 2 }),
+  sortOrder: int('sort_order').notNull().default(0), // prioridad manual
+  archivedAt: datetime('archived_at'),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`)
+    .$onUpdateFn(() => new Date()),
+});
+
+// Ficha de cada imagen. Los bytes viven aparte (dream_image_data) para que
+// listar la galería no arrastre megas sin querer. La destacada es la primera
+// por sort_order: así no hace falta una referencia cruzada entre tablas.
+export const dreamImages = mysqlTable('dream_images', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  dreamId: bigint('dream_id', { mode: 'number' })
+    .notNull()
+    .references(() => dreams.id),
+  mime: varchar('mime', { length: 40 }).notNull().default('image/webp'),
+  bytes: int('bytes').notNull().default(0), // tamaño de la versión grande
+  sortOrder: int('sort_order').notNull().default(0),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Dos tamaños por imagen: miniatura para la rejilla, grande para el detalle.
+// El navegador las reduce antes de subirlas, aquí no se procesa nada.
+export const dreamImageData = mysqlTable('dream_image_data', {
+  imageId: bigint('image_id', { mode: 'number' }).primaryKey(),
+  thumb: longblob('thumb').notNull(),
+  full: longblob('full').notNull(),
+});
+
+// Pasos o hitos para conseguir el sueño (la lista de países de «Viajar»)
+export const dreamSteps = mysqlTable('dream_steps', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  dreamId: bigint('dream_id', { mode: 'number' })
+    .notNull()
+    .references(() => dreams.id),
+  title: varchar('title', { length: 255 }).notNull(),
+  done: int('done').notNull().default(0),
+  doneAt: datetime('done_at'),
+  sortOrder: int('sort_order').notNull().default(0),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Enlaces de referencia e inspiración, con una nota opcional
+export const dreamLinks = mysqlTable('dream_links', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  dreamId: bigint('dream_id', { mode: 'number' })
+    .notNull()
+    .references(() => dreams.id),
+  label: varchar('label', { length: 120 }).notNull(),
+  url: varchar('url', { length: 500 }).notNull(),
+  note: varchar('note', { length: 300 }),
+  sortOrder: int('sort_order').notNull().default(0),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+/**
+ * Lista de deseos: cosas que solo te separa el dinero (AirPods, un móvil).
+ * Deliberadamente pobre en campos: si algo necesita plan, imágenes o pasos, es
+ * un microsueño y se asciende con el botón de convertir.
+ */
+export const wishlistItems = mysqlTable('wishlist_items', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  title: varchar('title', { length: 200 }).notNull(),
+  price: decimal('price', { precision: 12, scale: 2 }),
+  url: varchar('url', { length: 500 }),
+  categoryId: bigint('category_id', { mode: 'number' }).references(() => dreamCategories.id),
+  sortOrder: int('sort_order').notNull().default(0),
+  boughtAt: date('bought_at', { mode: 'string' }), // comprado -> pasa al histórico
+  archivedAt: datetime('archived_at'),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`)
+    .$onUpdateFn(() => new Date()),
+});
+
 export type User = typeof users.$inferSelect;
 export type Space = typeof spaces.$inferSelect;
 export type Project = typeof projects.$inferSelect;
@@ -416,3 +559,8 @@ export type Task = typeof tasks.$inferSelect;
 export type AutonomoProfile = typeof autonomoProfile.$inferSelect;
 export type InvoiceClient = typeof invoiceClients.$inferSelect;
 export type Invoice = typeof invoices.$inferSelect;
+export type Dream = typeof dreams.$inferSelect;
+export type DreamCategory = typeof dreamCategories.$inferSelect;
+export type DreamStep = typeof dreamSteps.$inferSelect;
+export type DreamLink = typeof dreamLinks.$inferSelect;
+export type WishlistItem = typeof wishlistItems.$inferSelect;

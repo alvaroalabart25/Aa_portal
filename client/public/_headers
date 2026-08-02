@@ -1,0 +1,22 @@
+# Cabeceras de seguridad en Cloudflare Pages (sustituyen al .htaccess de Apache).
+# Cloudflare sirve el sitio solo por HTTPS, así que la redirección ya no hace falta.
+# La política de contenido (CSP) NO va aquí: viaja en una etiqueta meta del HTML
+# que se genera al construir con la URL de la API. Un solo sitio, sin duplicar.
+
+/*
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), publickey-credentials-get=(self)
+  Cross-Origin-Opener-Policy: same-origin
+
+# El index nunca se cachea: así un despliegue nuevo llega siempre al momento
+/
+  Cache-Control: no-cache, must-revalidate
+/index.html
+  Cache-Control: no-cache, must-revalidate
+
+# Los ficheros con huella en el nombre sí, y para siempre
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

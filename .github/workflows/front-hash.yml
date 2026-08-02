@@ -1,0 +1,24 @@
+name: Fijar huella del front
+
+# Cloudflare Pages construye y publica el front al recibir el push (conectado
+# al repositorio, sin credenciales en GitHub). Este workflow solo espera a que
+# esté publicado y le dice a la API la huella nueva, para que la vigilancia de
+# integridad no confunda un despliegue nuestro con una manipulación.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'client/**'
+  workflow_dispatch: {}
+
+jobs:
+  fijar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Esperar a que Cloudflare publique y fijar la huella
+        run: |
+          sleep 120
+          curl -fsS -X POST \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            --max-time 60 --retry 5 --retry-delay 20 \
+            https://aa-portal-api.onrender.com/api/push/front-hash

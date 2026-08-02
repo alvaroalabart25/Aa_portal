@@ -1,14 +1,22 @@
 import { useSearchParams } from 'react-router-dom';
 import NotificacionesPage from '../modules/push/NotificacionesPage';
 import SeguridadPage from '../modules/security/SeguridadPage';
+import BitacoraTab from '../modules/security/BitacoraTab';
 
-type Tab = 'seguridad' | 'notificaciones';
+type Tab = 'seguridad' | 'notificaciones' | 'bitacora';
+
+const TABS: [Tab, string][] = [
+  ['seguridad', 'Seguridad'],
+  ['notificaciones', 'Notificaciones'],
+  ['bitacora', 'Bitácora'],
+];
 
 // Configuración: un único apartado del menú que agrupa los ajustes del portal.
 // La pestaña viaja en la URL (?tab=) para poder enlazar directamente a una.
 export default function Configuracion() {
   const [params, setParams] = useSearchParams();
-  const tab: Tab = params.get('tab') === 'notificaciones' ? 'notificaciones' : 'seguridad';
+  const pedida = params.get('tab');
+  const tab: Tab = pedida === 'notificaciones' || pedida === 'bitacora' ? pedida : 'seguridad';
 
   function ir(t: Tab) {
     setParams(t === 'seguridad' ? {} : { tab: t }, { replace: true });
@@ -19,26 +27,21 @@ export default function Configuracion() {
       <div className="page-head">
         <h1>Configuración</h1>
         <div className="seg" role="tablist">
-          <button
-            role="tab"
-            aria-selected={tab === 'seguridad'}
-            className={tab === 'seguridad' ? 'active' : ''}
-            onClick={() => ir('seguridad')}
-          >
-            Seguridad
-          </button>
-          <button
-            role="tab"
-            aria-selected={tab === 'notificaciones'}
-            className={tab === 'notificaciones' ? 'active' : ''}
-            onClick={() => ir('notificaciones')}
-          >
-            Notificaciones
-          </button>
+          {TABS.map(([v, label]) => (
+            <button
+              key={v}
+              role="tab"
+              aria-selected={tab === v}
+              className={tab === v ? 'active' : ''}
+              onClick={() => ir(v)}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {tab === 'seguridad' ? <SeguridadPage /> : <NotificacionesPage />}
+      {tab === 'notificaciones' ? <NotificacionesPage /> : tab === 'bitacora' ? <BitacoraTab /> : <SeguridadPage />}
     </div>
   );
 }

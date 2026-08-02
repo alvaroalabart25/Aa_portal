@@ -46,7 +46,10 @@ h1, h2, h3 { font-family: var(--font-title); font-weight: 600; margin: 0; }
 h1 { font-size: 26px; }
 h2 { font-size: 19px; }
 a { color: inherit; text-decoration: none; }
-button { font-family: var(--font-body); cursor: pointer; }
+/* color: inherit es importante: sin él, iOS pinta el texto de un botón con el
+   azul del sistema. Cualquier botón sin color propio (y hay unos cuantos que
+   solo envuelven contenido) saldría azul en el iPhone. */
+button { font-family: var(--font-body); cursor: pointer; color: inherit; }
 
 .btn {
   background: var(--ink); color: var(--paper);
@@ -705,6 +708,20 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .dy-check-add:hover { color: var(--ink); }
 
 /* Seguridad */
+/* Cerrar sesión aquí: ya no está en el menú, así que se ve de lejos */
+.btn.salir {
+  display: block; width: 100%; margin-top: 12px;
+  background: var(--danger); border-color: var(--danger); color: #fff;
+  font-size: 15px; font-weight: 600; padding: 13px 16px;
+}
+.btn.salir:hover { background: #ab2020; border-color: #ab2020; }
+.btn.sesiones-todas { display: block; width: 100%; margin-top: 8px; }
+
+/* Bitácora */
+.bit-check { display: inline-flex; align-items: center; gap: 7px; margin: 0; font-size: 13px; color: var(--ink-soft); }
+.bit-check input { accent-color: var(--ink); }
+.bit-detail { display: block; font-size: 11.5px; line-height: 1.4; margin-top: 1px; }
+
 .sg-form { display: flex; flex-direction: column; gap: 12px; max-width: 340px; margin-top: 12px; }
 .sg-events { display: flex; flex-direction: column; gap: 2px; margin-top: 10px; }
 .sg-event { display: grid; grid-template-columns: 108px 1fr 118px; gap: 10px; align-items: center; font-size: 13px; padding: 6px 8px; border-radius: 6px; border-left: 3px solid var(--line); }
@@ -727,6 +744,7 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   border: none; background: none; padding: 40px 24px; margin: 0;
   display: grid; place-items: center; width: 100%; cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  font: inherit;
 }
 .lock-tap:active .lock-card { opacity: 0.6; }
 .lock-hint { font-size: 13px; color: var(--ink-muted); min-height: 18px; }

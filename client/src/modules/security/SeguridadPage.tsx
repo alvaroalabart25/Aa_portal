@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { get, post } from '../../lib/api';
 import { clearToken, setToken } from '../../lib/auth';
 import {
@@ -10,34 +11,6 @@ import {
   registrarPasskey,
   type Passkey,
 } from '../../lib/passkeys';
-
-interface EventoSeguridad {
-  id: number;
-  kind: string;
-  severity: 'alta' | 'media' | 'baja';
-  ip: string | null;
-  detail: string | null;
-  createdAt: string;
-}
-
-const NOMBRES: Record<string, string> = {
-  login_fallido: 'Intento de acceso fallido',
-  login_nuevo_origen: 'Acceso desde una IP nueva',
-  token_invalido: 'Token inválido',
-  sesion_revocada_uso: 'Uso de una sesión revocada',
-  track_token_invalido: 'Token del control remoto incorrecto',
-  cron_secreto_invalido: 'Secreto del disparador incorrecto',
-  limite_trafico: 'Límite de tráfico alcanzado',
-  origen_no_permitido: 'Origen no permitido',
-  error_servidor: 'Error de la API',
-  sesiones_revocadas: 'Sesiones cerradas en todos los dispositivos',
-  front_modificado: 'El portal cambió sin despliegue',
-  contrasena_cambiada: 'Contraseña cambiada',
-  '2fa_activado': 'Segundo factor activado',
-  '2fa_desactivado': 'Segundo factor desactivado',
-  codigo_recuperacion_usado: 'Entrada con código de recuperación',
-  codigos_recuperacion_nuevos: 'Códigos de recuperación regenerados',
-};
 
 function fecha(iso: string): string {
   return new Date(iso).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -422,21 +395,18 @@ function SegundoFactor({
   );
 }
 
-// Salud · Seguridad: contraseña, segundo factor, sesiones y bitácora
+// Salud · Seguridad: llaves, segundo factor, contraseña y sesiones.
+// La bitácora tiene su propia pestaña: aquí solo se enlaza.
 export default function SeguridadPage() {
   const [activo, setActivo] = useState(false);
   const [restantes, setRestantes] = useState(0);
-  const [eventos, setEventos] = useState<EventoSeguridad[]>([]);
   const [msg, setMsg] = useState('');
+  const [, setParams] = useSearchParams();
 
   const cargar = useCallback(async () => {
-    const [st, ev] = await Promise.all([
-      get<{ enabled: boolean; recoveryLeft: number }>('/auth/2fa/status'),
-      get<EventoSeguridad[]>('/auth/security-events'),
-    ]);
+    const st = await get<{ enabled: boolean; recoveryLeft: number }>('/auth/2fa/status');
     setActivo(st.enabled);
     setRestantes(st.recoveryLeft ?? 0);
-    setEventos(ev);
   }, []);
   useEffect(() => {
     cargar();
@@ -465,40 +435,32 @@ export default function SeguridadPage() {
         <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>
           La sesión dura 30 días en cada dispositivo. Si pierdes el móvil o sospechas de algo, ciérralas todas.
         </p>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
-          {/* Salir de este dispositivo vive aquí, no en el menú: es algo que se
-              hace una vez al año y no merece un botón permanente a la vista */}
-          <button
-            className="btn ghost"
-            onClick={() => {
-              clearToken();
-              window.location.href = '/login';
-            }}
-          >
-            Cerrar sesión aquí
-          </button>
-          <button className="btn ghost" onClick={revocar}>
-            Cerrar sesión en todos los dispositivos
-          </button>
-        </div>
+        {/* Salir de este dispositivo ya no está en el menú, así que aquí se ve
+            de lejos: ancho completo y en rojo. */}
+        <button
+          className="btn salir"
+          onClick={() => {
+            clearToken();
+            window.location.href = '/login';
+          }}
+        >
+          Cerrar sesión aquí
+        </button>
+        <button className="btn danger sesiones-todas" onClick={revocar}>
+          Cerrar sesión en todos los dispositivos
+        </button>
         {msg && <p style={{ fontSize: 13.5, marginTop: 10 }}>{msg}</p>}
       </section>
 
       <section className="section">
-        <h2>Últimos eventos</h2>
-        {eventos.length === 0 && <div className="empty">Nada registrado. Buena señal.</div>}
-        <div className="sg-events">
-          {eventos.map((e) => (
-            <div key={e.id} className={`sg-event ${e.severity}`}>
-              <span className="sg-event-when">{fecha(e.createdAt)}</span>
-              <span className="sg-event-what">{NOMBRES[e.kind] ?? e.kind}</span>
-              <span className="sg-event-ip">{e.ip ?? ''}</span>
-            </div>
-          ))}
-        </div>
-        <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>
-          Todo lo anómalo queda aquí y, según su gravedad, te llega también por correo.
+        <h2>Bitácora</h2>
+        <p className="muted" style={{ fontSize: 13, lineHeight: 1.6, marginTop: 4 }}>
+          Queda registrado todo lo anómalo, pero no hace falta tenerlo delante: lo que importa te llega por correo en
+          el momento. Entra aquí solo si quieres mirar con calma.
         </p>
+        <button className="btn ghost" style={{ marginTop: 10 }} onClick={() => setParams({ tab: 'bitacora' })}>
+          Ver la bitácora →
+        </button>
       </section>
     </div>
   );

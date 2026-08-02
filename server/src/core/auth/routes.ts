@@ -176,7 +176,12 @@ authRouter.post('/reset-password', ah(async (req, res) => {
 }));
 
 // ---------- Bitácora de seguridad (para verla desde el portal) ----------
-authRouter.get('/security-events', requireAuth, ah(async (_req: AuthedRequest, res) => {
+// La bitácora vive en su propia pantalla, así que puede pedir más de una
+// pantallazo. Tope duro de 300: es un registro para mirar cuando algo huele
+// mal, no un archivo histórico que haya que paginar.
+authRouter.get('/security-events', requireAuth, ah(async (req: AuthedRequest, res) => {
+  const pedido = Number(req.query.limit);
+  const limite = Number.isFinite(pedido) ? Math.min(Math.max(Math.trunc(pedido), 1), 300) : 60;
   const filas = await db
     .select({
       id: securityEvents.id,
@@ -188,7 +193,7 @@ authRouter.get('/security-events', requireAuth, ah(async (_req: AuthedRequest, r
     })
     .from(securityEvents)
     .orderBy(desc(securityEvents.id))
-    .limit(60);
+    .limit(limite);
   res.json(filas);
 }));
 

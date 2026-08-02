@@ -47,33 +47,26 @@ export default function SuenosPage() {
     <div>
       <div className="page-head">
         <h1>Sueños</h1>
-        {/* El botón de crear va en línea con las pestañas, y las pestañas
-            pegadas al borde derecho */}
-        <div className="dr-head-right">
-          {tab !== 'deseos' && (
-            <button className="btn" onClick={() => setCreando(true)}>
-              + {tab === 'macro' ? 'Nuevo macrosueño' : 'Nuevo microsueño'}
+        {/* En móvil estas pestañas se esconden: para eso está el menú de abajo,
+            que ya lleva los tres subapartados */}
+        <div className="seg dr-tabs" role="tablist">
+          {(
+            [
+              ['macro', 'Macro'],
+              ['micro', 'Micro'],
+              ['deseos', 'Lista de deseos'],
+            ] as [Tab, string][]
+          ).map(([v, label]) => (
+            <button
+              key={v}
+              role="tab"
+              aria-selected={tab === v}
+              className={tab === v ? 'active' : ''}
+              onClick={() => ir(v)}
+            >
+              {label}
             </button>
-          )}
-          <div className="seg" role="tablist">
-            {(
-              [
-                ['macro', 'Macro'],
-                ['micro', 'Micro'],
-                ['deseos', 'Lista de deseos'],
-              ] as [Tab, string][]
-            ).map(([v, label]) => (
-              <button
-                key={v}
-                role="tab"
-                aria-selected={tab === v}
-                className={tab === v ? 'active' : ''}
-                onClick={() => ir(v)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          ))}
         </div>
       </div>
 
@@ -84,6 +77,7 @@ export default function SuenosPage() {
           kind={tab}
           categorias={categorias}
           onGestionar={() => setGestionando(true)}
+          onCrear={() => setCreando(true)}
           creando={creando}
           onCerrarCreacion={() => setCreando(false)}
         />
@@ -106,12 +100,14 @@ function Tablero({
   kind,
   categorias,
   onGestionar,
+  onCrear,
   creando,
   onCerrarCreacion,
 }: {
   kind: DreamKind;
   categorias: Categoria[];
   onGestionar: () => void;
+  onCrear: () => void;
   creando: boolean;
   onCerrarCreacion: () => void;
 }) {
@@ -172,7 +168,7 @@ function Tablero({
     <>
       <div className="dr-toolbar">
         <label className="dr-orden">
-          Ordenar por
+          <span className="dr-orden-et">Ordenar por</span>
           <select value={orden} onChange={(e) => setOrden(e.target.value as Orden)}>
             <option value="prioridad">Prioridad</option>
             <option value="fecha">Fecha objetivo</option>
@@ -181,6 +177,11 @@ function Tablero({
         </label>
         <button className="btn ghost sm" onClick={onGestionar}>
           Categorías
+        </button>
+        {/* al otro extremo de la fila */}
+        {/* en móvil se queda en «+ Nuevo»: la etiqueta larga no cabe en la fila */}
+        <button className="btn dr-nuevo" onClick={onCrear}>
+          + Nuevo<span className="dr-nuevo-largo"> {kind === 'macro' ? 'macrosueño' : 'microsueño'}</span>
         </button>
       </div>
 
@@ -348,11 +349,7 @@ function ListaDeseos({ categorias, onGestionar }: { categorias: Categoria[]; onG
   const [comprados, setComprados] = useState<Deseo[]>([]);
   const [total, setTotal] = useState('0');
   const [verComprados, setVerComprados] = useState(false);
-  const [titulo, setTitulo] = useState('');
-  const [precio, setPrecio] = useState('');
-  const [enlace, setEnlace] = useState('');
-  const [catId, setCatId] = useState('');
-  const [error, setError] = useState('');
+  const [creando, setCreando] = useState(false);
 
   const cargar = useCallback(async () => {
     const r = await dreamsApi.deseos();
@@ -366,26 +363,6 @@ function ListaDeseos({ categorias, onGestionar }: { categorias: Categoria[]; onG
 
   const arrastre = useArrastre(pendientes, setPendientes, (ids) => dreamsApi.reordenarDeseos(ids));
   const catPorId = useMemo(() => new Map(categorias.map((c) => [c.id, c])), [categorias]);
-
-  async function añadir(e: FormEvent) {
-    e.preventDefault();
-    setError('');
-    if (!titulo.trim()) return;
-    try {
-      await dreamsApi.crearDeseo({
-        title: titulo.trim(),
-        price: precio.trim() || null,
-        url: enlace.trim() || null,
-        categoryId: catId ? Number(catId) : null,
-      });
-      setTitulo('');
-      setPrecio('');
-      setEnlace('');
-      await cargar();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo añadir');
-    }
-  }
 
   async function convertir(d: Deseo) {
     if (!confirm(`¿Convertir «${d.title}» en microsueño? Se irá de esta lista y podrás desarrollarlo.`)) return;
@@ -403,31 +380,10 @@ function ListaDeseos({ categorias, onGestionar }: { categorias: Categoria[]; onG
         <button className="btn ghost sm" onClick={onGestionar}>
           Categorías
         </button>
-      </div>
-
-      <form className="dr-wl-add" onSubmit={añadir}>
-        <input placeholder="Qué quieres comprar" value={titulo} onChange={(e) => setTitulo(e.target.value)} />
-        <input
-          placeholder="€"
-          inputMode="decimal"
-          value={precio}
-          onChange={(e) => setPrecio(e.target.value)}
-          className="dr-wl-price"
-        />
-        <input placeholder="Enlace (opcional)" value={enlace} onChange={(e) => setEnlace(e.target.value)} />
-        <select value={catId} onChange={(e) => setCatId(e.target.value)}>
-          <option value="">Sin categoría</option>
-          {categorias.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        <button className="btn" disabled={!titulo.trim()}>
-          Añadir
+        <button className="btn dr-nuevo" onClick={() => setCreando(true)}>
+          + Nuevo<span className="dr-nuevo-largo"> deseo</span>
         </button>
-      </form>
-      {error && <div className="error-msg">{error}</div>}
+      </div>
 
       {pendientes.length === 0 ? (
         <p className="empty">Nada en la lista. Cosas que solo te separa el dinero.</p>
@@ -490,6 +446,17 @@ function ListaDeseos({ categorias, onGestionar }: { categorias: Categoria[]; onG
         </div>
       )}
 
+      {creando && (
+        <NuevoDeseoModal
+          categorias={categorias}
+          onClose={() => setCreando(false)}
+          onCreado={() => {
+            setCreando(false);
+            cargar();
+          }}
+        />
+      )}
+
       {comprados.length > 0 && (
         <section className="dr-group">
           <button className="dr-group-toggle" onClick={() => setVerComprados((v) => !v)}>
@@ -523,6 +490,81 @@ function ListaDeseos({ categorias, onGestionar }: { categorias: Categoria[]; onG
 }
 
 // ---------------------------------------------------------------- modales
+
+function NuevoDeseoModal({
+  categorias,
+  onClose,
+  onCreado,
+}: {
+  categorias: Categoria[];
+  onClose: () => void;
+  onCreado: () => void;
+}) {
+  const [titulo, setTitulo] = useState('');
+  const [precio, setPrecio] = useState('');
+  const [enlace, setEnlace] = useState('');
+  const [catId, setCatId] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setError('');
+    setBusy(true);
+    try {
+      await dreamsApi.crearDeseo({
+        title: titulo.trim(),
+        price: precio.trim() || null,
+        url: enlace.trim() || null,
+        categoryId: catId ? Number(catId) : null,
+      });
+      onCreado();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo añadir');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal title="Nuevo deseo" onClose={onClose}>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="field">
+          <label htmlFor="nd-t">Qué quieres comprar</label>
+          <input id="nd-t" value={titulo} onChange={(e) => setTitulo(e.target.value)} autoFocus />
+        </div>
+        <div className="field">
+          <label htmlFor="nd-p">Precio aproximado (€)</label>
+          <input id="nd-p" inputMode="decimal" value={precio} onChange={(e) => setPrecio(e.target.value)} style={{ width: 130 }} />
+        </div>
+        <div className="field">
+          <label htmlFor="nd-u">Enlace (opcional)</label>
+          <input id="nd-u" placeholder="https://…" value={enlace} onChange={(e) => setEnlace(e.target.value)} />
+        </div>
+        <div className="field">
+          <label htmlFor="nd-c">Categoría</label>
+          <select id="nd-c" value={catId} onChange={(e) => setCatId(e.target.value)}>
+            <option value="">Sin categoría</option>
+            {categorias.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        {error && <div className="error-msg">{error}</div>}
+        <div className="modal-actions">
+          <button type="button" className="btn ghost" onClick={onClose}>
+            Cancelar
+          </button>
+          <button className="btn" disabled={busy || !titulo.trim()}>
+            {busy ? 'Añadiendo…' : 'Añadir'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
 
 function NuevoSuenoModal({
   kind,

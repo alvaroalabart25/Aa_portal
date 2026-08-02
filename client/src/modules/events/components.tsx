@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useEsMovil } from '../../lib/pantalla';
 import { eventsApi } from './api';
 import {
   daysUntil,
@@ -29,11 +30,17 @@ export function EventBand({ ev, note }: { ev: ImportantEvent; note?: string }) {
   );
 }
 
+// Ventana del radar en el móvil: solo la semana. En una pantalla pequeña, un
+// aviso a 27 días no es información, es ruido que ocupa media pantalla.
+const VENTANA_MOVIL_DIAS = 7;
+
 // Radar: franja de recordatorios siempre visible. Muestra vencidos (puntuales,
-// en rojo hasta borrarlos) y todo evento dentro de los próximos 4 meses,
-// ordenado por cercanía y con cuenta atrás.
+// en rojo hasta borrarlos) y los eventos que vienen, ordenados por cercanía y
+// con cuenta atrás. En el ordenador cabe el horizonte largo; en el móvil, no.
 export function EventsRadar({ scope }: { scope?: EventScope }) {
   const [eventsList, setEventsList] = useState<ImportantEvent[]>([]);
+  const esMovil = useEsMovil();
+  const ventana = esMovil ? VENTANA_MOVIL_DIAS : RADAR_WINDOW_DAYS;
 
   useEffect(() => {
     eventsApi.list().then(setEventsList);
@@ -55,7 +62,7 @@ export function EventsRadar({ scope }: { scope?: EventScope }) {
       const next = nextOccurrence(e);
       return { e, next, days: daysUntil(next) };
     })
-    .filter((x) => x.days >= 0 && x.days <= RADAR_WINDOW_DAYS)
+    .filter((x) => x.days >= 0 && x.days <= ventana)
     .sort((a, b) => a.days - b.days);
 
   if (overdue.length === 0 && alerts.length === 0) return null;

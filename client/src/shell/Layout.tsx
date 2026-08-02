@@ -4,20 +4,30 @@ import { clearToken } from '../lib/auth';
 import { entrarConPasskey, marcarActividad, tocaBloquear } from '../lib/passkeys';
 import { MODULES, type PortalLink, type PortalModule } from './modules';
 
+/**
+ * ¿Está activo este enlace? Si apunta a una pestaña concreta (los subapartados
+ * de Sueños comparten ruta y se distinguen por ?tab=), hay que comparar también
+ * la pestaña. La de por defecto es «micro», así que una URL sin parámetro cuenta
+ * como esa.
+ *
+ * Lo usan el menú lateral Y la barra inferior: NavLink por sí solo mira solo la
+ * ruta y marcaría los tres subapartados a la vez.
+ */
+function esEnlaceActivo(location: { pathname: string; search: string }, c: PortalLink): boolean {
+  if (!location.pathname.startsWith(c.path)) return false;
+  if (!c.search) return true;
+  const actual = new URLSearchParams(location.search).get('tab') ?? 'micro';
+  return `?tab=${actual}` === c.search;
+}
+
+/** Dirección completa de un enlace, con su pestaña si la lleva. */
+function destino(c: PortalLink): string {
+  return `${c.path}${c.search ?? ''}`;
+}
+
 function SidebarItem({ mod }: { mod: PortalModule }) {
   const location = useLocation();
-
-  /**
-   * Un hijo está activo si coincide la ruta y, cuando el enlace apunta a una
-   * pestaña concreta (Sueños), también la pestaña. La pestaña por defecto de
-   * Sueños es «micro», así que una URL sin parámetro cuenta como esa.
-   */
-  const esActivo = (c: PortalLink) => {
-    if (!location.pathname.startsWith(c.path)) return false;
-    if (!c.search) return true;
-    const actual = new URLSearchParams(location.search).get('tab') ?? 'micro';
-    return `?tab=${actual}` === c.search;
-  };
+  const esActivo = (c: PortalLink) => esEnlaceActivo(location, c);
 
   const hayHijoActivo = mod.children?.some((c) => location.pathname.startsWith(c.path)) ?? false;
   // Colapsados por defecto: solo se abre el grupo en el que estás. Y si navegas
@@ -48,7 +58,7 @@ function SidebarItem({ mod }: { mod: PortalModule }) {
           {mod.children.map((c) => (
             <NavLink
               key={c.id}
-              to={`${c.path}${c.search ?? ''}`}
+              to={destino(c)}
               // className como función a propósito: con una cadena, NavLink
               // añade su propio `active` mirando solo la ruta, y las tres
               // pestañas de Sueños comparten ruta (se marcarían todas).
@@ -71,6 +81,7 @@ const HIDDEN_ON_MOBILE = new Set(['spaces']);
 // raíz = enlaces directos + grupos; al tocar un grupo se muestran sus hijos.
 function BottomBar() {
   const [group, setGroup] = useState<string | null>(null);
+  const location = useLocation();
   const agenda = MODULES.find((m) => m.id === 'agenda')!;
   const groups = MODULES.filter((m) => m.children);
 
@@ -131,7 +142,14 @@ function BottomBar() {
       {g.children!
         .filter((c) => !HIDDEN_ON_MOBILE.has(c.id))
         .map((c) => (
-          <NavLink key={c.id} to={c.path} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+          // to={destino(c)} y el activo calculado a mano: sin esto, los tres
+          // subapartados de Sueños llevaban todos a la misma pestaña y salían
+          // los tres en negrita.
+          <NavLink
+            key={c.id}
+            to={destino(c)}
+            className={() => `nav-item${esEnlaceActivo(location, c) ? ' active' : ''}`}
+          >
             {c.icon}
             <span>{c.title}</span>
           </NavLink>

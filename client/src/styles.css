@@ -94,22 +94,28 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 @media (max-width: 720px) {
   .sidebar { display: none; }
   .main { padding: 18px 14px calc(124px + env(safe-area-inset-bottom)); }
+  /* Con seis apartados no caben apretados sin volverse ilegibles, así que cada
+     uno se queda con su espacio y los demás se ven desplazando a la derecha.
+     El tercero asoma a propósito: es lo que avisa de que hay más. */
   .bottombar {
     display: flex; position: fixed; bottom: 0; left: 0; right: 0;
     background: var(--paper); border-top: 1px solid var(--line);
     padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
-    justify-content: space-around; z-index: 50;
+    z-index: 50;
+    overflow-x: auto; overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
   }
-  /* Reparto a partes iguales: con seis apartados ya no caben con holgura, así
-     que cada uno ocupa lo mismo y la etiqueta se recorta antes que desbordar */
+  .bottombar::-webkit-scrollbar { display: none; }
   .bottombar .nav-item {
-    flex: 1 1 0; min-width: 0; justify-content: flex-end;
-    flex-direction: column; gap: 2px; font-size: 11px; padding: 6px 4px;
+    flex: 0 0 auto; min-width: 132px;
+    scroll-snap-align: start;
+    justify-content: flex-end; align-items: center;
+    flex-direction: column; gap: 3px; font-size: 12px; padding: 7px 10px;
     border: none; background: none; color: var(--ink-muted);
   }
-  .bottombar .nav-item span {
-    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
+  .bottombar .nav-item span { white-space: nowrap; }
   .bottombar .nav-item.active { background: none; color: var(--ink); font-weight: 700; }
 }
 
@@ -483,6 +489,19 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 /* Botón rápido "✓ Hecho" en eventos vencidos (radar y tab Eventos) */
 .event-done { margin-left: auto; flex-shrink: 0; white-space: nowrap; }
 
+@media (max-width: 720px) {
+  /* Radar compacto: una línea por evento. Cada banda ocupaba tres líneas y
+     cuatro eventos se comían media pantalla antes de ver una sola tarea.
+     El espacio y la fecha exacta se quitan: «en 3 días» ya dice lo que hay que
+     saber, y el resto está dentro del evento. */
+  .radar { gap: 5px; }
+  .radar .event-band { flex-wrap: nowrap; gap: 8px; padding: 8px 11px; }
+  .radar .event-band .badge { display: none; }
+  .radar .event-band:not(.overdue-band) .event-note { display: none; }
+  .radar .event-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .radar .event-when { flex: 0 0 auto; }
+}
+
 /* Indicador de inserción al reordenar rutinas dentro de un tramo */
 .rt-block.insert-before { box-shadow: 0 -2px 0 0 var(--ink); }
 
@@ -821,9 +840,9 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .wip-text { margin: 0; font-size: 13px; line-height: 1.55; color: var(--ink-soft); flex: 1; min-width: 200px; }
 
 /* ---------- Sueños ---------- */
-/* Crear + pestañas en la misma línea del título, con las pestañas al borde */
-.dr-head-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
+/* Fila de controles: ordenar y categorías a un lado, crear al otro */
 .dr-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 16px 0 6px; }
+.dr-nuevo { margin-left: auto; }
 .dr-orden { display: inline-flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; color: var(--ink-muted); }
 .dr-orden select { font-size: 13px; padding: 5px 8px; }
 .dr-total { display: flex; flex-direction: column; gap: 1px; font-size: 13px; }
@@ -953,10 +972,22 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 @media (max-width: 720px) {
   .dr-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
   .dr-title { font-size: 14.5px; }
-  .dr-wl-add input, .dr-wl-add select { flex: 1 1 100%; }
-  .dr-wl-add .dr-wl-price { flex: 1 1 100%; }
   .dr-wl-row { flex-wrap: wrap; gap: 8px; }
   .dr-wl-title { flex: 1 1 100%; order: 1; }
+
+  /* Las pestañas sobran: el menú de abajo ya lleva los tres subapartados, y
+     aquí solo peleaban por el sitio con el botón de crear */
+  .dr-tabs { display: none; }
+
+  /* Los tres controles en una fila, repartidos de extremo a extremo y con los
+     mismos márgenes que el título */
+  .dr-toolbar { flex-wrap: nowrap; justify-content: space-between; gap: 8px; margin-top: 12px; }
+  .dr-toolbar > * { min-width: 0; }
+  .dr-orden-et { display: none; } /* «Ordenar por» se sobreentiende por las opciones */
+  .dr-orden select { font-size: 13px; padding: 5px 6px; max-width: 116px; }
+  .dr-nuevo { margin-left: 0; white-space: nowrap; padding: 8px 13px; }
+  .dr-nuevo-largo { display: none; }
+  .dr-total strong { font-size: 17px; }
 }
 
 /* Enlace discreto de la pantalla de entrada */

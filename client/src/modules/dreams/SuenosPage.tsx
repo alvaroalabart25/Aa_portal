@@ -16,9 +16,9 @@ function fechaCorta(iso: string): string {
 }
 
 /**
- * Sueños: tres tableros que comparten categorías.
- *  - Macro: sueños de vida.
- *  - Micro: concretos; pueden colgar de un macro o ir sueltos.
+ * Metas: tres tableros que comparten categorías.
+ *  - Macro: metas de vida.
+ *  - Micro: concretas; pueden colgar de una macro o ir sueltas.
  *  - Lista de deseos: cosas que solo te separa el dinero.
  *
  * La pestaña viaja en la URL (?tab=) para poder enlazar directamente a una.
@@ -46,7 +46,7 @@ export default function SuenosPage() {
   return (
     <div>
       <div className="page-head">
-        <h1>Sueños</h1>
+        <h1>Metas</h1>
         {/* En móvil estas pestañas se esconden: para eso está el menú de abajo,
             que ya lleva los tres subapartados */}
         <div className="seg dr-tabs" role="tablist">
@@ -124,7 +124,7 @@ function Tablero({
     cargar();
   }, [cargar]);
 
-  // Los cumplidos se quedan a la vista, en su propia sección al final: se ven
+  // Las cumplidas se quedan a la vista, en su propia sección al final: se ven
   // siempre, pero no tapan lo que aún persigues.
   const vivos = useMemo(() => cards.filter((c) => c.status !== 'cumplido' && c.status !== 'aparcado'), [cards]);
   const cumplidos = useMemo(() => cards.filter((c) => c.status === 'cumplido'), [cards]);
@@ -133,7 +133,7 @@ function Tablero({
 
   const ordenados = useMemo(() => {
     if (orden === 'fecha') {
-      // sin fecha al final: un sueño sin plazo no es más urgente que uno con él
+      // sin fecha al final: una meta sin plazo no es más urgente que una con él
       return vivos.slice().sort((a, b) => {
         if (!a.targetDate && !b.targetDate) return a.sortOrder - b.sortOrder;
         if (!a.targetDate) return 1;
@@ -181,7 +181,7 @@ function Tablero({
         {/* al otro extremo de la fila */}
         {/* en móvil se queda en «+ Nuevo»: la etiqueta larga no cabe en la fila */}
         <button className="btn dr-nuevo" onClick={onCrear}>
-          + Nuevo<span className="dr-nuevo-largo"> {kind === 'macro' ? 'macrosueño' : 'microsueño'}</span>
+          + Nueva<span className="dr-nuevo-largo"> {kind === 'macro' ? 'macrometa' : 'micrometa'}</span>
         </button>
       </div>
 
@@ -189,7 +189,7 @@ function Tablero({
         <p className="empty">Cargando…</p>
       ) : cards.length === 0 ? (
         <p className="empty">
-          Todavía no hay {kind === 'macro' ? 'macrosueños' : 'microsueños'}. Empieza por uno, aunque no sepas
+          Todavía no hay {kind === 'macro' ? 'macrometas' : 'micrometas'}. Empieza por una, aunque no sepas
           cuándo.
         </p>
       ) : (
@@ -365,7 +365,7 @@ function ListaDeseos({ categorias, onGestionar }: { categorias: Categoria[]; onG
   const catPorId = useMemo(() => new Map(categorias.map((c) => [c.id, c])), [categorias]);
 
   async function convertir(d: Deseo) {
-    if (!confirm(`¿Convertir «${d.title}» en microsueño? Se irá de esta lista y podrás desarrollarlo.`)) return;
+    if (!confirm(`¿Convertir «${d.title}» en micrometa? Se irá de esta lista y podrás desarrollarla.`)) return;
     await dreamsApi.deseoASueno(d.id);
     await cargar();
   }
@@ -430,10 +430,10 @@ function ListaDeseos({ categorias, onGestionar }: { categorias: Categoria[]; onG
                 <button
                   className="btn ghost sm dr-wl-aseuno"
                   onClick={() => convertir(d)}
-                  title="Es más que una compra: convertir en microsueño"
-                  aria-label="Convertir en microsueño"
+                  title="Es más que una compra: convertir en micrometa"
+                  aria-label="Convertir en micrometa"
                 >
-                  ↗<span className="dr-wl-aseuno-largo"> A sueño</span>
+                  ↗<span className="dr-wl-aseuno-largo"> A meta</span>
                 </button>
                 <button
                   className="dr-wl-x"
@@ -629,7 +629,7 @@ function NuevoSuenoModal({
   }
 
   return (
-    <Modal title={kind === 'macro' ? 'Nuevo macrosueño' : 'Nuevo microsueño'} onClose={onClose}>
+    <Modal title={kind === 'macro' ? 'Nueva macrometa' : 'Nueva micrometa'} onClose={onClose}>
       <form onSubmit={submit} className="form-grid" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
         <div className="field">
           <label htmlFor="ns-t">Título</label>
@@ -663,7 +663,7 @@ function NuevoSuenoModal({
 
         {kind === 'micro' && macros.length > 0 && (
           <div className="field">
-            <label htmlFor="ns-m">¿Cuelga de un macrosueño?</label>
+            <label htmlFor="ns-m">¿Cuelga de una macrometa?</label>
             <select id="ns-m" value={parentId} onChange={(e) => setParentId(e.target.value)}>
               <option value="">Va suelto</option>
               {macros.map((m) => (
@@ -720,7 +720,7 @@ function CategoriasModal({
   return (
     <Modal title="Categorías" onClose={onClose}>
       <p className="muted" style={{ fontSize: 13, margin: 0, lineHeight: 1.6 }}>
-        Las comparten los macrosueños, los microsueños y la lista de deseos.
+        Las comparten las macrometas, las micrometas y la lista de deseos.
       </p>
 
       <form onSubmit={crear} className="form-grid">

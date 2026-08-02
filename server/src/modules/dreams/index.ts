@@ -223,7 +223,7 @@ dreamsModule.post('/', ah(async (req: AuthedRequest, res) => {
       .select({ id: dreams.id })
       .from(dreams)
       .where(and(eq(dreams.id, parentId), eq(dreams.userId, req.userId!), eq(dreams.kind, 'macro')));
-    if (!padre) return res.status(400).json({ error: 'El macrosueño indicado no existe' });
+    if (!padre) return res.status(400).json({ error: 'La macrometa indicada no existe' });
   }
 
   const [{ n }] = await db
@@ -262,7 +262,7 @@ dreamsModule.get('/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
     .select()
     .from(dreams)
     .where(and(eq(dreams.id, id), eq(dreams.userId, req.userId!), isNull(dreams.archivedAt)));
-  if (!sueno) return res.status(404).json({ error: 'Sueño no encontrado' });
+  if (!sueno) return res.status(404).json({ error: 'Meta no encontrada' });
 
   // Todo lo demás en paralelo: son consultas independientes y cada ida y vuelta
   // a la base cuesta lo mismo, así que en serie se pagaría cuatro veces.
@@ -345,7 +345,7 @@ dreamsModule.patch('/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
     .select()
     .from(dreams)
     .where(and(eq(dreams.id, id), eq(dreams.userId, req.userId!)));
-  if (!actual) return res.status(404).json({ error: 'Sueño no encontrado' });
+  if (!actual) return res.status(404).json({ error: 'Meta no encontrada' });
 
   const cambios: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(parsed.data)) if (v !== undefined) cambios[k] = v;
@@ -353,7 +353,7 @@ dreamsModule.patch('/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
   // Un sueño no puede colgar de sí mismo, y un macro no cuelga de nadie
   if ('parentId' in cambios) {
     if (actual.kind === 'macro') cambios.parentId = null;
-    else if (cambios.parentId === id) return res.status(400).json({ error: 'Un sueño no puede colgar de sí mismo' });
+    else if (cambios.parentId === id) return res.status(400).json({ error: 'Una meta no puede colgar de sí misma' });
   }
 
   // Cumplirlo pone la fecha sola; dejar de cumplirlo la quita
@@ -378,7 +378,7 @@ dreamsModule.delete('/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
     .update(dreams)
     .set({ archivedAt: new Date() })
     .where(and(eq(dreams.id, id), eq(dreams.userId, req.userId!), isNull(dreams.archivedAt)));
-  if (result.affectedRows === 0) return res.status(404).json({ error: 'Sueño no encontrado' });
+  if (result.affectedRows === 0) return res.status(404).json({ error: 'Meta no encontrada' });
   await db.update(dreams).set({ parentId: null }).where(and(eq(dreams.userId, req.userId!), eq(dreams.parentId, id)));
   res.json({ archived: true });
 }));
@@ -409,7 +409,7 @@ dreamsModule.post('/:id(\\d+)/steps', ah(async (req: AuthedRequest, res) => {
   const dreamId = Number(req.params.id);
   const parsed = z.object({ title: z.string().trim().min(1).max(255) }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
-  if (!(await suenoPropio(req.userId!, dreamId))) return res.status(404).json({ error: 'Sueño no encontrado' });
+  if (!(await suenoPropio(req.userId!, dreamId))) return res.status(404).json({ error: 'Meta no encontrada' });
 
   const [{ n }] = await db
     .select({ n: max(dreamSteps.sortOrder) })
@@ -476,7 +476,7 @@ dreamsModule.post('/:id(\\d+)/links', ah(async (req: AuthedRequest, res) => {
     })
     .safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
-  if (!(await suenoPropio(req.userId!, dreamId))) return res.status(404).json({ error: 'Sueño no encontrado' });
+  if (!(await suenoPropio(req.userId!, dreamId))) return res.status(404).json({ error: 'Meta no encontrada' });
 
   const [{ n }] = await db
     .select({ n: max(dreamLinks.sortOrder) })
@@ -518,7 +518,7 @@ dreamsModule.post('/:id(\\d+)/images', express.json({ limit: '4mb' }), ah(async 
   const dreamId = Number(req.params.id);
   const parsed = subirImagen.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
-  if (!(await suenoPropio(req.userId!, dreamId))) return res.status(404).json({ error: 'Sueño no encontrado' });
+  if (!(await suenoPropio(req.userId!, dreamId))) return res.status(404).json({ error: 'Meta no encontrada' });
 
   const thumb = Buffer.from(parsed.data.thumb, 'base64');
   const full = Buffer.from(parsed.data.full, 'base64');
@@ -718,7 +718,7 @@ dreamsModule.post('/:id(\\d+)/to-wishlist', ah(async (req: AuthedRequest, res) =
     .select()
     .from(dreams)
     .where(and(eq(dreams.id, id), eq(dreams.userId, req.userId!), isNull(dreams.archivedAt)));
-  if (!sueno) return res.status(404).json({ error: 'Sueño no encontrado' });
+  if (!sueno) return res.status(404).json({ error: 'Meta no encontrada' });
 
   const [enlace] = await db
     .select({ url: dreamLinks.url })

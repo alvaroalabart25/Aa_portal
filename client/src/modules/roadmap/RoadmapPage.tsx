@@ -24,7 +24,7 @@ interface RoadmapItem {
 // Siguen el orden del menú del portal, y al final lo que no es un módulo
 const CATEGORIES: Array<{ id: RoadmapCategory; label: string }> = [
   { id: 'agenda', label: 'Agenda' },
-  { id: 'suenos', label: 'Sueños' },
+  { id: 'suenos', label: 'Metas' },
   { id: 'salud', label: 'Salud' },
   { id: 'organizacion', label: 'Organización' },
   { id: 'autonomo', label: 'Finanzas' },

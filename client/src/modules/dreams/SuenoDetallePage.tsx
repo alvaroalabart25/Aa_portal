@@ -11,9 +11,9 @@ function fechaCorta(iso: string): string {
 }
 
 /**
- * Detalle de un sueño: aquí se desarrolla. Todo se guarda solo — el título y la
+ * Detalle de una meta: aquí se desarrolla. Todo se guarda solo — el título y la
  * descripción al dejar de escribir, el resto al cambiarlo — porque un tablero
- * de sueños se toca a ratos y no apetece ir buscando un botón de guardar.
+ * de metas se toca a ratos y no apetece ir buscando un botón de guardar.
  */
 export default function SuenoDetallePage() {
   const { id } = useParams();
@@ -60,7 +60,7 @@ export default function SuenoDetallePage() {
   return (
     <div>
       <div className="crumbs">
-        <Link to={`/suenos?tab=${d.kind}`}>{d.kind === 'macro' ? 'Macrosueños' : 'Microsueños'}</Link>
+        <Link to={`/suenos?tab=${d.kind}`}>{d.kind === 'macro' ? 'Macrometas' : 'Micrometas'}</Link>
         <span>›</span>
         <span>{d.title}</span>
       </div>
@@ -71,7 +71,7 @@ export default function SuenoDetallePage() {
         <select
           value={d.status}
           onChange={(e) => guardar({ status: e.target.value as DreamStatus })}
-          aria-label="Estado del sueño"
+          aria-label="Estado de la meta"
         >
           {ESTADOS.map((e) => (
             <option key={e.value} value={e.value}>
@@ -97,7 +97,7 @@ export default function SuenoDetallePage() {
           <select
             value={d.parentId ?? ''}
             onChange={(e) => guardar({ parentId: e.target.value ? Number(e.target.value) : null })}
-            aria-label="Macrosueño del que cuelga"
+            aria-label="Macrometa de la que cuelga"
           >
             <option value="">Va suelto</option>
             {d.macros.map((m) => (
@@ -136,7 +136,7 @@ export default function SuenoDetallePage() {
 
       {d.kind === 'macro' && d.children.length > 0 && (
         <section className="section">
-          <h2>Microsueños que cuelgan de aquí</h2>
+          <h2>Micrometas que cuelgan de aquí</h2>
           <div className="roadmap-list">
             {d.children.map((c) => (
               <Link key={c.id} to={`/suenos/${c.id}`} className="roadmap-row" style={{ justifyContent: 'space-between' }}>
@@ -154,7 +154,7 @@ export default function SuenoDetallePage() {
       )}
 
       <section className="section">
-        <h2>Este sueño</h2>
+        <h2>Esta meta</h2>
         <div className="dr-dt-actions">
           <button
             className="btn ghost sm"
@@ -180,7 +180,7 @@ export default function SuenoDetallePage() {
         </div>
         <p className="muted" style={{ fontSize: 12.5, marginTop: 8 }}>
           Si solo te separa el dinero, es un deseo. Si además hace falta tiempo, aprender algo o cambia cómo vives, es
-          un sueño.
+          una meta.
         </p>
       </section>
     </div>

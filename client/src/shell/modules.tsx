@@ -9,7 +9,7 @@ export interface PortalLink {
   id: string;
   title: string;
   path: string;
-  // Para páginas con pestañas internas (Sueños): el enlace lleva a una pestaña
+  // Para páginas con pestañas internas (Metas): el enlace lleva a una pestaña
   // concreta y el menú se marca activo comparando también esta parte.
   search?: string;
   icon: ReactElement;
@@ -69,7 +69,7 @@ const icons = {
 
 // Nube de pensamiento en el mismo trazo monocromo que el resto: el emoji 💭 a
 // color rompería la coherencia visual del menú.
-const iconoSuenos = (
+const iconoMetas = (
   <svg width="18" height="18" viewBox="0 0 24 24" {...stroke}>
     <path d="M9 15.5h7a3.4 3.4 0 0 0 .4-6.8 4.5 4.5 0 0 0-8.6-1.4A3.5 3.5 0 0 0 9 15.5z" />
     <circle cx="6" cy="19" r="1.5" />
@@ -86,9 +86,9 @@ const iconoSub = (d: string) => (
 /**
  * Orden de la barra inferior del móvil, que NO es el del menú lateral.
  *
- * En el ordenador manda la jerarquía (los sueños primero, que es lo que da
+ * En el ordenador manda la jerarquía (las metas primero, que es lo que da
  * sentido al resto). En el móvil manda la frecuencia: se abre para ver qué toca
- * hoy, así que delante va lo del día a día y los sueños quedan en cuarto lugar.
+ * hoy, así que delante va lo del día a día y las metas quedan en cuarto lugar.
  * Lo que no esté aquí va detrás, en el orden en que esté declarado.
  */
 export const ORDEN_MOVIL = ['agenda', 'salud', 'org', 'suenos'];
@@ -97,12 +97,12 @@ export const MODULES: PortalModule[] = [
   { id: 'agenda', title: 'Agenda', path: '/agenda', icon: icons.agenda },
   {
     id: 'suenos',
-    title: 'Sueños',
-    icon: iconoSuenos,
+    title: 'Metas',
+    icon: iconoMetas,
     children: [
       {
         id: 'macro',
-        title: 'Macrosueños',
+        title: 'Macrometas',
         path: '/suenos',
         search: '?tab=macro',
         // montaña: lo grande y lejano
@@ -110,7 +110,7 @@ export const MODULES: PortalModule[] = [
       },
       {
         id: 'micro',
-        title: 'Microsueños',
+        title: 'Micrometas',
         path: '/suenos',
         search: '?tab=micro',
         // diana: algo concreto y alcanzable

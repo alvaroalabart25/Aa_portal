@@ -83,6 +83,16 @@ const iconoSub = (d: string) => (
   </svg>
 );
 
+/**
+ * Orden de la barra inferior del móvil, que NO es el del menú lateral.
+ *
+ * En el ordenador manda la jerarquía (los sueños primero, que es lo que da
+ * sentido al resto). En el móvil manda la frecuencia: se abre para ver qué toca
+ * hoy, así que delante va lo del día a día y los sueños quedan en cuarto lugar.
+ * Lo que no esté aquí va detrás, en el orden en que esté declarado.
+ */
+export const ORDEN_MOVIL = ['agenda', 'salud', 'org', 'suenos'];
+
 export const MODULES: PortalModule[] = [
   { id: 'agenda', title: 'Agenda', path: '/agenda', icon: icons.agenda },
   {

@@ -427,8 +427,13 @@ function ListaDeseos({ categorias, onGestionar }: { categorias: Categoria[]; onG
                   </span>
                 )}
                 <span className="dr-wl-eur">{euros(d.price) ?? '—'}</span>
-                <button className="btn ghost sm" onClick={() => convertir(d)} title="Es más que una compra">
-                  A sueño
+                <button
+                  className="btn ghost sm dr-wl-aseuno"
+                  onClick={() => convertir(d)}
+                  title="Es más que una compra: convertir en microsueño"
+                  aria-label="Convertir en microsueño"
+                >
+                  ↗<span className="dr-wl-aseuno-largo"> A sueño</span>
                 </button>
                 <button
                   className="dr-wl-x"

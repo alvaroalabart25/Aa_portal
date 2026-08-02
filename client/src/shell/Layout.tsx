@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { clearToken } from '../lib/auth';
 import { entrarConPasskey, marcarActividad, tocaBloquear } from '../lib/passkeys';
-import { MODULES, type PortalLink, type PortalModule } from './modules';
+import { MODULES, ORDEN_MOVIL, type PortalLink, type PortalModule } from './modules';
 
 /**
  * ¿Está activo este enlace? Si apunta a una pestaña concreta (los subapartados
@@ -84,6 +84,12 @@ function BottomBar() {
   const location = useLocation();
   const agenda = MODULES.find((m) => m.id === 'agenda')!;
   const groups = MODULES.filter((m) => m.children);
+  // en el móvil el orden es el suyo, no el del menú lateral
+  const enOrden = [...MODULES].sort((a, b) => {
+    const pa = ORDEN_MOVIL.indexOf(a.id);
+    const pb = ORDEN_MOVIL.indexOf(b.id);
+    return (pa === -1 ? 99 : pa) - (pb === -1 ? 99 : pb);
+  });
 
   const agendaLink = (
     <NavLink
@@ -102,7 +108,7 @@ function BottomBar() {
       <nav className="bottombar">
         {/* se recorre MODULES entero: un módulo sin hijos es un enlace directo,
             uno con hijos abre su segundo nivel */}
-        {MODULES.map((m) =>
+        {enOrden.map((m) =>
           m.children ? (
             <button key={m.id} className="nav-item" onClick={() => setGroup(m.id)}>
               {m.icon}

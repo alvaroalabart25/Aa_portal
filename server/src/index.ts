@@ -68,6 +68,18 @@ const loginLimiter = rateLimit({
     res.status(429).json({ error: 'Demasiados intentos. Prueba de nuevo en unos minutos.' });
   },
 });
+// Manda correo: si no se frena, se convierte en una forma de inundar un buzón
+// y de agotar la cuota SMTP.
+const recuperarLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  handler: (req, res) => {
+    void logSecurityEvent('limite_trafico', req, 'demasiadas peticiones de recuperación de contraseña');
+    res.status(429).json({ error: 'Demasiadas peticiones. Prueba dentro de un rato.' });
+  },
+});
 const trackLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 60,
@@ -91,6 +103,8 @@ app.use((req, _res, next) => {
 // Público
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 app.use('/api/auth/login', loginLimiter);
+app.use('/api/auth/forgot-password', recuperarLimiter);
+app.use('/api/auth/reset-password', recuperarLimiter);
 app.use('/api/auth', authRouter);
 
 // Disparador de notificaciones y control remoto (Atajos iOS): van con secreto

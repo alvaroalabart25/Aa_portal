@@ -15,6 +15,7 @@ import RoadmapPage from './modules/roadmap/RoadmapPage';
 import RutinaPage from './modules/routine/RutinaPage';
 import DiarioPage from './modules/health/DiarioPage';
 import Configuracion from './pages/Configuracion';
+import Recuperar from './pages/Recuperar';
 
 function RequireAuth() {
   return isLoggedIn() ? <Outlet /> : <Navigate to="/login" replace />;
@@ -25,6 +26,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/recuperar" element={<Recuperar />} />
         <Route element={<RequireAuth />}>
           <Route element={<Layout />}>
             <Route path="/" element={<Navigate to="/agenda" replace />} />

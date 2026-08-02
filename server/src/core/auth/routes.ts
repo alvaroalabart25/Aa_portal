@@ -4,11 +4,14 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { desc, eq } from 'drizzle-orm';
 import { db } from '../../db';
-import { securityEvents, users } from '../../db/schema';
+import { and, isNull, gt } from 'drizzle-orm';
+import { passwordResets, securityEvents, users } from '../../db/schema';
+import { enviarCorreo } from '../../lib/mail';
 import { passkeysRouter, usarFirmador } from './passkeys';
 import { bumpTokenVersion, requireAuth, type AuthedRequest } from './middleware';
 import { clientIp, esOrigenNuevo, logSecurityEvent } from '../../lib/security';
 import { z } from 'zod';
+import crypto from 'crypto';
 import * as OTPAuth from 'otpauth';
 import QRCode from 'qrcode';
 
@@ -57,6 +60,103 @@ authRouter.post('/login', ah(async (req, res) => {
     await logSecurityEvent('login_nuevo_origen', req, 'acceso correcto desde una IP no vista antes');
   }
   res.json({ token: signToken(user.id, user.tokenVersion), username: user.username });
+}));
+
+// ---------- Olvidé mi contraseña ----------
+// Del enlace solo se guarda su huella (como una contraseña), así que ni con la
+// base delante se puede usar. Caduca en 30 min, sirve una sola vez, y pedir uno
+// nuevo anula los anteriores. La respuesta es siempre la misma exista o no la
+// cuenta: si no, este endpoint sería una forma de averiguar quién está dado de alta.
+const VENTANA_MIN = 30;
+
+function huella(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+authRouter.post('/forgot-password', ah(async (req, res) => {
+  const parsed = z.object({ username: z.string().trim().min(1).max(190) }).safeParse(req.body);
+  const respuestaNeutra = { ok: true, message: 'Si la cuenta existe, te llega un correo con el enlace.' };
+  if (!parsed.success) return res.json(respuestaNeutra);
+
+  const dato = parsed.data.username.toLowerCase();
+  const [user] = await db.select().from(users).where(eq(users.username, dato));
+  if (!user?.email) {
+    await logSecurityEvent('login_fallido', req, `recuperación pedida para una cuenta inexistente: ${dato.slice(0, 40)}`);
+    return res.json(respuestaNeutra);
+  }
+
+  // anula los enlaces anteriores que siguieran vivos
+  await db
+    .update(passwordResets)
+    .set({ usedAt: new Date() })
+    .where(and(eq(passwordResets.userId, user.id), isNull(passwordResets.usedAt)));
+
+  const token = crypto.randomBytes(32).toString('base64url');
+  await db.insert(passwordResets).values({
+    userId: user.id,
+    tokenHash: huella(token),
+    ip: clientIp(req),
+    expiresAt: new Date(Date.now() + VENTANA_MIN * 60_000),
+  });
+
+  const base = (process.env.FRONT_URL ?? 'http://localhost:5173').replace(/\/$/, '');
+  const enlace = `${base}/recuperar?token=${token}`;
+  await enviarCorreo({
+    to: user.email,
+    subject: '🔑 Aa Portal · Restablecer tu contraseña',
+    text: [
+      'Has pedido restablecer la contraseña de tu portal.',
+      '',
+      'Abre este enlace (caduca en ' + VENTANA_MIN + ' minutos y solo sirve una vez):',
+      enlace,
+      '',
+      'Al usarlo se cerrarán las sesiones de todos tus dispositivos.',
+      'Si tienes segundo factor o Face ID, seguirán haciendo falta para entrar.',
+      '',
+      'Si no has sido tú, ignora este correo: tu contraseña no ha cambiado. Y si te',
+      'llegan varios avisos como este, alguien está intentando entrar en tu cuenta.',
+    ].join('\n'),
+  }).catch((e) => {
+    console.error(`[recuperación] no se pudo enviar el correo: ${(e as Error).message.slice(0, 120)}`);
+  });
+
+  await logSecurityEvent('recuperacion_solicitada', req, 'se ha enviado un enlace para restablecer la contraseña');
+  res.json(respuestaNeutra);
+}));
+
+authRouter.post('/reset-password', ah(async (req, res) => {
+  const parsed = z
+    .object({
+      token: z.string().min(20).max(200),
+      next: z.string().min(12, 'La nueva contraseña debe tener al menos 12 caracteres').max(200),
+    })
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
+
+  const ahora = new Date();
+  const [fila] = await db
+    .select()
+    .from(passwordResets)
+    .where(and(eq(passwordResets.tokenHash, huella(parsed.data.token)), isNull(passwordResets.usedAt), gt(passwordResets.expiresAt, ahora)));
+  if (!fila) {
+    await logSecurityEvent('token_invalido', req, 'enlace de recuperación caducado, ya usado o inventado');
+    return res.status(400).json({ error: 'El enlace ya no vale. Pide uno nuevo.' });
+  }
+
+  const [user] = await db.select().from(users).where(eq(users.id, fila.userId));
+  if (!user) return res.status(400).json({ error: 'El enlace ya no vale' });
+
+  const nextVersion = user.tokenVersion + 1;
+  await db
+    .update(users)
+    .set({ passwordHash: await bcrypt.hash(parsed.data.next, 12), tokenVersion: nextVersion })
+    .where(eq(users.id, user.id));
+  await db.update(passwordResets).set({ usedAt: ahora }).where(eq(passwordResets.id, fila.id));
+  bumpTokenVersion(user.id, nextVersion);
+
+  await logSecurityEvent('contrasena_restablecida', req, 'contraseña restablecida con el enlace del correo');
+  // El segundo factor sigue vigente: restablecer la contraseña no lo salta
+  res.json({ ok: true, need2fa: user.totpEnabled === 1 });
 }));
 
 // ---------- Bitácora de seguridad (para verla desde el portal) ----------

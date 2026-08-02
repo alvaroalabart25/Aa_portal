@@ -1,5 +1,5 @@
 import type { Request } from 'express';
-import nodemailer from 'nodemailer';
+import { correoConfigurado, enviarCorreo } from './mail';
 import { and, desc, eq, gte, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { securityEvents } from '../db/schema';
@@ -27,7 +27,9 @@ export type EventKind =
   | '2fa_activado'
   | '2fa_desactivado'
   | 'passkey_registrada'
-  | 'passkey_borrada';
+  | 'passkey_borrada'
+  | 'recuperacion_solicitada'
+  | 'contrasena_restablecida';
 
 interface Regla {
   severidad: 'alta' | 'media' | 'baja';
@@ -56,6 +58,8 @@ const REGLAS: Record<EventKind, Regla> = {
   '2fa_desactivado': { severidad: 'alta', umbral: 1, ventanaMin: 1, enfriamientoMin: 0, asunto: 'Segundo factor DESACTIVADO' },
   passkey_registrada: { severidad: 'alta', umbral: 1, ventanaMin: 1, enfriamientoMin: 0, asunto: 'Nueva llave de acceso (Face ID) registrada' },
   passkey_borrada: { severidad: 'alta', umbral: 1, ventanaMin: 1, enfriamientoMin: 0, asunto: 'Llave de acceso eliminada' },
+  recuperacion_solicitada: { severidad: 'alta', umbral: 1, ventanaMin: 1, enfriamientoMin: 0, asunto: 'Alguien ha pedido restablecer tu contraseña' },
+  contrasena_restablecida: { severidad: 'alta', umbral: 1, ventanaMin: 1, enfriamientoMin: 0, asunto: 'Tu contraseña se ha restablecido por correo' },
 };
 
 const ultimoAviso = new Map<EventKind, number>();
@@ -82,7 +86,7 @@ function userAgent(req: Request): string {
 
 async function enviarAviso(asunto: string, cuerpo: string) {
   const to = process.env.SECURITY_ALERT_TO;
-  if (!to || !process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) return;
+  if (!to || !correoConfigurado()) return;
 
   const dia = hoyMadrid();
   if (dia !== diaContador) {
@@ -92,19 +96,7 @@ async function enviarAviso(asunto: string, cuerpo: string) {
   if (enviadosHoy >= TOPE_DIARIO) return; // cortafuegos anti-inundación
   enviadosHoy += 1;
 
-  const port = Number(process.env.SMTP_PORT ?? 465);
-  const transport = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port,
-    secure: port === 465,
-    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-  });
-  await transport.sendMail({
-    from: `"Aa Portal · Seguridad" <${process.env.SMTP_USER}>`,
-    to,
-    subject: `🔐 Aa Portal · ${asunto}`,
-    text: cuerpo,
-  });
+  await enviarCorreo({ to, subject: `🔐 Aa Portal · ${asunto}`, text: cuerpo, fromName: 'Aa Portal · Seguridad' });
   console.log(`[seguridad] aviso enviado por correo: ${asunto} (${enviadosHoy}/${TOPE_DIARIO} hoy)`);
 }
 

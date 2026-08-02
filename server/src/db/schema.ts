@@ -26,6 +26,7 @@ import {
 export const users = mysqlTable('users', {
   id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
   username: varchar('username', { length: 64 }).notNull().unique(),
+  email: varchar('email', { length: 190 }), // destino de la recuperación de contraseña
   passwordHash: varchar('password_hash', { length: 255 }).notNull(),
   trackSecret: varchar('track_secret', { length: 64 }), // token del control remoto (Atajos iOS)
   tokenVersion: int('token_version').notNull().default(0), // subirlo invalida todas las sesiones
@@ -354,6 +355,20 @@ export const diarySessions = mysqlTable('diary_sessions', {
     .references(() => routineItems.id),
   startAt: datetime('start_at').notNull(),
   endAt: datetime('end_at'),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Recuperación de contraseña: del enlace enviado por correo solo se guarda su
+// huella, así que ni con la base delante se puede usar. Un uso y caduca.
+export const passwordResets = mysqlTable('password_resets', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  tokenHash: varchar('token_hash', { length: 64 }).notNull(),
+  ip: varchar('ip', { length: 64 }),
+  expiresAt: datetime('expires_at').notNull(),
+  usedAt: datetime('used_at'),
   createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 

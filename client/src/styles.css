@@ -717,3 +717,7 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .lock-card { display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; max-width: 300px; width: 100%; }
 .login-sep { display: flex; align-items: center; gap: 10px; color: var(--ink-muted); font-size: 12px; margin: 2px 0; }
 .login-sep::before, .login-sep::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+
+/* Enlace discreto de la pantalla de entrada */
+.login-link { background: none; border: none; padding: 0; font: inherit; font-size: 12.5px; color: var(--ink-muted); text-decoration: underline; cursor: pointer; align-self: flex-start; }
+.login-link:hover { color: var(--ink); }

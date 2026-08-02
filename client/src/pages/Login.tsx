@@ -9,10 +9,31 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
   const [pide2fa, setPide2fa] = useState(false);
+  const [pidiendoEnlace, setPidiendoEnlace] = useState(false);
+  const [avisoEnlace, setAvisoEnlace] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const conFaceId = passkeysSoportadas();
+
+  // Pide el enlace de recuperación. La respuesta es siempre la misma exista o
+  // no la cuenta, así que aquí solo mostramos el acuse.
+  async function pedirEnlace() {
+    setAvisoEnlace('');
+    setLoading(true);
+    try {
+      await api<{ message: string }>('/auth/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify({ username }),
+        skipAuthRedirect: true,
+      });
+      setAvisoEnlace('Si la cuenta existe, te llega un correo con el enlace. Caduca en 30 minutos.');
+    } catch (e) {
+      setAvisoEnlace(e instanceof Error ? e.message : 'No se pudo pedir el enlace');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function entrarConCara() {
     setError('');
@@ -104,6 +125,30 @@ export default function Login() {
         <button className="btn" disabled={loading || (pide2fa && code.trim().length < 6)}>
           {loading ? 'Entrando…' : pide2fa ? 'Verificar y entrar' : 'Entrar'}
         </button>
+        {pidiendoEnlace ? (
+          <div>
+            <p className="muted" style={{ fontSize: 12.5, margin: '0 0 8px', lineHeight: 1.6 }}>
+              Escribe tu usuario arriba y te mandamos un enlace al correo para poner una contraseña nueva.
+            </p>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button type="button" className="btn sm" disabled={loading || !username} onClick={pedirEnlace}>
+                Enviarme el enlace
+              </button>
+              <button type="button" className="btn ghost sm" onClick={() => { setPidiendoEnlace(false); setAvisoEnlace(''); }}>
+                Cancelar
+              </button>
+            </div>
+            {avisoEnlace && <p style={{ fontSize: 12.5, marginTop: 10 }}>{avisoEnlace}</p>}
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="login-link"
+            onClick={() => setPidiendoEnlace(true)}
+          >
+            ¿Has olvidado la contraseña?
+          </button>
+        )}
         {conFaceId && !pide2fa && (
           <>
             <div className="login-sep">o</div>

@@ -29,15 +29,25 @@ export async function registrarPasskey(nombre: string): Promise<void> {
   await post('/auth/passkeys/register/verify', { flowId, response, name: nombre });
 }
 
+type OpcionesLogin = Parameters<typeof startAuthentication>[0]['optionsJSON'];
+
 /**
  * Entrar (o desbloquear) con Face ID. Guarda la sesión nueva y la devuelve.
- * Se usa igual desde la pantalla de entrada y desde el bloqueo de la app.
+ *
+ * `desbloqueo` cambia de dónde salen las opciones:
+ *  - false (entrar sin sesión): el dispositivo ofrece las llaves que tenga y
+ *    puede abrir su hoja de selección. No hay alternativa: decir qué llaves
+ *    existen antes de identificarse sería filtrar información.
+ *  - true (la app solo está bloqueada): la API concreta qué llave vale, así que
+ *    el iPhone va directo a Face ID sin pasar por esa hoja.
  */
-export async function entrarConPasskey(): Promise<string> {
-  const { flowId, options } = await api<{ flowId: string; options: Parameters<typeof startAuthentication>[0]['optionsJSON'] }>(
-    '/auth/passkeys/login/options',
-    { method: 'POST', body: '{}', skipAuthRedirect: true },
-  );
+export async function entrarConPasskey(desbloqueo = false): Promise<string> {
+  const ruta = desbloqueo ? '/auth/passkeys/unlock/options' : '/auth/passkeys/login/options';
+  const { flowId, options } = await api<{ flowId: string; options: OpcionesLogin }>(ruta, {
+    method: 'POST',
+    body: '{}',
+    skipAuthRedirect: true,
+  });
   const response = await startAuthentication({ optionsJSON: options });
   const r = await api<{ token: string }>('/auth/passkeys/login/verify', {
     method: 'POST',

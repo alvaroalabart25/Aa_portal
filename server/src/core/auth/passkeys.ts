@@ -165,6 +165,47 @@ passkeysRouter.post('/passkeys/login/options', ah(async (_req, res) => {
 }));
 
 /**
+ * Desbloquear la app (ya hay sesión, solo está tapada por el bloqueo).
+ *
+ * Aquí SÍ se dice qué llaves valen. Al concretarlas, el iPhone va directo a
+ * Face ID en vez de abrir primero la hoja de «elige una llave»: sabe que solo
+ * hay una opción posible. En la entrada sin sesión no se puede hacer esto,
+ * porque decir qué credenciales existen antes de identificarse sería filtrar
+ * información a cualquiera.
+ */
+// El tipo de transporte se saca de la propia firma de la librería: importarlo
+// por una ruta interna del paquete se rompería en la próxima actualización.
+type Transporte = NonNullable<
+  NonNullable<Parameters<typeof generateAuthenticationOptions>[0]['allowCredentials']>[number]['transports']
+>[number];
+
+passkeysRouter.post('/passkeys/unlock/options', requireAuth, ah(async (req: AuthedRequest, res) => {
+  const llaves = await db
+    .select({ credentialId: webauthnCredentials.credentialId, transports: webauthnCredentials.transports })
+    .from(webauthnCredentials)
+    .where(eq(webauthnCredentials.userId, req.userId!));
+  if (!llaves.length) return res.status(400).json({ error: 'No tienes ninguna llave registrada' });
+
+  const options = await generateAuthenticationOptions({
+    rpID: rpID(),
+    userVerification: 'required',
+    allowCredentials: llaves.map((k) => {
+      const transportes = k.transports?.split(',').filter(Boolean) ?? [];
+      // Si la llave vive en este dispositivo, se ofrece SOLO esa vía. Dejar
+      // también 'hybrid' haría que el iPhone preguntase «¿esta o otro
+      // dispositivo?» en vez de ir derecho a Face ID, que es justo lo que
+      // queremos evitar al desbloquear.
+      const soloLocal = transportes.includes('internal') ? ['internal'] : transportes;
+      return {
+        id: k.credentialId,
+        transports: (soloLocal.length ? soloLocal : undefined) as Transporte[] | undefined,
+      };
+    }),
+  });
+  res.json({ flowId: abrirFlujo(options.challenge), options });
+}));
+
+/**
  * Verifica la firma y devuelve la sesión. Sirve tanto para entrar como para
  * desbloquear la app: en los dos casos el resultado es un token nuevo.
  */

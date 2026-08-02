@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { clearToken } from '../lib/auth';
 import { entrarConPasskey, marcarActividad, tocaBloquear } from '../lib/passkeys';
@@ -140,46 +140,74 @@ function BottomBar() {
   );
 }
 
-// Pantalla de bloqueo: tapa el portal hasta pasar Face ID. Solo aparece si has
-// activado el bloqueo y la app llevaba un rato cerrada.
+/**
+ * Pantalla de bloqueo: tapa el portal hasta pasar Face ID. Solo aparece si has
+ * activado el bloqueo y la app llevaba un rato cerrada.
+ *
+ * Se intenta abrir Face ID solo, en cuanto aparece la pantalla. Ojo: Safari (y
+ * por tanto todo el iPhone) exige un gesto del usuario para pedir una llave, así
+ * que ahí el intento automático falla en el acto —a propósito, para que ninguna
+ * web pueda lanzarte la cámara sin que la toques—. Cuando eso pasa, toda la
+ * pantalla queda como zona pulsable: un toque en cualquier sitio y va directo a
+ * Face ID, sin la hoja de «elige una llave».
+ */
 function Bloqueo({ onAbrir }: { onAbrir: () => void }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const yaIntentado = useRef(false);
 
-  async function desbloquear() {
-    setBusy(true);
-    setError('');
-    try {
-      await entrarConPasskey(); // renueva la sesión de paso
-      marcarActividad();
-      onAbrir();
-    } catch (e) {
-      const err = e as Error;
-      setError(err.name === 'NotAllowedError' ? '' : err.message || 'No se pudo desbloquear');
-    } finally {
-      setBusy(false);
-    }
-  }
+  const desbloquear = useCallback(
+    async (silencioso = false) => {
+      if (busy) return; // una petición de llave a la vez: dos a la vez fallan
+      setBusy(true);
+      setError('');
+      try {
+        await entrarConPasskey(true); // renueva la sesión de paso
+        marcarActividad();
+        onAbrir();
+      } catch (e) {
+        const err = e as Error;
+        // NotAllowedError = cancelado por el usuario o falta el gesto: no es
+        // nada que contarle, se queda la pantalla esperando el toque.
+        if (!silencioso && err.name !== 'NotAllowedError') {
+          setError(err.message || 'No se pudo desbloquear');
+        }
+      } finally {
+        setBusy(false);
+      }
+    },
+    [busy, onAbrir],
+  );
+
+  useEffect(() => {
+    if (yaIntentado.current) return;
+    yaIntentado.current = true;
+    void desbloquear(true);
+    // solo al montar: si el navegador lo permite, Face ID sale sin tocar nada
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="lock-wrap">
-      <div className="lock-card">
-        <div className="brand">Aa</div>
-        <p className="muted" style={{ fontSize: 14, margin: '0 0 4px' }}>Portal bloqueado</p>
-        <button className="btn" disabled={busy} onClick={desbloquear}>
-          🔓 Desbloquear con Face ID
-        </button>
-        {error && <div className="error-msg">{error}</div>}
-        <button
-          className="btn ghost sm"
-          onClick={() => {
-            clearToken();
-            window.location.href = '/login';
-          }}
-        >
-          Entrar con contraseña
-        </button>
-      </div>
+      <button className="lock-tap" onClick={() => desbloquear()} aria-label="Desbloquear con Face ID">
+        <div className="lock-card">
+          <div className="brand">Aa</div>
+          <p className="muted" style={{ fontSize: 14, margin: 0 }}>
+            {busy ? 'Comprobando…' : 'Portal bloqueado'}
+          </p>
+          <span className="lock-hint">{busy ? '' : 'Toca para entrar con Face ID'}</span>
+          {error && <div className="error-msg">{error}</div>}
+        </div>
+      </button>
+      <button
+        className="btn ghost sm lock-alt"
+        onClick={() => {
+          clearToken();
+          window.location.href = '/login';
+        }}
+      >
+        Entrar con contraseña
+      </button>
     </div>
   );
 }

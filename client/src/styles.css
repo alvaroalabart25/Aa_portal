@@ -841,19 +841,12 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   .rec-list { grid-template-columns: 1fr; }
 }
 
-/* ---------- Road Map: descripción de una mejora ---------- */
-.rm-notes { margin: 2px 0 10px 34px; }
-.rm-notes textarea { width: 100%; max-width: 640px; font-size: 14px; line-height: 1.6; resize: vertical; }
-.rm-notes-foot { display: flex; justify-content: flex-end; max-width: 640px; font-size: 12px; min-height: 16px; }
+/* ---------- Road Map ---------- */
 /* Punto discreto: avisa de que esa mejora ya tiene algo escrito dentro */
 .rm-hasnotes {
   display: inline-block; width: 5px; height: 5px; border-radius: 50%;
   background: var(--ink-muted); margin-left: 8px; vertical-align: middle;
 }
-@media (max-width: 720px) {
-  .rm-notes { margin-left: 0; }
-}
-
 /* ---------- Aviso de apartado en revisión ---------- */
 .wip {
   display: flex; align-items: flex-start; gap: 10px; flex-wrap: wrap;

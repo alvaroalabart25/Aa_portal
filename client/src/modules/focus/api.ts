@@ -49,9 +49,18 @@ export interface Candidata {
   title: string;
   status: string;
   dueDate: string | null;
+  projectId: number;
   projectName: string;
+  spaceId: number;
   spaceName: string;
   spaceColor: string;
+}
+
+export interface MelonBreve {
+  id: number;
+  title: string;
+  scope: FocusScope;
+  startMonth?: string;
 }
 
 export interface FocusDetalle extends Omit<FocusItem, 'tareas' | 'arrastra'> {
@@ -74,7 +83,19 @@ export const focusApi = {
   marcarDia: (id: number, mark: Marca | 'ninguno', date?: string) =>
     post<{ date: string; mark: Marca | null; racha: number }>(`/focus/${id}/daily`, { mark, ...(date ? { date } : {}) }),
 
-  candidatas: (id: number, q: string) => get<Candidata[]>(`/focus/${id}/candidatas?q=${encodeURIComponent(q)}`),
+  candidatas: (id: number, filtros: { q?: string; spaceId?: number; projectId?: number } = {}) => {
+    const p = new URLSearchParams();
+    if (filtros.q) p.set('q', filtros.q);
+    if (filtros.spaceId) p.set('spaceId', String(filtros.spaceId));
+    if (filtros.projectId) p.set('projectId', String(filtros.projectId));
+    const qs = p.toString();
+    return get<Candidata[]>(`/focus/${id}/candidatas${qs ? `?${qs}` : ''}`);
+  },
+
+  /** Melones activos, para el selector de la ficha de una tarea */
+  melones: () => get<MelonBreve[]>('/focus/melones'),
+  /** ¿A qué melones está asociada esta tarea? */
+  deTarea: (taskId: number) => get<MelonBreve[]>(`/focus/tarea/${taskId}`),
   asociarTarea: (id: number, taskId: number) => post<{ ok: boolean }>(`/focus/${id}/tasks`, { taskId }),
   quitarTarea: (id: number, taskId: number) => del<{ deleted: boolean }>(`/focus/${id}/tasks/${taskId}`),
 };

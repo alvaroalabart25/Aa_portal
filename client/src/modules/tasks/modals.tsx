@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import Modal from '../../components/Modal';
 import { projectsApi, spacesApi, tasksApi } from './api';
 import { PRIORITY_LABEL, type Priority, type Project, type Space } from './types';
+import { focusApi, type MelonBreve } from '../focus/api';
 
 const PALETTE = ['#0a0a0a', '#1971c2', '#2f9e44', '#e8590c', '#9c36b5', '#c2255c', '#e8b70c'];
 
@@ -129,10 +130,14 @@ export function AddTaskModal({
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<Priority>('medium');
   const [dueDate, setDueDate] = useState('');
+  const [melones, setMelones] = useState<MelonBreve[]>([]);
+  const [melonId, setMelonId] = useState<number | ''>('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!fixedProjectId) projectsApi.list({ status: 'active' }).then(setProjects);
+    // si no hay melones activos, el selector no se enseña
+    focusApi.melones().then(setMelones).catch(() => {});
   }, [fixedProjectId]);
 
   async function submit(e: FormEvent) {
@@ -140,12 +145,15 @@ export function AddTaskModal({
     if (!title.trim() || !projectId) return;
     setSaving(true);
     try {
-      await tasksApi.create({
+      const creada = await tasksApi.create({
         projectId: Number(projectId),
         title: title.trim(),
         priority,
         dueDate: dueDate || null,
       });
+      // el vínculo con el melón se hace después: la tarea vive en su proyecto,
+      // el melón solo la señala
+      if (melonId && creada?.id) await focusApi.asociarTarea(Number(melonId), creada.id).catch(() => {});
       onCreated();
       onClose();
     } finally {
@@ -187,6 +195,20 @@ export function AddTaskModal({
             <input id="m-task-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
           </div>
         </div>
+        {/* solo si hay melones activos: un selector vacío no aporta nada */}
+        {melones.length > 0 && (
+          <div className="field">
+            <label htmlFor="m-task-melon">Objetivo del mes (opcional)</label>
+            <select id="m-task-melon" value={melonId} onChange={(e) => setMelonId(e.target.value ? Number(e.target.value) : '')}>
+              <option value="">Sin melón</option>
+              {melones.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.title} ({m.scope === 'trabajo' ? 'trabajo' : 'personal'})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="modal-actions">
           <button type="button" className="btn ghost" onClick={onClose}>Cancelar</button>
           <button className="btn" disabled={saving || !title.trim() || !projectId}>Crear tarea</button>

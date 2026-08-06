@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { tasksApi } from './api';
+import MelonesDeTarea from '../focus/MelonesDeTarea';
 import { EditableTitle, KebabMenu, NotesBox, StatusSelect } from './components';
 import { PRIORITY_LABEL, type Priority, type Task } from './types';
 
@@ -87,6 +88,8 @@ export default function TaskPage() {
           />
         </div>
       </div>
+
+      <MelonesDeTarea taskId={task.id} />
 
       <NotesBox
         value={task.notes ?? null}

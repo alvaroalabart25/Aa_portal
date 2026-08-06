@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import { Link } from 'react-router-dom';
 import Modal from '../../components/Modal';
 import { EventsRadar } from '../events/components';
+import { RADAR_DIAS } from '../events/types';
 import { tasksApi } from '../tasks/api';
+import TaskTable from '../tasks/TaskTable';
 import type { Task } from '../tasks/types';
 import { focusApi, nombreMes, nombreMesCap, NOMBRE_TIPO, type FocusItem, type FocusKind, type FocusMes, type FocusScope } from './api';
 
@@ -26,6 +28,7 @@ export default function MacroTab() {
   const [mes, setMes] = useState<FocusMes | null>(null);
   const [tareas, setTareas] = useState<Task[]>([]);
   const [creando, setCreando] = useState<FocusKind | null>(null);
+  const [verMes, setVerMes] = useState(false);
 
   const cargar = useCallback(async () => {
     const [m, t] = await Promise.all([focusApi.mes(), tasksApi.list({ status: 'open' })]);
@@ -72,41 +75,42 @@ export default function MacroTab() {
         onCambio={cargar}
       />
 
-      {/* Hoy y la semana, en corto: lo completo está en Agenda */}
+      {/* Las tareas se ven, no se cuentan: Macro es la portada y hay que saber
+          qué toca hoy sin saltar a otra pantalla. */}
+      {hoy.vencidas.length > 0 && (
+        <section className="section mc-bloque">
+          <h2 className="overdue">Vencidas · {hoy.vencidas.length}</h2>
+          <TaskTable tasks={hoy.vencidas} onChanged={cargar} />
+        </section>
+      )}
+
       <section className="section mc-bloque">
         <div className="mc-head">
-          <h2>Hoy</h2>
-          <Link to="/agenda" className="btn ghost sm">
+          <h2>Hoy{hoy.deHoy.length > 0 ? ` · ${hoy.deHoy.length}` : ''}</h2>
+          <Link to="/agenda?tab=agenda" className="btn ghost sm">
             Ver la agenda →
           </Link>
         </div>
-        {hoy.deHoy.length === 0 && hoy.vencidas.length === 0 ? (
+        {hoy.deHoy.length === 0 ? (
           <p className="muted mc-vacio">Nada con fecha de hoy. Buen momento para atacar un melón.</p>
         ) : (
-          <div className="mc-hoy">
-            {hoy.vencidas.length > 0 && (
-              <span className="badge mc-vencidas">
-                {hoy.vencidas.length} {hoy.vencidas.length === 1 ? 'vencida' : 'vencidas'}
-              </span>
-            )}
-            <span className="badge">
-              {hoy.deHoy.length} {hoy.deHoy.length === 1 ? 'tarea hoy' : 'tareas hoy'}
-            </span>
-            {hoy.deHoy
-              .filter((t) => t.priority === 'high')
-              .slice(0, 3)
-              .map((t) => (
-                <Link key={t.id} to={`/tareas/${t.id}`} className="mc-tarea">
-                  ↑ {t.title}
-                </Link>
-              ))}
-          </div>
+          <TaskTable tasks={hoy.deHoy} onChanged={cargar} />
         )}
       </section>
 
       <section className="section mc-bloque">
-        <h2>Esta semana</h2>
-        <EventsRadar />
+        <div className="mc-head">
+          <h2>{verMes ? 'Este mes' : 'Esta semana'}</h2>
+          <div className="seg" role="tablist">
+            <button role="tab" aria-selected={!verMes} className={!verMes ? 'active' : ''} onClick={() => setVerMes(false)}>
+              Semana
+            </button>
+            <button role="tab" aria-selected={verMes} className={verMes ? 'active' : ''} onClick={() => setVerMes(true)}>
+              Mes
+            </button>
+          </div>
+        </div>
+        <EventsRadar dias={verMes ? 31 : RADAR_DIAS} />
       </section>
 
       {creando && (

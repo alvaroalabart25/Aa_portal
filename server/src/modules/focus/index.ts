@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { and, asc, desc, eq, getTableColumns, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, getTableColumns, inArray, isNull, notInArray, sql } from 'drizzle-orm';
 import { ah } from '../../lib/async';
 import { db } from '../../db';
 import { focusDaily, focusItems, focusTasks, projects, spaces, tasks } from '../../db/schema';
@@ -345,13 +345,20 @@ focusModule.delete('/:id(\\d+)/tasks/:taskId(\\d+)', ah(async (req: AuthedReques
 }));
 
 /**
- * GET /:id/candidatas?q=texto — tareas abiertas para asociar al melón.
+ * GET /:id/candidatas?q=&spaceId=&projectId= — tareas para asociar al melón.
+ *
  * Busca en TODOS los espacios a propósito: la gracia del melón es juntar cosas
- * que están repartidas.
+ * repartidas. Se ordena por vencimiento (hoy, mañana, pasado…) y las que no
+ * tienen fecha van al final: es el orden en que se decide qué atacar.
+ *
+ * NO se ofrecen tareas cerradas: asociar algo ya hecho no aporta. Si una tarea
+ * se completa DESPUÉS de asociarla, se queda en el melón y cuenta como avance.
  */
 focusModule.get('/:id(\\d+)/candidatas', ah(async (req: AuthedRequest, res) => {
   const id = Number(req.params.id);
   const q = String(req.query.q ?? '').trim().slice(0, 80);
+  const spaceId = Number(req.query.spaceId);
+  const projectId = Number(req.query.projectId);
 
   const yaPuestas = await db.select({ taskId: focusTasks.taskId }).from(focusTasks).where(eq(focusTasks.itemId, id));
   const excluir = new Set(yaPuestas.map((x) => x.taskId));
@@ -362,7 +369,9 @@ focusModule.get('/:id(\\d+)/candidatas', ah(async (req: AuthedRequest, res) => {
       title: tasks.title,
       status: tasks.status,
       dueDate: tasks.dueDate,
+      projectId: tasks.projectId,
       projectName: projects.name,
+      spaceId: spaces.id,
       spaceName: spaces.name,
       spaceColor: spaces.color,
     })
@@ -373,11 +382,51 @@ focusModule.get('/:id(\\d+)/candidatas', ah(async (req: AuthedRequest, res) => {
       and(
         eq(tasks.userId, req.userId!),
         isNull(tasks.archivedAt),
+        notInArray(tasks.status, ['completed', 'cancelled']),
         q ? sql`${tasks.title} like ${'%' + q + '%'}` : sql`1 = 1`,
+        Number.isInteger(spaceId) && spaceId > 0 ? eq(spaces.id, spaceId) : sql`1 = 1`,
+        Number.isInteger(projectId) && projectId > 0 ? eq(tasks.projectId, projectId) : sql`1 = 1`,
       ),
     )
-    .orderBy(desc(tasks.updatedAt))
-    .limit(60);
+    // las sin fecha al final: `due_date is null` ordena 0 antes que 1
+    .orderBy(sql`${tasks.dueDate} is null`, asc(tasks.dueDate), asc(tasks.id))
+    .limit(80);
 
   res.json(filas.filter((f) => !excluir.has(f.id)));
+}));
+
+// ---------- Desde el lado de la tarea ----------
+
+/** Melones activos, para el selector de la ficha de una tarea. */
+focusModule.get('/melones', ah(async (req: AuthedRequest, res) => {
+  const filas = await db
+    .select({ id: focusItems.id, title: focusItems.title, scope: focusItems.scope, startMonth: focusItems.startMonth })
+    .from(focusItems)
+    .where(
+      and(
+        eq(focusItems.userId, req.userId!),
+        eq(focusItems.kind, 'melon'),
+        eq(focusItems.status, 'activo'),
+        isNull(focusItems.archivedAt),
+      ),
+    )
+    .orderBy(asc(focusItems.sortOrder), asc(focusItems.id));
+  res.json(filas);
+}));
+
+/** ¿A qué melones está asociada esta tarea? */
+focusModule.get('/tarea/:taskId(\\d+)', ah(async (req: AuthedRequest, res) => {
+  const filas = await db
+    .select({ id: focusItems.id, title: focusItems.title, scope: focusItems.scope })
+    .from(focusTasks)
+    .innerJoin(focusItems, eq(focusItems.id, focusTasks.itemId))
+    .where(
+      and(
+        eq(focusTasks.taskId, Number(req.params.taskId)),
+        eq(focusTasks.userId, req.userId!),
+        isNull(focusItems.archivedAt),
+      ),
+    )
+    .orderBy(asc(focusItems.sortOrder));
+  res.json(filas);
 }));

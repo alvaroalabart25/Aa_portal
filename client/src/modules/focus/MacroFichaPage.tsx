@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { projectsApi, spacesApi } from '../tasks/api';
+import type { Project, Space } from '../tasks/types';
 import { focusApi, nombreMes, NOMBRE_TIPO, type Candidata, type FocusDetalle } from './api';
 
 const ESTADO_TAREA: Record<string, string> = {
@@ -136,9 +138,9 @@ export default function MacroFichaPage() {
           {buscando && (
             <BuscarTareas
               itemId={d.id}
-              onClose={() => setBuscando(false)}
-              onAsociada={() => {
-                cargar();
+              onCerrar={(huboCambios) => {
+                setBuscando(false);
+                if (huboCambios) cargar();
               }}
             />
           )}
@@ -215,49 +217,125 @@ function ListaTareas({ tareas, itemId, onCambio }: { tareas: FocusDetalle['tasks
   );
 }
 
-function BuscarTareas({ itemId, onClose, onAsociada }: { itemId: number; onClose: () => void; onAsociada: () => void }) {
+/**
+ * Buscador de tareas para asociar al melón.
+ *
+ * Al pulsar una, se asocia y DESAPARECE de la lista sin recargarla: encadenar
+ * varias es lo normal, y recargar en cada clic hacía perder el sitio. La ficha
+ * del melón se refresca una sola vez, al cerrar.
+ */
+function BuscarTareas({
+  itemId,
+  onCerrar,
+}: {
+  itemId: number;
+  onCerrar: (huboCambios: boolean) => void;
+}) {
   const [q, setQ] = useState('');
+  const [espacios, setEspacios] = useState<Space[]>([]);
+  const [proyectos, setProyectos] = useState<Project[]>([]);
+  const [spaceId, setSpaceId] = useState<number | ''>('');
+  const [projectId, setProjectId] = useState<number | ''>('');
   const [lista, setLista] = useState<Candidata[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [añadidas, setAñadidas] = useState(0);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    spacesApi.list().then(setEspacios).catch(() => {});
+  }, []);
+
+  // los proyectos se filtran por el espacio elegido
+  useEffect(() => {
+    if (!spaceId) {
+      setProyectos([]);
+      setProjectId('');
+      return;
+    }
+    projectsApi
+      .list({ spaceId: Number(spaceId), status: 'active' })
+      .then(setProyectos)
+      .catch(() => {});
+    setProjectId('');
+  }, [spaceId]);
 
   const buscar = useCallback(async () => {
     setCargando(true);
-    setLista(await focusApi.candidatas(itemId, q));
-    setCargando(false);
-  }, [itemId, q]);
+    try {
+      setLista(
+        await focusApi.candidatas(itemId, {
+          q,
+          ...(spaceId ? { spaceId: Number(spaceId) } : {}),
+          ...(projectId ? { projectId: Number(projectId) } : {}),
+        }),
+      );
+    } finally {
+      setCargando(false);
+    }
+  }, [itemId, q, spaceId, projectId]);
 
   useEffect(() => {
     const t = window.setTimeout(buscar, 250);
     return () => window.clearTimeout(t);
   }, [buscar]);
 
+  async function asociar(c: Candidata) {
+    // fuera de la lista al momento; si falla, vuelve
+    setLista((prev) => prev.filter((x) => x.id !== c.id));
+    setAñadidas((n) => n + 1);
+    try {
+      await focusApi.asociarTarea(itemId, c.id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo asociar');
+      setLista((prev) => [c, ...prev]);
+      setAñadidas((n) => n - 1);
+    }
+  }
+
   return (
     <div className="mc-buscar">
       <div className="mc-buscar-head">
         <input placeholder="Buscar entre todas tus tareas…" value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
-        <button className="btn ghost sm" onClick={onClose}>
-          Cerrar
+        <button className="btn" onClick={() => onCerrar(añadidas > 0)}>
+          {añadidas > 0 ? `Listo (${añadidas})` : 'Cerrar'}
         </button>
       </div>
+
+      <div className="mc-filtros">
+        <select value={spaceId} onChange={(e) => setSpaceId(e.target.value ? Number(e.target.value) : '')}>
+          <option value="">Todos los espacios</option>
+          {espacios.map((e) => (
+            <option key={e.id} value={e.id}>
+              {e.name}
+            </option>
+          ))}
+        </select>
+        <select
+          value={projectId}
+          onChange={(e) => setProjectId(e.target.value ? Number(e.target.value) : '')}
+          disabled={!spaceId}
+        >
+          <option value="">{spaceId ? 'Todos los proyectos' : 'Elige un espacio'}</option>
+          {proyectos.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {error && <div className="error-msg">{error}</div>}
+
       {cargando ? (
-        <p className="muted" style={{ fontSize: 13, margin: '8px 0' }}>
-          Buscando…
-        </p>
+        <p className="muted mc-buscar-nota">Buscando…</p>
       ) : lista.length === 0 ? (
-        <p className="muted" style={{ fontSize: 13, margin: '8px 0' }}>
-          Nada que asociar con eso.
+        <p className="muted mc-buscar-nota">
+          {añadidas > 0 ? 'No queda nada más que asociar con esos filtros.' : 'Nada que asociar con eso.'}
         </p>
       ) : (
         <div className="mc-candidatas">
           {lista.map((c) => (
-            <button
-              key={c.id}
-              className="mc-candidata"
-              onClick={async () => {
-                await focusApi.asociarTarea(itemId, c.id);
-                onAsociada();
-              }}
-            >
+            <button key={c.id} className="mc-candidata" onClick={() => asociar(c)}>
               <span className="dot" style={{ background: c.spaceColor }} />
               <span className="mc-candidata-txt">
                 <span className="mc-tarea-espacio">
@@ -265,6 +343,7 @@ function BuscarTareas({ itemId, onClose, onAsociada }: { itemId: number; onClose
                 </span>
                 {c.title}
               </span>
+              <span className="mc-candidata-fecha">{c.dueDate ? fechaCorta(c.dueDate) : 'sin fecha'}</span>
               <span className="mc-candidata-mas">+</span>
             </button>
           ))}

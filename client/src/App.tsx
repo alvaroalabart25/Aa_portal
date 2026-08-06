@@ -17,6 +17,7 @@ import DiarioPage from './modules/health/DiarioPage';
 import SuenosPage from './modules/dreams/SuenosPage';
 import SuenoDetallePage from './modules/dreams/SuenoDetallePage';
 import MacroFichaPage from './modules/focus/MacroFichaPage';
+import EventosPage from './modules/events/EventosPage';
 import Configuracion from './pages/Configuracion';
 import Recuperar from './pages/Recuperar';
 
@@ -39,6 +40,7 @@ export default function App() {
             <Route path="/proyectos" element={<ProjectsPage />} />
             <Route path="/proyectos/:id" element={<ProjectPage />} />
             <Route path="/tareas" element={<TasksPage />} />
+            <Route path="/eventos" element={<EventosPage />} />
             <Route path="/tareas/:id" element={<TaskPage />} />
             <Route path="/autonomo" element={<Navigate to="/autonomo/facturas" replace />} />
             <Route path="/autonomo/facturas" element={<FacturasPage />} />

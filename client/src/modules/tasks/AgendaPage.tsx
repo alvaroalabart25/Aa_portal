@@ -5,7 +5,6 @@ import TaskTable from './TaskTable';
 import type { Task } from './types';
 import { eventsApi } from '../events/api';
 import { EventBand, EventsRadar } from '../events/components';
-import EventosTab from '../events/EventosTab';
 import MacroTab from '../focus/MacroTab';
 import {
   daysUntil,
@@ -84,10 +83,9 @@ export default function AgendaPage() {
   const [loading, setLoading] = useState(true);
   // la vista viaja en la URL: así se puede volver a Macro desde una ficha
   const [params, setParams] = useSearchParams();
-  const pedida = params.get('tab');
-  const view: 'agenda' | 'eventos' | 'macro' = pedida === 'eventos' || pedida === 'macro' ? pedida : 'agenda';
-  const setView = (v: 'agenda' | 'eventos' | 'macro') =>
-    setParams(v === 'agenda' ? {} : { tab: v }, { replace: true });
+  // Macro es la vista por defecto: es la portada del portal
+  const view: 'agenda' | 'macro' = params.get('tab') === 'agenda' ? 'agenda' : 'macro';
+  const setView = (v: 'agenda' | 'macro') => setParams(v === 'macro' ? {} : { tab: v }, { replace: true });
 
   const load = useCallback(async () => {
     const [t, e] = await Promise.all([tasksApi.list({ status: 'open' }), eventsApi.list()]);
@@ -130,21 +128,16 @@ export default function AgendaPage() {
       <div className="page-head">
         <h1>Agenda</h1>
         <div className="seg" role="tablist">
-          <button role="tab" aria-selected={view === 'agenda'} className={view === 'agenda' ? 'active' : ''} onClick={() => setView('agenda')}>
-            Agenda
-          </button>
           <button role="tab" aria-selected={view === 'macro'} className={view === 'macro' ? 'active' : ''} onClick={() => setView('macro')}>
             Macro
           </button>
-          <button role="tab" aria-selected={view === 'eventos'} className={view === 'eventos' ? 'active' : ''} onClick={() => setView('eventos')}>
-            Eventos
+          <button role="tab" aria-selected={view === 'agenda'} className={view === 'agenda' ? 'active' : ''} onClick={() => setView('agenda')}>
+            Agenda
           </button>
         </div>
       </div>
 
-      {view === 'eventos' ? (
-        <EventosTab />
-      ) : view === 'macro' ? (
+      {view === 'macro' ? (
         <MacroTab />
       ) : (
         <>

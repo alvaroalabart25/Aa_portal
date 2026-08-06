@@ -172,6 +172,13 @@ export const MODULES: PortalModule[] = [
       { id: 'spaces', title: 'Espacios', path: '/espacios', icon: icons.spaces },
       { id: 'projects', title: 'Proyectos', path: '/proyectos', icon: icons.projects },
       { id: 'tasks', title: 'Tareas', path: '/tareas', icon: icons.tasks },
+      {
+        id: 'eventos',
+        title: 'Eventos',
+        path: '/eventos',
+        // chincheta: son fechas clave, no tareas
+        icon: iconoSub('M12 3v9M12 12l5-2-5-2M9 21h6'),
+      },
     ],
   },
   {

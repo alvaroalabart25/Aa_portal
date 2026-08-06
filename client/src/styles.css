@@ -891,6 +891,22 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .mc-candidata-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .mc-candidata-mas { flex: 0 0 auto; color: var(--ink-muted); font-size: 16px; }
 
+.mc-filtros { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.mc-filtros select { font-size: 13px; padding: 6px 8px; max-width: 220px; }
+.mc-buscar-nota { font-size: 13px; margin: 10px 0 0; }
+.mc-candidata-fecha { flex: 0 0 auto; font-size: 11.5px; color: var(--ink-muted); white-space: nowrap; }
+
+/* Vínculos con melones desde la ficha de una tarea */
+.mc-vinculos { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.mc-vinculo {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid var(--line); border-radius: 20px; padding: 4px 6px 4px 11px; font-size: 13px;
+}
+.mc-vinculo a:hover { text-decoration: underline; }
+.mc-vinculo-x { border: none; background: none; color: var(--ink-muted); font-size: 12px; padding: 0 3px; }
+.mc-vinculo-x:hover { color: var(--danger); }
+.mc-vincular { margin-top: 12px; font-size: 13.5px; max-width: 340px; }
+
 /* Cuadrícula de los últimos 28 días del gesto diario */
 .mc-dias { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 12px; }
 .mc-dia {

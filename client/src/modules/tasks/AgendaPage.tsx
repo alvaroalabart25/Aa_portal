@@ -6,6 +6,7 @@ import type { Task } from './types';
 import { eventsApi } from '../events/api';
 import { EventBand, EventsRadar } from '../events/components';
 import MacroTab from '../focus/MacroTab';
+import { AddTaskModal } from './modals';
 import {
   daysUntil,
   fmtEventDate,
@@ -81,6 +82,7 @@ export default function AgendaPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [eventsList, setEventsList] = useState<ImportantEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [creando, setCreando] = useState(false);
   // la vista viaja en la URL: así se puede volver a Macro desde una ficha
   const [params, setParams] = useSearchParams();
   // Macro es la vista por defecto: es la portada del portal
@@ -127,13 +129,20 @@ export default function AgendaPage() {
     <div>
       <div className="page-head">
         <h1>Agenda</h1>
-        <div className="seg" role="tablist">
-          <button role="tab" aria-selected={view === 'macro'} className={view === 'macro' ? 'active' : ''} onClick={() => setView('macro')}>
-            Macro
+        {/* crear a la izquierda de las pestañas: la misma posición en todo el
+            portal, para no ir buscándolo en cada sección */}
+        <div className="head-acciones">
+          <button className="btn corto" onClick={() => setCreando(true)}>
+            + Nueva<span className="solo-ancho"> tarea</span>
           </button>
-          <button role="tab" aria-selected={view === 'agenda'} className={view === 'agenda' ? 'active' : ''} onClick={() => setView('agenda')}>
-            Agenda
-          </button>
+          <div className="seg" role="tablist">
+            <button role="tab" aria-selected={view === 'macro'} className={view === 'macro' ? 'active' : ''} onClick={() => setView('macro')}>
+              Macro
+            </button>
+            <button role="tab" aria-selected={view === 'agenda'} className={view === 'agenda' ? 'active' : ''} onClick={() => setView('agenda')}>
+              Agenda
+            </button>
+          </div>
         </div>
       </div>
 
@@ -174,6 +183,8 @@ export default function AgendaPage() {
           />
         </>
       )}
+
+      {creando && <AddTaskModal onClose={() => setCreando(false)} onCreated={load} />}
     </div>
   );
 }

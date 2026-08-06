@@ -47,37 +47,51 @@ export default function SuenosPage() {
     <div>
       <div className="page-head">
         <h1>Metas</h1>
-        {/* En móvil estas pestañas se esconden: para eso está el menú de abajo,
-            que ya lleva los tres subapartados */}
-        <div className="seg dr-tabs" role="tablist">
-          {(
-            [
-              ['macro', 'Macro'],
-              ['micro', 'Micro'],
-              ['deseos', 'Lista de deseos'],
-            ] as [Tab, string][]
-          ).map(([v, label]) => (
-            <button
-              key={v}
-              role="tab"
-              aria-selected={tab === v}
-              className={tab === v ? 'active' : ''}
-              onClick={() => ir(v)}
-            >
-              {label}
-            </button>
-          ))}
+        {/* Crear a la izquierda de las pestañas, la misma posición que en Agenda:
+            así no hay que buscarlo en cada sección. En móvil las pestañas se
+            esconden (el menú de abajo ya lleva los tres subapartados) y el botón
+            se queda junto al título. */}
+        <div className="head-acciones">
+          <button className="btn corto" onClick={() => setCreando(true)}>
+            + Nuev{tab === 'deseos' ? 'o' : 'a'}
+            <span className="solo-ancho">
+              {tab === 'macro' ? ' macrometa' : tab === 'micro' ? ' micrometa' : ' deseo'}
+            </span>
+          </button>
+          <div className="seg dr-tabs" role="tablist">
+            {(
+              [
+                ['macro', 'Macro'],
+                ['micro', 'Micro'],
+                ['deseos', 'Lista de deseos'],
+              ] as [Tab, string][]
+            ).map(([v, label]) => (
+              <button
+                key={v}
+                role="tab"
+                aria-selected={tab === v}
+                className={tab === v ? 'active' : ''}
+                onClick={() => ir(v)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {tab === 'deseos' ? (
-        <ListaDeseos categorias={categorias} onGestionar={() => setGestionando(true)} />
+        <ListaDeseos
+          categorias={categorias}
+          onGestionar={() => setGestionando(true)}
+          creando={creando}
+          onCerrarCreacion={() => setCreando(false)}
+        />
       ) : (
         <Tablero
           kind={tab}
           categorias={categorias}
           onGestionar={() => setGestionando(true)}
-          onCrear={() => setCreando(true)}
           creando={creando}
           onCerrarCreacion={() => setCreando(false)}
         />
@@ -100,14 +114,12 @@ function Tablero({
   kind,
   categorias,
   onGestionar,
-  onCrear,
   creando,
   onCerrarCreacion,
 }: {
   kind: DreamKind;
   categorias: Categoria[];
   onGestionar: () => void;
-  onCrear: () => void;
   creando: boolean;
   onCerrarCreacion: () => void;
 }) {
@@ -177,11 +189,6 @@ function Tablero({
         </label>
         <button className="btn ghost sm" onClick={onGestionar}>
           Categorías
-        </button>
-        {/* al otro extremo de la fila */}
-        {/* en móvil se queda en «+ Nuevo»: la etiqueta larga no cabe en la fila */}
-        <button className="btn dr-nuevo" onClick={onCrear}>
-          + Nueva<span className="dr-nuevo-largo"> {kind === 'macro' ? 'macrometa' : 'micrometa'}</span>
         </button>
       </div>
 
@@ -344,12 +351,22 @@ function Rejilla({
 
 // ---------------------------------------------------------------- deseos
 
-function ListaDeseos({ categorias, onGestionar }: { categorias: Categoria[]; onGestionar: () => void }) {
+function ListaDeseos({
+  categorias,
+  onGestionar,
+  creando,
+  onCerrarCreacion,
+}: {
+  categorias: Categoria[];
+  onGestionar: () => void;
+  creando: boolean;
+  onCerrarCreacion: () => void;
+}) {
   const [pendientes, setPendientes] = useState<Deseo[]>([]);
   const [comprados, setComprados] = useState<Deseo[]>([]);
   const [total, setTotal] = useState('0');
   const [verComprados, setVerComprados] = useState(false);
-  const [creando, setCreando] = useState(false);
+  const [porCategoria, setPorCategoria] = useState(false);
   const [editando, setEditando] = useState<Deseo | null>(null);
 
   const cargar = useCallback(async () => {
@@ -365,6 +382,20 @@ function ListaDeseos({ categorias, onGestionar }: { categorias: Categoria[]; onG
   const arrastre = useArrastre(pendientes, setPendientes, (ids) => dreamsApi.reordenarDeseos(ids));
   const catPorId = useMemo(() => new Map(categorias.map((c) => [c.id, c])), [categorias]);
 
+  // Agrupados por categoría, en el orden en que están las categorías, y lo que
+  // no tenga categoría al final
+  const gruposDeCategoria = useMemo(() => {
+    const grupos = new Map<number | null, Deseo[]>();
+    for (const d of pendientes) {
+      const k = d.categoryId ?? null;
+      if (!grupos.has(k)) grupos.set(k, []);
+      grupos.get(k)!.push(d);
+    }
+    return [...grupos.entries()].sort(
+      (a, b) => (catPorId.get(a[0] ?? -1)?.sortOrder ?? 9e9) - (catPorId.get(b[0] ?? -1)?.sortOrder ?? 9e9),
+    );
+  }, [pendientes, catPorId]);
+
   return (
     <>
       <div className="dr-toolbar">
@@ -372,65 +403,76 @@ function ListaDeseos({ categorias, onGestionar }: { categorias: Categoria[]; onG
           <span className="muted">Pendiente de comprar</span>
           <strong>{euros(total)}</strong>
         </div>
+        <label className="dr-orden">
+          <span className="dr-orden-et">Ordenar por</span>
+          <select value={porCategoria ? 'categoria' : 'manual'} onChange={(e) => setPorCategoria(e.target.value === 'categoria')}>
+            <option value="manual">Mi orden</option>
+            <option value="categoria">Categoría</option>
+          </select>
+        </label>
         <button className="btn ghost sm" onClick={onGestionar}>
           Categorías
-        </button>
-        <button className="btn dr-nuevo" onClick={() => setCreando(true)}>
-          + Nuevo<span className="dr-nuevo-largo"> deseo</span>
         </button>
       </div>
 
       {pendientes.length === 0 ? (
         <p className="empty">Nada en la lista. Cosas que solo te separa el dinero.</p>
-      ) : (
-        <div className="dr-wl">
-          {pendientes.map((d) => {
-            const cat = d.categoryId != null ? catPorId.get(d.categoryId) : undefined;
-            return (
-              <div key={d.id} data-rid={d.id} className={`dr-wl-row${arrastre.activo === d.id ? ' arrastrando' : ''}`}>
-                <button
-                  className="dr-grip inline"
-                  aria-label="Cambiar el orden arrastrando"
-                  onPointerDown={(e) => arrastre.onPointerDown(e, d.id)}
-                  onPointerMove={arrastre.onPointerMove}
-                  onPointerUp={arrastre.onPointerUp}
-                  onPointerCancel={arrastre.onPointerUp}
-                >
-                  ⠿
-                </button>
-                <button
-                  className="dr-wl-check"
-                  aria-label="Marcar como comprado"
-                  onClick={async () => {
+      ) : porCategoria ? (
+        // Agrupado por categoría: aquí no se arrastra, porque lo que se ve no es
+        // el orden manual sino la categoría
+        gruposDeCategoria.map(([catId, lista]) => (
+          <section key={catId ?? 'sin'} className="dr-group">
+            <h2 className="dr-group-title">
+              {catId != null && (
+                <span className="dot" style={{ background: catPorId.get(catId)?.color ?? 'var(--line)' }} />
+              )}
+              {catId != null ? (catPorId.get(catId)?.name ?? 'Categoría') : 'Sin categoría'}
+              <span className="muted dr-group-n">
+                {lista.length} · {euros(String(lista.reduce((t, x) => t + Number(x.price ?? 0), 0)))}
+              </span>
+            </h2>
+            <div className="dr-wl">
+              {lista.map((d) => (
+                <FilaDeseo
+                  key={d.id}
+                  deseo={d}
+                  // sin etiqueta: la categoría ya la dice el encabezado del grupo
+                  cat={undefined}
+                  arrastre={null}
+                  onEditar={setEditando}
+                  onComprado={async () => {
                     await dreamsApi.comprado(d.id, true);
                     await cargar();
                   }}
                 />
-                {/* la fila entera abre la ficha: el enlace y las acciones viven
-                    dentro, para que la lista se quede en lo esencial */}
-                <button className="dr-wl-title" onClick={() => setEditando(d)} title="Ver y editar">
-                  {d.title}
-                  {d.url && <span className="dr-wl-link" title="Tiene enlace"> ↗</span>}
-                </button>
-                {cat && (
-                  <span className="dr-cat">
-                    <span className="dot" style={{ background: cat.color }} />
-                    {cat.name}
-                  </span>
-                )}
-                <span className="dr-wl-eur">{euros(d.price) ?? '—'}</span>
-              </div>
-            );
-          })}
+              ))}
+            </div>
+          </section>
+        ))
+      ) : (
+        <div className="dr-wl">
+          {pendientes.map((d) => (
+            <FilaDeseo
+              key={d.id}
+              deseo={d}
+              cat={d.categoryId != null ? catPorId.get(d.categoryId) : undefined}
+              arrastre={arrastre}
+              onEditar={setEditando}
+              onComprado={async () => {
+                await dreamsApi.comprado(d.id, true);
+                await cargar();
+              }}
+            />
+          ))}
         </div>
       )}
 
       {creando && (
         <DeseoModal
           categorias={categorias}
-          onClose={() => setCreando(false)}
+          onClose={onCerrarCreacion}
           onGuardado={() => {
-            setCreando(false);
+            onCerrarCreacion();
             cargar();
           }}
         />
@@ -489,6 +531,57 @@ function ListaDeseos({ categorias, onGestionar }: { categorias: Categoria[]; onG
  * la fila: la lista se queda en lo esencial —qué es y cuánto cuesta— y lo demás
  * aparece cuando lo pides.
  */
+/** Una fila de la lista de deseos. `arrastre` a null = agrupado, sin asa. */
+function FilaDeseo({
+  deseo,
+  cat,
+  arrastre,
+  onEditar,
+  onComprado,
+}: {
+  deseo: Deseo;
+  cat: Categoria | undefined;
+  arrastre: ReturnType<typeof useArrastre> | null;
+  onEditar: (d: Deseo) => void;
+  onComprado: () => void;
+}) {
+  return (
+    <div
+      data-rid={deseo.id}
+      className={`dr-wl-row${arrastre?.activo === deseo.id ? ' arrastrando' : ''}`}
+    >
+      {arrastre ? (
+        <button
+          className="dr-grip inline"
+          aria-label="Cambiar el orden arrastrando"
+          onPointerDown={(e) => arrastre.onPointerDown(e, deseo.id)}
+          onPointerMove={arrastre.onPointerMove}
+          onPointerUp={arrastre.onPointerUp}
+          onPointerCancel={arrastre.onPointerUp}
+        >
+          ⠿
+        </button>
+      ) : (
+        <span className="dr-grip-hueco" />
+      )}
+      <button className="dr-wl-check" aria-label="Marcar como comprado" onClick={onComprado} />
+      {/* la fila entera abre la ficha: el enlace y las acciones viven dentro,
+          para que la lista se quede en lo esencial */}
+      <button className="dr-wl-title" onClick={() => onEditar(deseo)} title="Ver y editar">
+        {deseo.title}
+        {deseo.url && <span className="dr-wl-link" title="Tiene enlace"> ↗</span>}
+      </button>
+      {cat && (
+        <span className="dr-cat">
+          <span className="dot" style={{ background: cat.color }} />
+          {cat.name}
+        </span>
+      )}
+      <span className="dr-wl-eur">{euros(deseo.price) ?? '—'}</span>
+    </div>
+  );
+}
+
 function DeseoModal({
   deseo,
   categorias,

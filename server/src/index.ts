@@ -15,6 +15,7 @@ import { diaryModule } from './modules/diary';
 import { pushModule, pushRunner } from './modules/push';
 import { trackModule, trackSetup } from './modules/track';
 import { dreamImagesRouter, dreamsModule } from './modules/dreams';
+import { focusModule } from './modules/focus';
 import { logSecurityEvent } from './lib/security';
 
 const app = express();
@@ -132,13 +133,22 @@ app.use('/api/routine', requireAuth, routineModule);
 app.use('/api/health-log', requireAuth, healthModule);
 app.use('/api/diary', requireAuth, diaryModule);
 app.use('/api/dreams', requireAuth, dreamsModule);
+app.use('/api/focus', requireAuth, focusModule);
 app.use('/api/push', requireAuth, pushModule);
 
 // Errores no controlados -> 500 JSON
 app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  // Solo tipo y mensaje: los errores de mysql2 arrastran la consulta con sus
-  // valores, y eso no debe acabar en los logs de la plataforma.
-  console.error(`[${req.method} ${req.path}] ${err.name}: ${String(err.message).slice(0, 200)}`);
+  // Drizzle envuelve los fallos de base en un «Failed query: …» que incluye la
+  // consulta Y sus valores; se corta antes de `params:` para no dejar datos
+  // personales en los logs de la plataforma.
+  const mensaje = String(err.message).split('\nparams:')[0].slice(0, 200);
+  // Y el motivo real vive en `cause`: sin él, una conexión caída
+  // (PROTOCOL_CONNECTION_LOST, ECONNRESET) se lee como un error de SQL y se
+  // pierde media hora buscando en el sitio equivocado.
+  // `cause` es de ES2022 y el tsconfig apunta más abajo: se lee sin el tipo
+  const causa = (err as { cause?: { code?: string; name?: string } }).cause;
+  const porque = causa?.code ?? causa?.name;
+  console.error(`[${req.method} ${req.path}] ${err.name}: ${mensaje}${porque ? ` · causa: ${porque}` : ''}`);
   void logSecurityEvent('error_servidor', req, `${req.method} ${req.path}: ${err.name}`);
   res.status(500).json({ error: 'Error interno del servidor' });
 });

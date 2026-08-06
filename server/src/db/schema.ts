@@ -447,6 +447,78 @@ export const frontIntegrity = mysqlTable('front_integrity', {
 });
 
 // ============================================================
+// Vista Macro: melones, formaciones y libros del mes
+// ============================================================
+
+/**
+ * Lo que tengo entre manos este mes. Los tres tipos son la MISMA entidad porque
+ * solo cambian en tres detalles: cuántos caben, si agrupan tareas y si tienen
+ * gesto diario. Añadir «cursos» o «pódcast» algún día es ampliar el enum.
+ *
+ * `startMonth` es el mes en que se eligió, no el mes en que se muestra: un
+ * melón sigue saliendo mientras no esté hecho, marcando de dónde viene. Que
+ * algo lleve tres meses abierto es información.
+ */
+export const focusItems = mysqlTable('focus_items', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  kind: mysqlEnum('kind', ['melon', 'formacion', 'libro']).notNull(),
+  scope: mysqlEnum('scope', ['trabajo', 'personal']).notNull().default('trabajo'),
+  title: varchar('title', { length: 200 }).notNull(),
+  notes: text('notes'),
+  status: mysqlEnum('status', ['activo', 'hecho', 'aparcado']).notNull().default('activo'),
+  startMonth: varchar('start_month', { length: 7 }).notNull(), // YYYY-MM
+  doneAt: date('done_at', { mode: 'string' }),
+  daily: int('daily').notNull().default(0), // ¿tiene gesto diario?
+  metaId: bigint('meta_id', { mode: 'number' }), // enganche futuro con las Macrometas; hoy NULL
+  sortOrder: int('sort_order').notNull().default(0),
+  archivedAt: datetime('archived_at'),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`)
+    .$onUpdateFn(() => new Date()),
+});
+
+// El gesto diario. `libre` = día libre a propósito: cuenta como cumplido para
+// la racha, porque saltarse un día adrede no es abandonar.
+export const focusDaily = mysqlTable('focus_daily', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  itemId: bigint('item_id', { mode: 'number' })
+    .notNull()
+    .references(() => focusItems.id),
+  doneDate: date('done_date', { mode: 'string' }).notNull(),
+  mark: mysqlEnum('mark', ['hecho', 'libre']).notNull().default('hecho'),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+/**
+ * Un melón NO posee tareas: las señala. Es el primer agrupador que cruza la
+ * jerarquía Espacio→Proyecto→Tarea, y por eso es una tabla puente y no una
+ * columna en `tasks`: una tarea sigue viviendo en su proyecto y su espacio.
+ * Ejemplo del usuario: el benchmark en Mercado, la landing en Desarrollo y las
+ * creatividades en Campañas, con un mismo objetivo.
+ */
+export const focusTasks = mysqlTable('focus_tasks', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  itemId: bigint('item_id', { mode: 'number' })
+    .notNull()
+    .references(() => focusItems.id),
+  taskId: bigint('task_id', { mode: 'number' })
+    .notNull()
+    .references(() => tasks.id),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ============================================================
 // Módulo Sueños: macro (sueños de vida), micro (concretos) y lista de deseos
 // ============================================================
 

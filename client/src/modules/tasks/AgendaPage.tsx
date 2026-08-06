@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { tasksApi } from './api';
 import TaskTable from './TaskTable';
 import type { Task } from './types';
 import { eventsApi } from '../events/api';
 import { EventBand, EventsRadar } from '../events/components';
 import EventosTab from '../events/EventosTab';
+import MacroTab from '../focus/MacroTab';
 import {
   daysUntil,
   fmtEventDate,
@@ -80,7 +82,12 @@ export default function AgendaPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [eventsList, setEventsList] = useState<ImportantEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<'agenda' | 'eventos'>('agenda');
+  // la vista viaja en la URL: así se puede volver a Macro desde una ficha
+  const [params, setParams] = useSearchParams();
+  const pedida = params.get('tab');
+  const view: 'agenda' | 'eventos' | 'macro' = pedida === 'eventos' || pedida === 'macro' ? pedida : 'agenda';
+  const setView = (v: 'agenda' | 'eventos' | 'macro') =>
+    setParams(v === 'agenda' ? {} : { tab: v }, { replace: true });
 
   const load = useCallback(async () => {
     const [t, e] = await Promise.all([tasksApi.list({ status: 'open' }), eventsApi.list()]);
@@ -126,6 +133,9 @@ export default function AgendaPage() {
           <button role="tab" aria-selected={view === 'agenda'} className={view === 'agenda' ? 'active' : ''} onClick={() => setView('agenda')}>
             Agenda
           </button>
+          <button role="tab" aria-selected={view === 'macro'} className={view === 'macro' ? 'active' : ''} onClick={() => setView('macro')}>
+            Macro
+          </button>
           <button role="tab" aria-selected={view === 'eventos'} className={view === 'eventos' ? 'active' : ''} onClick={() => setView('eventos')}>
             Eventos
           </button>
@@ -134,6 +144,8 @@ export default function AgendaPage() {
 
       {view === 'eventos' ? (
         <EventosTab />
+      ) : view === 'macro' ? (
+        <MacroTab />
       ) : (
         <>
           <EventsRadar />

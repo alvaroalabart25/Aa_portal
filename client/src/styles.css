@@ -800,6 +800,118 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .login-sep { display: flex; align-items: center; gap: 10px; color: var(--ink-muted); font-size: 12px; margin: 2px 0; }
 .login-sep::before, .login-sep::after { content: ''; flex: 1; height: 1px; background: var(--line); }
 
+/* ---------- Macro: la vista de pájaro del mes ---------- */
+.mc-mes { font-size: 13px; margin: 6px 0 0; }
+.mc-bloque { margin-top: 26px; }
+.mc-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.mc-vacio { font-size: 13px; line-height: 1.6; margin: 8px 0 0; max-width: 560px; }
+.mc-sub { font-family: var(--font-title); font-size: 13px; font-weight: 600; color: var(--ink-muted); margin: 18px 0 6px; }
+
+/* Topes del mes: avisan, no bloquean */
+.mc-topes { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 2px; }
+.mc-tope {
+  font-size: 11.5px; color: var(--ink-muted);
+  border: 1px solid var(--line); border-radius: 20px; padding: 3px 10px;
+}
+.mc-tope.pasado { color: var(--danger); border-color: #eed4d4; background: #fdf5f5; font-weight: 600; }
+
+.mc-lista { display: flex; flex-direction: column; gap: 2px; margin-top: 12px; }
+.mc-hechos { margin-top: 10px; opacity: 0.72; }
+.mc-fila {
+  display: flex; align-items: center; gap: 11px;
+  padding: 10px 4px; border-bottom: 1px solid var(--line); font-size: 14.5px;
+}
+.mc-fila:hover { background: var(--paper-soft); }
+.mc-fila.hecho .mc-titulo { color: var(--ink-muted); text-decoration: line-through; }
+
+.mc-check {
+  width: 20px; height: 20px; flex: 0 0 auto; padding: 0;
+  border: 1.5px solid var(--ink-muted); border-radius: 6px; background: none;
+  font-size: 12px; line-height: 1; display: inline-flex; align-items: center; justify-content: center;
+}
+.mc-check:hover { border-color: var(--ink); background: var(--paper-soft); }
+.mc-check.puesto { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.mc-check.libre { background: var(--paper-soft); border-style: dashed; color: var(--ink-muted); }
+
+.mc-titulo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.mc-titulo:hover { text-decoration: underline; }
+.mc-etiquetas { display: flex; gap: 8px; flex-wrap: wrap; font-size: 11px; color: var(--ink-muted); }
+.mc-ambito { text-transform: uppercase; letter-spacing: 0.05em; }
+/* Que algo lleve meses abierto es información, no un detalle a esconder */
+.mc-arrastra { color: #b35309; }
+
+.mc-avance { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; font-size: 12.5px; color: var(--ink-soft); }
+.mc-bar { display: block; width: 68px; height: 5px; background: var(--paper-soft); border-radius: 99px; overflow: hidden; }
+.mc-bar-fill { display: block; height: 100%; background: var(--ink); border-radius: 99px; }
+.mc-sintareas { flex: 0 0 auto; font-size: 12px; }
+
+.mc-racha { flex: 0 0 auto; font-size: 12.5px; white-space: nowrap; }
+.mc-libre {
+  flex: 0 0 auto; border: 1px solid var(--line); background: none; border-radius: 20px;
+  padding: 3px 9px; font-size: 11.5px; color: var(--ink-muted);
+}
+.mc-libre:hover { color: var(--ink); border-color: var(--ink-muted); }
+
+/* Hoy, en corto: lo completo vive en Agenda */
+.mc-hoy { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.mc-vencidas { color: var(--danger); border-color: #eed4d4; font-weight: 600; }
+.mc-tarea { font-size: 13.5px; border-bottom: 1px solid var(--line); }
+.mc-tarea:hover { color: var(--ink); border-color: var(--ink); }
+
+/* Ficha */
+.mc-ficha-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 14px 0 4px; }
+.mc-tareas { display: flex; flex-direction: column; gap: 2px; margin-top: 12px; }
+.mc-tarea-fila {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 4px; border-bottom: 1px solid var(--line); font-size: 14px;
+}
+.mc-tarea-fila:hover { background: var(--paper-soft); }
+.mc-tarea-fila.cerrada { opacity: 0.6; }
+.mc-tarea-fila.cerrada .mc-tarea-titulo { text-decoration: line-through; }
+.mc-tarea-titulo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.mc-tarea-titulo:hover { text-decoration: underline; }
+.mc-tarea-espacio {
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-muted);
+}
+.mc-tarea-estado, .mc-tarea-fecha { flex: 0 0 auto; font-size: 12px; }
+.mc-tarea-x { flex: 0 0 auto; background: none; border: none; color: var(--line); font-size: 14px; padding: 0 4px; }
+.mc-tarea-fila:hover .mc-tarea-x { color: var(--ink-muted); }
+.mc-tarea-x:hover { color: var(--danger); }
+
+/* Buscador de tareas para asociar: busca en TODOS los espacios a propósito */
+.mc-buscar { border: 1px solid var(--ink); border-radius: 10px; padding: 12px; margin-top: 14px; max-width: 620px; }
+.mc-buscar-head { display: flex; gap: 8px; }
+.mc-buscar-head input { flex: 1; }
+.mc-candidatas { display: flex; flex-direction: column; gap: 2px; margin-top: 10px; max-height: 320px; overflow-y: auto; }
+.mc-candidata {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  border: none; background: none; padding: 8px 4px; border-bottom: 1px solid var(--line); font-size: 13.5px;
+}
+.mc-candidata:hover { background: var(--paper-soft); }
+.mc-candidata-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.mc-candidata-mas { flex: 0 0 auto; color: var(--ink-muted); font-size: 16px; }
+
+/* Cuadrícula de los últimos 28 días del gesto diario */
+.mc-dias { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 12px; }
+.mc-dia {
+  width: 17px; height: 17px; border-radius: 4px; padding: 0;
+  border: 1px solid var(--line); background: var(--paper);
+}
+.mc-dia:hover { border-color: var(--ink-muted); }
+.mc-dia.hecho { background: var(--ink); border-color: var(--ink); }
+.mc-dia.libre {
+  border-style: dashed; border-color: var(--ink-muted);
+  background: repeating-linear-gradient(45deg, var(--paper-soft), var(--paper-soft) 2px, var(--paper) 2px, var(--paper) 4px);
+}
+.mc-dia.hoy { outline: 2px solid var(--ink); outline-offset: 1px; }
+
+@media (max-width: 720px) {
+  .mc-fila { gap: 9px; font-size: 14px; }
+  .mc-avance .mc-bar { width: 44px; }
+  .mc-tarea-estado { display: none; }
+  .mc-buscar { max-width: none; }
+}
+
 /* ---------- Tarjetas con portada (Espacios y Proyectos) ---------- */
 .cg-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
 .cg-card {

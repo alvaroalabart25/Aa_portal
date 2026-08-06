@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import FacturasTab from './FacturasTab';
 import { EventsRadar } from '../events/components';
+import { RADAR_DIAS_FISCAL } from '../events/types';
 import EmpresasTab from './EmpresasTab';
 
 // Página Facturas: emisión y listado + empresas a las que facturas.
@@ -21,7 +22,8 @@ export default function FacturasPage() {
         </div>
       </div>
 
-      <EventsRadar scope="autonomo" />
+      {/* los plazos de Hacienda sí interesan con un mes de antelación */}
+      <EventsRadar scope="autonomo" dias={RADAR_DIAS_FISCAL} />
 
       {tab === 'emitidas' ? <FacturasTab /> : <EmpresasTab />}
     </div>

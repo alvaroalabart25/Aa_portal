@@ -1,4 +1,4 @@
-export type EventRecurrence = 'none' | 'monthly' | 'yearly';
+export type EventRecurrence = 'none' | 'daily' | 'monthly' | 'yearly';
 export type EventScope = 'autonomo' | 'space';
 
 export interface ImportantEvent {
@@ -16,6 +16,7 @@ export interface ImportantEvent {
 
 export const RECURRENCE_LABEL: Record<EventRecurrence, string> = {
   none: 'No se repite',
+  daily: 'Cada día',
   monthly: 'Cada mes',
   yearly: 'Cada año',
 };
@@ -34,6 +35,9 @@ export function nextOccurrence(ev: ImportantEvent): string {
   const today = todayIso();
   if (ev.recurrence === 'none' || ev.eventDate >= today) return ev.eventDate;
 
+  // el diario ocurre hoy, siempre: no hay que buscar candidato
+  if (ev.recurrence === 'daily') return today;
+
   const [, m, d] = ev.eventDate.split('-').map(Number);
   const now = new Date();
   if (ev.recurrence === 'yearly') {
@@ -50,6 +54,7 @@ export function nextOccurrence(ev: ImportantEvent): string {
 // ¿El evento ocurre en esta fecha concreta? (para pintarlo en el Diario)
 export function occursOn(ev: ImportantEvent, iso: string): boolean {
   if (ev.recurrence === 'none' || iso <= ev.eventDate) return ev.eventDate === iso;
+  if (ev.recurrence === 'daily') return true; // aquí ya sabemos que iso > eventDate
   const [, em, ed] = ev.eventDate.split('-').map(Number);
   const [, m, d] = iso.split('-').map(Number);
   if (ev.recurrence === 'yearly') return m === em && d === ed;
@@ -64,9 +69,16 @@ export function daysUntil(iso: string): number {
   return Math.round((target.getTime() - base.getTime()) / 86_400_000);
 }
 
-// El radar (franja superior) solo muestra el próximo mes; el listado de la
-// agenda (sección Próximas) llega hasta 4 meses.
-export const RADAR_WINDOW_DAYS = 30;
+/**
+ * Ventanas del radar (la franja de arriba).
+ *
+ * Por defecto, la semana: un aviso a 24 días no es información, es ruido que
+ * ocupa la parte de arriba de la pantalla antes de ver una sola tarea.
+ * La excepción son los plazos de Hacienda, que sí interesan con antelación.
+ * El listado de la Agenda (sección Próximas) sigue llegando a 4 meses.
+ */
+export const RADAR_DIAS = 7;
+export const RADAR_DIAS_FISCAL = 30;
 export const LIST_WINDOW_DAYS = 120;
 
 export function whenLabel(days: number): string {

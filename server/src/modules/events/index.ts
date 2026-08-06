@@ -18,7 +18,7 @@ const eventBase = z.object({
   emoji: z.string().trim().min(1).max(16).default('📌'),
   eventDate: isoDate,
   eventTime: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
-  recurrence: z.enum(['none', 'monthly', 'yearly']).default('none'),
+  recurrence: z.enum(['none', 'daily', 'monthly', 'yearly']).default('none'),
   scope: z.enum(['autonomo', 'space']),
   spaceId: z.number().int().positive().nullish(),
 });

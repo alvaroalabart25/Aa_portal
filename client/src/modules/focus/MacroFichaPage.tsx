@@ -241,8 +241,14 @@ function BuscarTareas({
   const [añadidas, setAñadidas] = useState(0);
   const [error, setError] = useState('');
 
+  const caja = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     spacesApi.list().then(setEspacios).catch(() => {});
+    // El buscador se abre al final de la lista de tareas: en el móvil quedaba
+    // fuera de pantalla y parecía que el botón no hacía nada. Un cuadro después
+    // de pintar, porque el autoFocus del campo también mueve el scroll.
+    requestAnimationFrame(() => caja.current?.scrollIntoView({ block: 'center' }));
   }, []);
 
   // los proyectos se filtran por el espacio elegido
@@ -293,7 +299,7 @@ function BuscarTareas({
   }
 
   return (
-    <div className="mc-buscar">
+    <div className="mc-buscar" ref={caja}>
       <div className="mc-buscar-head">
         <input placeholder="Buscar entre todas tus tareas…" value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
         <button className="btn" onClick={() => onCerrar(añadidas > 0)}>
@@ -315,7 +321,9 @@ function BuscarTareas({
           onChange={(e) => setProjectId(e.target.value ? Number(e.target.value) : '')}
           disabled={!spaceId}
         >
-          <option value="">{spaceId ? 'Todos los proyectos' : 'Elige un espacio'}</option>
+          {/* sin espacio elegido el selector va apagado: decía «Elige un espacio»
+              y parecían dos selectores de espacio, uno al lado del otro */}
+          <option value="">{spaceId ? 'Todos los proyectos' : 'Proyecto'}</option>
           {proyectos.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}

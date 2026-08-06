@@ -140,7 +140,7 @@ function BloqueMelones({ mes, onCrear, onCambio }: { mes: FocusMes; onCrear: () 
         <h2>
           {NOMBRE_TIPO.melon.emoji} {NOMBRE_TIPO.melon.plural}
         </h2>
-        <button className="btn sm" onClick={onCrear}>
+        <button className="btn ghost sm" onClick={onCrear}>
           + Melón
         </button>
       </div>

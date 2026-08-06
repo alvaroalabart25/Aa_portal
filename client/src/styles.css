@@ -870,12 +870,6 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 }
 .mc-libre:hover { color: var(--ink); border-color: var(--ink-muted); }
 
-/* Hoy, en corto: lo completo vive en Agenda */
-.mc-hoy { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-.mc-vencidas { color: var(--danger); border-color: #eed4d4; font-weight: 600; }
-.mc-tarea { font-size: 13.5px; border-bottom: 1px solid var(--line); }
-.mc-tarea:hover { color: var(--ink); border-color: var(--ink); }
-
 /* Ficha */
 .mc-ficha-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 14px 0 4px; }
 .mc-tareas { display: flex; flex-direction: column; gap: 2px; margin-top: 12px; }
@@ -940,10 +934,24 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .mc-dia.hoy { outline: 2px solid var(--ink); outline-offset: 1px; }
 
 @media (max-width: 720px) {
+  /* Macro es la portada del mes: se aprieta el ritmo vertical y se quita peso a
+     los gestos de excepción, para que lo que se lea sean los títulos. */
+  .mc-bloque { margin-top: 20px; }
+  .mc-head h2 { font-size: 17.5px; }
   .mc-fila { gap: 9px; font-size: 14px; }
   .mc-avance .mc-bar { width: 44px; }
+  /* «hoy no toca» sin caja: es la excepción del día, no un botón principal, y
+     con borde se comía el ancho del título */
+  .mc-libre { border: none; padding: 2px 0; text-decoration: underline; }
   .mc-tarea-estado { display: none; }
   .mc-buscar { max-width: none; }
+  /* Dos semanas por fila: envuelto a lo que quepa, hoy caía en mitad de la
+     cuadrícula y no se leía como un calendario */
+  .mc-dias { display: grid; grid-template-columns: repeat(14, 1fr); gap: 5px; }
+  .mc-dia { width: auto; height: auto; aspect-ratio: 1; }
+  /* Sin ratón no hay hover: la ✕ de desvincular tiene que verse sola, y con
+     sitio para el dedo */
+  .mc-tarea-x { color: var(--ink-muted); padding: 4px 6px; }
 }
 
 /* ---------- Tarjetas con portada (Espacios y Proyectos) ---------- */

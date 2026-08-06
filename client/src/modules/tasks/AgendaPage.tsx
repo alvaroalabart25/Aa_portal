@@ -12,6 +12,7 @@ import {
   fmtEventDate,
   LIST_WINDOW_DAYS,
   nextOccurrence,
+  RADAR_DIAS_AGENDA,
   whenLabel,
   type ImportantEvent,
 } from '../events/types';
@@ -150,7 +151,8 @@ export default function AgendaPage() {
         <MacroTab />
       ) : (
         <>
-          <EventsRadar />
+          {/* aquí solo lo inmediato: la semana entera está en Macro */}
+          <EventsRadar dias={RADAR_DIAS_AGENDA} />
 
           {groups.overdue.length > 0 && (
             <AgendaSection title="Vencidas" titleClass="overdue" tasks={groups.overdue} onChanged={load} />

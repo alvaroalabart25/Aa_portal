@@ -74,10 +74,13 @@ export function daysUntil(iso: string): number {
  *
  * Por defecto, la semana: un aviso a 24 días no es información, es ruido que
  * ocupa la parte de arriba de la pantalla antes de ver una sola tarea.
+ * En la pestaña Agenda basta con lo inmediato, porque la semana completa ya
+ * está en Macro y repetirla dos veces solo quita sitio a las tareas del día.
  * La excepción son los plazos de Hacienda, que sí interesan con antelación.
  * El listado de la Agenda (sección Próximas) sigue llegando a 4 meses.
  */
 export const RADAR_DIAS = 7;
+export const RADAR_DIAS_AGENDA = 3;
 export const RADAR_DIAS_FISCAL = 30;
 export const LIST_WINDOW_DAYS = 120;
 

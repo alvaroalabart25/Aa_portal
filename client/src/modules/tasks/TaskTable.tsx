@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { tasksApi } from './api';
-import { DueDateEdit, PrioritySelect, SpaceTag, StatusSelect } from './components';
+import { Aplazada, DueDateEdit, PrioritySelect, SpaceTag, StatusSelect } from './components';
 import type { Priority, Task, TaskStatus } from './types';
 
 // Tabla de tareas reutilizable (Agenda, detalle de proyecto...).
@@ -47,6 +47,7 @@ export default function TaskTable({
                 </span>
               )}
               {t.title}
+              <Aplazada veces={t.postponedCount} />
             </td>
             <td onClick={(e) => e.stopPropagation()}>
               <DueDateEdit

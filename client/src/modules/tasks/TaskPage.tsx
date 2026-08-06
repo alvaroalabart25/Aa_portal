@@ -5,6 +5,10 @@ import MelonesDeTarea from '../focus/MelonesDeTarea';
 import { EditableTitle, KebabMenu, NotesBox, StatusSelect } from './components';
 import { PRIORITY_LABEL, type Priority, type Task } from './types';
 
+function fechaCorta(iso: string): string {
+  return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+}
+
 export default function TaskPage() {
   const { id } = useParams();
   const taskId = Number(id);
@@ -86,6 +90,14 @@ export default function TaskPage() {
             value={task.dueDate ?? ''}
             onChange={(e) => update({ dueDate: e.target.value || null })}
           />
+          {/* El dato honesto de esta ficha: cuántas veces la he empujado. Solo
+              cuenta empujarla hacia adelante, no cada vez que toco la fecha. */}
+          {!!task.postponedCount && (
+            <p className={`tk-aplazos${task.postponedCount >= 4 ? ' bola' : ''}`}>
+              Aplazada {task.postponedCount} {task.postponedCount === 1 ? 'vez' : 'veces'}
+              {task.lastPostponedAt && ` · la última, el ${fechaCorta(task.lastPostponedAt)}`}
+            </p>
+          )}
         </div>
       </div>
 

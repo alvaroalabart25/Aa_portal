@@ -53,6 +53,8 @@ tasksRouter.get('/', ah(async (req: AuthedRequest, res) => {
       priority: tasks.priority,
       dueDate: tasks.dueDate,
       sortOrder: tasks.sortOrder,
+      postponedCount: tasks.postponedCount,
+      lastPostponedAt: tasks.lastPostponedAt,
       completedAt: tasks.completedAt,
       projectName: projects.name,
       spaceId: projects.spaceId,
@@ -80,6 +82,8 @@ tasksRouter.get('/:id', ah(async (req: AuthedRequest, res) => {
       notes: tasks.notes,
       dueDate: tasks.dueDate,
       sortOrder: tasks.sortOrder,
+      postponedCount: tasks.postponedCount,
+      lastPostponedAt: tasks.lastPostponedAt,
       completedAt: tasks.completedAt,
       projectName: projects.name,
       spaceId: projects.spaceId,
@@ -117,6 +121,20 @@ tasksRouter.patch('/:id', ah(async (req: AuthedRequest, res) => {
   const data: Record<string, unknown> = { ...parsed.data };
   if (parsed.data.status === 'completed') data.completedAt = new Date();
   else if (parsed.data.status) data.completedAt = null;
+
+  // Aplazar = empujar la fecha hacia adelante. Solo eso cuenta: adelantarla,
+  // ponerla por primera vez o quitarla no son aplazamientos, y contarlos
+  // convertiría el número en ruido en vez de en una señal de que algo se atasca.
+  if (parsed.data.dueDate) {
+    const [antes] = await db
+      .select({ dueDate: tasks.dueDate })
+      .from(tasks)
+      .where(and(eq(tasks.id, id), eq(tasks.userId, req.userId!)));
+    if (antes?.dueDate && parsed.data.dueDate > antes.dueDate) {
+      data.postponedCount = sql`${tasks.postponedCount} + 1`;
+      data.lastPostponedAt = new Date();
+    }
+  }
 
   const [result] = await db
     .update(tasks)

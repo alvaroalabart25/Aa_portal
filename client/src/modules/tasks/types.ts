@@ -38,6 +38,9 @@ export interface Task {
   spaceId?: number;
   spaceName?: string;
   spaceColor?: string;
+  // Veces que se ha empujado su fecha hacia adelante
+  postponedCount?: number;
+  lastPostponedAt?: string | null;
 }
 
 export const TASK_STATUS_LABEL: Record<TaskStatus, string> = {

@@ -193,6 +193,18 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .crumbs { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-muted); margin-bottom: 14px; flex-wrap: wrap; }
 .crumbs a:hover { color: var(--ink); text-decoration: underline; }
 .page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; flex-wrap: wrap; }
+/* Veces que se ha aplazado una tarea: discreto en la lista, marcado cuando ya
+   son unas cuantas y la tarea se está encasquillando */
+.aplazada {
+  display: inline-block; margin-left: 8px; vertical-align: 1px;
+  font-size: 11.5px; font-weight: 500; letter-spacing: 0.02em;
+  color: var(--ink-muted); background: var(--paper-soft);
+  border: 1px solid var(--line); border-radius: 99px; padding: 1px 6px;
+}
+.aplazada.bola { color: #b0640b; border-color: #f0c58a; background: #fdf4e7; }
+.tk-aplazos { margin: 6px 0 0; font-size: 12.5px; color: var(--ink-muted); }
+.tk-aplazos.bola { color: #b0640b; }
+
 /* Crear + pestañas, en este orden y en la misma esquina en todo el portal */
 .head-acciones { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
 .btn.corto { white-space: nowrap; }

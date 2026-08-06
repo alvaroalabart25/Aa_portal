@@ -191,6 +191,26 @@ export function SpaceTag({ name, color }: { name?: string; color?: string }) {
   );
 }
 
+/**
+ * Cuántas veces se ha aplazado una tarea.
+ *
+ * A partir de dos: mover algo una vez es normal, repetirlo es la señal de que
+ * se te está haciendo bola. De cuatro en adelante se marca, para que salte a la
+ * vista sin tener que leer el número.
+ */
+export function Aplazada({ veces }: { veces?: number }) {
+  if (!veces || veces < 2) return null;
+  return (
+    <span
+      className={`aplazada${veces >= 4 ? ' bola' : ''}`}
+      title={`Aplazada ${veces} veces`}
+      aria-label={`Aplazada ${veces} veces`}
+    >
+      ↻{veces}
+    </span>
+  );
+}
+
 export function DueDate({ date }: { date: string | null }) {
   if (!date) return <span className="muted">—</span>;
   const overdue = date < new Date().toISOString().slice(0, 10);

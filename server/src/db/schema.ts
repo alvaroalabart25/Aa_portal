@@ -102,6 +102,10 @@ export const tasks = mysqlTable('tasks', {
   notes: text('notes'), // markdown
   dueDate: date('due_date', { mode: 'string' }),
   sortOrder: int('sort_order').notNull().default(0),
+  // Cuántas veces se ha empujado la fecha hacia adelante. Adelantarla no cuenta:
+  // lo que interesa es ver qué se atasca, no cada vez que se toca la tarea.
+  postponedCount: int('postponed_count').notNull().default(0),
+  lastPostponedAt: datetime('last_postponed_at'),
   completedAt: datetime('completed_at'),
   archivedAt: datetime('archived_at'),
   createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),

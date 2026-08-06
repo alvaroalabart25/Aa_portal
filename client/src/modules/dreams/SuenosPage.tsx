@@ -366,7 +366,10 @@ function ListaDeseos({
   const [comprados, setComprados] = useState<Deseo[]>([]);
   const [total, setTotal] = useState('0');
   const [verComprados, setVerComprados] = useState(false);
-  const [porCategoria, setPorCategoria] = useState(false);
+  // Por categorías de entrada: una lista de 20 cosas mezcladas no se lee, y
+  // agrupada ya dices «en tecnología llevo 6000 €». El orden manual sigue a un
+  // clic para cuando quieras priorizar arrastrando.
+  const [porCategoria, setPorCategoria] = useState(true);
   const [editando, setEditando] = useState<Deseo | null>(null);
 
   const cargar = useCallback(async () => {

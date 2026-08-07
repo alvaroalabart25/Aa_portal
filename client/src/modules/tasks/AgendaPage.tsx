@@ -5,6 +5,7 @@ import TaskTable from './TaskTable';
 import type { Task } from './types';
 import { eventsApi } from '../events/api';
 import { EventBand, EventsRadar } from '../events/components';
+import EventosTab from '../events/EventosTab';
 import MacroTab from '../focus/MacroTab';
 import { AddTaskModal } from './modals';
 import {
@@ -20,6 +21,15 @@ import {
 function isoLocal(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
+
+type Vista = 'macro' | 'agenda' | 'eventos';
+
+// Las tres caras de lo mismo: el mes, el día a día y las fechas clave
+const VISTAS: [Vista, string][] = [
+  ['macro', 'Macro'],
+  ['agenda', 'Agenda'],
+  ['eventos', 'Eventos'],
+];
 
 const STATUS_ORDER: Record<string, number> = { in_progress: 0, in_review: 1, blocked: 2, backlog: 3, completed: 4, cancelled: 5 };
 const PRIORITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 };
@@ -87,8 +97,12 @@ export default function AgendaPage() {
   // la vista viaja en la URL: así se puede volver a Macro desde una ficha
   const [params, setParams] = useSearchParams();
   // Macro es la vista por defecto: es la portada del portal
-  const view: 'agenda' | 'macro' = params.get('tab') === 'agenda' ? 'agenda' : 'macro';
-  const setView = (v: 'agenda' | 'macro') => setParams(v === 'macro' ? {} : { tab: v }, { replace: true });
+  const pedida = params.get('tab');
+  const view: Vista = pedida === 'agenda' || pedida === 'eventos' ? pedida : 'macro';
+  const setView = (v: Vista) => {
+    setCreando(false);
+    setParams(v === 'macro' ? {} : { tab: v }, { replace: true });
+  };
 
   const load = useCallback(async () => {
     const [t, e] = await Promise.all([tasksApi.list({ status: 'open' }), eventsApi.list()]);
@@ -131,23 +145,38 @@ export default function AgendaPage() {
       <div className="page-head">
         <h1>Agenda</h1>
         {/* crear a la izquierda de las pestañas: la misma posición en todo el
-            portal, para no ir buscándolo en cada sección */}
+            portal, y crea lo que la pestaña está enseñando */}
         <div className="head-acciones">
-          <button className="btn corto" onClick={() => setCreando(true)}>
-            + Nueva<span className="solo-ancho"> tarea</span>
+          <button className="btn corto sm" onClick={() => setCreando(true)}>
+            {view === 'eventos' ? (
+              <>
+                + Nuevo<span className="solo-ancho"> evento</span>
+              </>
+            ) : (
+              <>
+                + Nueva<span className="solo-ancho"> tarea</span>
+              </>
+            )}
           </button>
           <div className="seg" role="tablist">
-            <button role="tab" aria-selected={view === 'macro'} className={view === 'macro' ? 'active' : ''} onClick={() => setView('macro')}>
-              Macro
-            </button>
-            <button role="tab" aria-selected={view === 'agenda'} className={view === 'agenda' ? 'active' : ''} onClick={() => setView('agenda')}>
-              Agenda
-            </button>
+            {VISTAS.map(([v, etiqueta]) => (
+              <button
+                key={v}
+                role="tab"
+                aria-selected={view === v}
+                className={view === v ? 'active' : ''}
+                onClick={() => setView(v)}
+              >
+                {etiqueta}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
-      {view === 'macro' ? (
+      {view === 'eventos' ? (
+        <EventosTab creando={creando} onCerrarCreacion={() => setCreando(false)} />
+      ) : view === 'macro' ? (
         <MacroTab />
       ) : (
         <>
@@ -186,7 +215,9 @@ export default function AgendaPage() {
         </>
       )}
 
-      {creando && <AddTaskModal onClose={() => setCreando(false)} onCreated={load} />}
+      {/* en Eventos la ventana la abre la propia pestaña, que es quien sabe
+          recargar su lista */}
+      {creando && view !== 'eventos' && <AddTaskModal onClose={() => setCreando(false)} onCreated={load} />}
     </div>
   );
 }

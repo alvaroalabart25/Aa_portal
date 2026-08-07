@@ -3,13 +3,13 @@ import { Link } from 'react-router-dom';
 import { focusApi, type MelonBreve } from './api';
 
 /**
- * A qué melones (objetivos del mes) está vinculada esta tarea.
+ * A qué objetivos del mes está vinculada esta tarea.
  *
  * Vive en la ficha de la tarea porque es ahí donde uno se acuerda: «esto en
  * realidad es de las campañas». El vínculo no mueve la tarea de su proyecto ni
  * de su espacio, solo la señala desde el melón.
  *
- * Si no hay ningún melón activo, no se enseña nada: sería un selector vacío.
+ * Si no hay ningún objetivo activo, no se enseña nada: sería un selector vacío.
  */
 export default function MelonesDeTarea({ taskId }: { taskId: number }) {
   const [suyos, setSuyos] = useState<MelonBreve[]>([]);
@@ -55,8 +55,8 @@ export default function MelonesDeTarea({ taskId }: { taskId: number }) {
     <section className="section">
       <h2>Objetivo del mes</h2>
       <p className="muted" style={{ fontSize: 12.5, marginTop: 4, lineHeight: 1.6 }}>
-        Si esta tarea sirve a un melón, vincúlala. La tarea no se mueve de su proyecto: el melón solo la señala para
-        poder ver juntas todas las de un mismo objetivo.
+        Si esta tarea sirve a un objetivo del mes, vincúlala. No se mueve de su proyecto: el objetivo solo la señala
+        para poder ver juntas todas las de un mismo fin.
       </p>
 
       {suyos.length > 0 && (
@@ -84,7 +84,7 @@ export default function MelonesDeTarea({ taskId }: { taskId: number }) {
           disabled={busy}
           onChange={(e) => e.target.value && vincular(Number(e.target.value))}
         >
-          <option value="">{suyos.length ? 'Vincular a otro melón…' : 'Vincular a un melón…'}</option>
+          <option value="">{suyos.length ? 'Vincular a otro objetivo…' : 'Vincular a un objetivo…'}</option>
           {disponibles.map((m) => (
             <option key={m.id} value={m.id}>
               {m.title} ({m.scope === 'trabajo' ? 'trabajo' : 'personal'})

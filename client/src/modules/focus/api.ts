@@ -94,16 +94,16 @@ export const focusApi = {
     return get<Candidata[]>(`/focus/${id}/candidatas${qs ? `?${qs}` : ''}`);
   },
 
-  /** Melones activos, para el selector de la ficha de una tarea */
+  /** Objetivos activos, para el selector de la ficha de una tarea */
   melones: () => get<MelonBreve[]>('/focus/melones'),
-  /** ¿A qué melones está asociada esta tarea? */
+  /** ¿A qué objetivos está asociada esta tarea? */
   deTarea: (taskId: number) => get<MelonBreve[]>(`/focus/tarea/${taskId}`),
   asociarTarea: (id: number, taskId: number) => post<{ ok: boolean }>(`/focus/${id}/tasks`, { taskId }),
   quitarTarea: (id: number, taskId: number) => del<{ deleted: boolean }>(`/focus/${id}/tasks/${taskId}`),
 };
 
 export const NOMBRE_TIPO: Record<FocusKind, { singular: string; plural: string; emoji: string }> = {
-  melon: { singular: 'melón', plural: 'Melones del mes', emoji: '🍈' },
+  melon: { singular: 'objetivo', plural: 'Objetivos del mes', emoji: '🎯' },
   formacion: { singular: 'formación', plural: 'Formaciones', emoji: '🎓' },
   libro: { singular: 'libro', plural: 'Libros', emoji: '📖' },
 };

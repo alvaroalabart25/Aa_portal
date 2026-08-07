@@ -136,7 +136,7 @@ export function AddTaskModal({
 
   useEffect(() => {
     if (!fixedProjectId) projectsApi.list({ status: 'active' }).then(setProjects);
-    // si no hay melones activos, el selector no se enseña
+    // si no hay objetivos activos, el selector no se enseña
     focusApi.melones().then(setMelones).catch(() => {});
   }, [fixedProjectId]);
 
@@ -151,8 +151,8 @@ export function AddTaskModal({
         priority,
         dueDate: dueDate || null,
       });
-      // el vínculo con el melón se hace después: la tarea vive en su proyecto,
-      // el melón solo la señala
+      // el vínculo con el objetivo se hace después: la tarea vive en su
+      // proyecto, el objetivo solo la señala
       if (melonId && creada?.id) await focusApi.asociarTarea(Number(melonId), creada.id).catch(() => {});
       onCreated();
       onClose();
@@ -195,12 +195,12 @@ export function AddTaskModal({
             <input id="m-task-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
           </div>
         </div>
-        {/* solo si hay melones activos: un selector vacío no aporta nada */}
+        {/* solo si hay objetivos activos: un selector vacío no aporta nada */}
         {melones.length > 0 && (
           <div className="field">
             <label htmlFor="m-task-melon">Objetivo del mes (opcional)</label>
             <select id="m-task-melon" value={melonId} onChange={(e) => setMelonId(e.target.value ? Number(e.target.value) : '')}>
-              <option value="">Sin melón</option>
+              <option value="">Sin objetivo</option>
               {melones.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.title} ({m.scope === 'trabajo' ? 'trabajo' : 'personal'})

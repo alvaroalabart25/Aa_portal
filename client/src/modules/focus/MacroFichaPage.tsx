@@ -19,9 +19,9 @@ function fechaCorta(iso: string): string {
 }
 
 /**
- * Ficha de un melón, una formación o un libro.
+ * Ficha de un objetivo del mes, una formación o un libro.
  *
- * En el melón está lo que ninguna otra pantalla del portal sabe hacer: enseñar
+ * En el objetivo está lo que ninguna otra pantalla del portal sabe hacer: enseñar
  * juntas las tareas de un mismo objetivo aunque vivan en espacios distintos.
  * Las tareas NO se mueven de sitio: aquí solo se señalan.
  */
@@ -112,7 +112,7 @@ export default function MacroFichaPage() {
       {d.kind === 'melon' && (
         <section className="section">
           <div className="page-head">
-            <h2>Tareas de este melón</h2>
+            <h2>Tareas de este objetivo</h2>
             <button className="btn ghost sm" onClick={() => setBuscando(true)}>
               + Asociar tarea
             </button>
@@ -202,8 +202,8 @@ function ListaTareas({ tareas, itemId, onCambio }: { tareas: FocusDetalle['tasks
           {x.dueDate && <span className="muted mc-tarea-fecha">{fechaCorta(x.dueDate)}</span>}
           <button
             className="mc-tarea-x"
-            aria-label="Desasociar del melón"
-            title="Quitar del melón (la tarea no se borra)"
+            aria-label="Desasociar del objetivo"
+            title="Quitar del objetivo (la tarea no se borra)"
             onClick={async () => {
               await focusApi.quitarTarea(itemId, x.id);
               onCambio();
@@ -218,11 +218,11 @@ function ListaTareas({ tareas, itemId, onCambio }: { tareas: FocusDetalle['tasks
 }
 
 /**
- * Buscador de tareas para asociar al melón.
+ * Buscador de tareas para asociar al objetivo.
  *
  * Al pulsar una, se asocia y DESAPARECE de la lista sin recargarla: encadenar
  * varias es lo normal, y recargar en cada clic hacía perder el sitio. La ficha
- * del melón se refresca una sola vez, al cerrar.
+ * del objetivo se refresca una sola vez, al cerrar.
  */
 function BuscarTareas({
   itemId,

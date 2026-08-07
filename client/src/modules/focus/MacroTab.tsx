@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import Modal from '../../components/Modal';
-import { EventsRadar } from '../events/components';
-import { RADAR_DIAS } from '../events/types';
 import { tasksApi } from '../tasks/api';
 import TaskTable from '../tasks/TaskTable';
 import type { Task } from '../tasks/types';
@@ -26,14 +24,9 @@ function isoLocal(d: Date): string {
 const PESO: Record<string, number> = { high: 0, medium: 1, low: 2 };
 const porPrioridad = (l: Task[]) => l.slice().sort((a, b) => PESO[a.priority] - PESO[b.priority]);
 
-// Ventana de los eventos de arriba. En el móvil se puede pedir solo hoy: es la
-// única información del día que queda en esta pantalla.
-const VENTANAS = { hoy: 0, semana: RADAR_DIAS, mes: 31 } as const;
-type Ventana = keyof typeof VENTANAS;
-
 /**
- * Macro: la vista de pájaro. Lo que tengo entre manos este mes —melones,
- * formaciones, libros— en tarjetas, con los eventos que vienen arriba.
+ * Macro: la vista de pájaro. Lo que tengo entre manos este mes —objetivos,
+ * formaciones, libros— en tarjetas.
  *
  * En el móvil no se enseñan las tareas: para eso está la pestaña Agenda, y
  * repetirlas aquí convertía la portada del mes en una lista interminable.
@@ -43,7 +36,6 @@ export default function MacroTab() {
   const [mes, setMes] = useState<FocusMes | null>(null);
   const [tareas, setTareas] = useState<Task[]>([]);
   const [creando, setCreando] = useState<FocusKind | null>(null);
-  const [ventana, setVentana] = useState<Ventana>('semana');
 
   const cargar = useCallback(async () => {
     const [m, t] = await Promise.all([focusApi.mes(), tasksApi.list({ status: 'open' })]);
@@ -69,31 +61,6 @@ export default function MacroTab() {
   return (
     <div>
       <p className="muted mc-mes">{nombreMesCap(mes.month)} · lo que tengo entre manos</p>
-
-      {/* Lo que viene, arriba del todo: es lo primero que se mira al abrir */}
-      <section className="section mc-bloque">
-        <div className="mc-head">
-          <h2>Lo que viene</h2>
-          <div className="seg" role="tablist">
-            {(['hoy', 'semana', 'mes'] as Ventana[]).map((v) => (
-              <button
-                key={v}
-                role="tab"
-                aria-selected={ventana === v}
-                // «Hoy» solo en el móvil: en el ordenador cabe la semana entera
-                className={`${ventana === v ? 'active' : ''}${v === 'hoy' ? ' solo-movil' : ''}`}
-                onClick={() => setVentana(v)}
-              >
-                {v === 'hoy' ? 'Hoy' : v === 'semana' ? 'Semana' : 'Mes'}
-              </button>
-            ))}
-          </div>
-        </div>
-        <EventsRadar
-          dias={VENTANAS[ventana]}
-          vacio={ventana === 'hoy' ? 'Hoy no hay nada señalado.' : `Nada a la vista ${ventana === 'semana' ? 'esta semana' : 'este mes'}.`}
-        />
-      </section>
 
       <BloqueMelones mes={mes} onCrear={() => setCreando('melon')} />
 
@@ -132,7 +99,7 @@ export default function MacroTab() {
           </Link>
         </div>
         {hoy.deHoy.length === 0 ? (
-          <p className="muted mc-vacio">Nada con fecha de hoy. Buen momento para atacar un melón.</p>
+          <p className="muted mc-vacio">Nada con fecha de hoy. Buen momento para atacar un objetivo.</p>
         ) : (
           <TaskTable tasks={hoy.deHoy} onChanged={cargar} />
         )}
@@ -152,7 +119,7 @@ export default function MacroTab() {
   );
 }
 
-// ---------------------------------------------------------------- melones
+// ---------------------------------------------------------------- objetivos
 
 function BloqueMelones({ mes, onCrear }: { mes: FocusMes; onCrear: () => void }) {
   const melones = mes.items.filter((i) => i.kind === 'melon');
@@ -166,7 +133,7 @@ function BloqueMelones({ mes, onCrear }: { mes: FocusMes; onCrear: () => void })
           {NOMBRE_TIPO.melon.emoji} {NOMBRE_TIPO.melon.plural}
         </h2>
         <button className="btn ghost sm" onClick={onCrear}>
-          + Melón
+          + Objetivo
         </button>
       </div>
 
@@ -185,7 +152,7 @@ function BloqueMelones({ mes, onCrear }: { mes: FocusMes; onCrear: () => void })
 
       {activos.length === 0 ? (
         <p className="muted mc-vacio">
-          Sin melones este mes. Elige máximo {mes.limites.trabajo.tope} de trabajo y {mes.limites.personal.tope}{' '}
+          Sin objetivos este mes. Elige máximo {mes.limites.trabajo.tope} de trabajo y {mes.limites.personal.tope}{' '}
           personales, y cuélgales las tareas que ya tienes.
         </p>
       ) : (
@@ -208,9 +175,9 @@ function BloqueMelones({ mes, onCrear }: { mes: FocusMes; onCrear: () => void })
 }
 
 /**
- * Melón en tarjeta: un aro con el avance y poco más. El aro dice de un vistazo
- * si el objetivo está vivo o parado, que es lo único que hace falta saber desde
- * la portada; el detalle está a un toque.
+ * Objetivo del mes en tarjeta: un aro con el avance y poco más. Dice de un
+ * vistazo si está vivo o parado, que es lo único que hace falta saber desde la
+ * portada; el detalle está a un toque.
  */
 function TarjetaMelon({ item }: { item: FocusItem }) {
   const { hechas, total } = item.tareas;
@@ -421,8 +388,8 @@ function NuevoModal({ kind, onClose, onCreado }: { kind: FocusKind; onClose: () 
 
         {kind === 'melon' && (
           <p className="muted" style={{ fontSize: 12.5, margin: 0, lineHeight: 1.6 }}>
-            Un melón no tiene tareas propias: se nutre de las que ya tienes. Después, en su ficha, le cuelgas el
-            benchmark, la landing o las creatividades aunque vivan en espacios distintos.
+            Un objetivo del mes no tiene tareas propias: se nutre de las que ya tienes. Después, en su ficha, le
+            cuelgas el benchmark, la landing o las creatividades aunque vivan en espacios distintos.
           </p>
         )}
 

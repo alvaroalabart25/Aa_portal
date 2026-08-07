@@ -52,7 +52,7 @@ export default function SuenosPage() {
             esconden (el menú de abajo ya lleva los tres subapartados) y el botón
             se queda junto al título. */}
         <div className="head-acciones">
-          <button className="btn corto" onClick={() => setCreando(true)}>
+          <button className="btn corto sm" onClick={() => setCreando(true)}>
             + Nuev{tab === 'deseos' ? 'o' : 'a'}
             <span className="solo-ancho">
               {tab === 'macro' ? ' macrometa' : tab === 'micro' ? ' micrometa' : ' deseo'}

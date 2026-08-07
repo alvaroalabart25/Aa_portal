@@ -11,9 +11,20 @@ import {
   type ImportantEvent,
 } from './types';
 
-// Tab Eventos: gestión completa (crear, editar, borrar). Es el ÚNICO sitio
-// donde se editan; el resto de vistas los muestran en modo lectura.
-export default function EventosTab() {
+/**
+ * Tab Eventos: gestión completa (crear, editar, borrar). Es el ÚNICO sitio
+ * donde se editan; el resto de vistas los muestran en modo lectura.
+ *
+ * El botón de crear puede venir de fuera (la cabecera de la página), para que
+ * en toda la Agenda haya un solo sitio desde el que se crea.
+ */
+export default function EventosTab({
+  creando = false,
+  onCerrarCreacion,
+}: {
+  creando?: boolean;
+  onCerrarCreacion?: () => void;
+} = {}) {
   const [eventsList, setEventsList] = useState<ImportantEvent[]>([]);
   const [editing, setEditing] = useState<ImportantEvent | 'new' | null>(null);
 
@@ -69,12 +80,6 @@ export default function EventosTab() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 18 }}>
-        <button className="btn" onClick={() => setEditing('new')}>
-          + Añadir evento
-        </button>
-      </div>
-
       {overdue.length > 0 && (
         <section className="section">
           <h2 className="overdue">Vencidos · {overdue.length}</h2>
@@ -93,8 +98,15 @@ export default function EventosTab() {
         hasta que los des por hechos (✓) o los elimines.
       </p>
 
-      {editing && (
-        <EventoModal event={editing === 'new' ? null : editing} onClose={() => setEditing(null)} onSaved={load} />
+      {(editing || creando) && (
+        <EventoModal
+          event={editing && editing !== 'new' ? editing : null}
+          onClose={() => {
+            setEditing(null);
+            onCerrarCreacion?.();
+          }}
+          onSaved={load}
+        />
       )}
     </div>
   );

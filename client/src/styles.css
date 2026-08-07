@@ -97,6 +97,13 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   /* «+ Nueva tarea» se queda en «+ Nueva»: en el móvil el contexto lo pone el
      título de la página, y así el botón no empuja a las pestañas */
   .solo-ancho { display: none; }
+  /* Título, botón y pestañas comparten los 375 px: todo encoge un punto */
+  .page-head:has(.head-acciones) { gap: 8px; }
+  .page-head:has(.head-acciones) h1 { font-size: 20px; }
+  .head-acciones { gap: 6px; }
+  .head-acciones .btn.corto { padding: 4px 9px; font-size: 12.5px; }
+  .head-acciones .seg { padding: 2px; }
+  .head-acciones .seg button { padding: 5px 8px; font-size: 11.5px; }
   /* Cuatro apartados ocupando el ancho justo y el resto desplazando a la
      derecha. Nada asoma por el borde: un trozo de icono cortado parece un fallo.
      Con `.llena` (los submenús, que son cortos) se reparten todo el ancho. */
@@ -205,9 +212,10 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .tk-aplazos { margin: 6px 0 0; font-size: 12.5px; color: var(--ink-muted); }
 .tk-aplazos.bola { color: #b0640b; }
 
-/* Crear + pestañas, en este orden y en la misma esquina en todo el portal */
-.head-acciones { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
-.seg .solo-movil { display: none; }
+/* Crear + pestañas, en este orden y en la misma esquina en todo el portal, y
+   en la misma línea que el título: es una sola cabecera, no dos. */
+.head-acciones { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; justify-content: flex-end; }
+.page-head:has(.head-acciones) { flex-wrap: nowrap; }
 .btn.corto { white-space: nowrap; }
 .progress { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); white-space: nowrap; }
 .progress .bar { width: 120px; height: 6px; background: var(--paper-soft); border-radius: 99px; overflow: hidden; flex-shrink: 0; }
@@ -980,7 +988,6 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   .mk-t { font-size: 14.5px; }
   /* la semana ocupa su propia línea, con el gesto de hoy al lado */
   .mk-semana { max-width: 220px; }
-  .seg .solo-movil { display: block; }
   .mc-buscar { max-width: none; }
   /* Dos semanas por fila: envuelto a lo que quepa, hoy caía en mitad de la
      cuadrícula y no se leía como un calendario */

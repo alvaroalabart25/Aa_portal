@@ -1,11 +1,38 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Modal from '../../components/Modal';
-import { repartirPortadas } from '../../lib/portadas';
 import { projectsApi } from './api';
-import { KebabMenu, Progress, StatusBadge } from './components';
+import { KebabMenu } from './components';
 import { AddProjectModal, AddSpaceModal } from './modals';
 import type { Project } from './types';
+
+const ESTADO_PROYECTO: Record<string, string> = { completed: 'Completado', cancelled: 'Cancelado' };
+
+/**
+ * Proyecto en tarjeta, el mismo lenguaje que los objetivos del mes: un aro con
+ * el avance y el nombre. El aro dice si el proyecto se mueve o está parado, que
+ * es lo que se viene a mirar desde aquí.
+ */
+function TarjetaProyecto({ p, onAbrir }: { p: Project; onAbrir: () => void }) {
+  const total = p.totalTasks ?? 0;
+  const hechas = p.doneTasks ?? 0;
+  const pct = total > 0 ? Math.round((hechas / total) * 100) : 0;
+
+  return (
+    <button className={`mk${p.status !== 'active' ? ' hecho' : ''}`} onClick={onAbrir}>
+      <span className="mk-aro" style={{ ['--pct' as string]: `${pct}%` }} aria-hidden="true">
+        <span className="mk-aro-n">{total > 0 ? `${pct}%` : '—'}</span>
+      </span>
+      <span className="mk-txt">
+        <span className="mk-t">{p.name}</span>
+        <span className="mk-sub">
+          {ESTADO_PROYECTO[p.status] ? `${ESTADO_PROYECTO[p.status]} · ` : ''}
+          {total > 0 ? `${hechas} de ${total} ${total === 1 ? 'tarea' : 'tareas'}` : 'sin tareas todavía'}
+        </span>
+      </span>
+    </button>
+  );
+}
 
 // Vista global: proyectos agrupados por espacio en acordeones (cerrados por
 // defecto). El botón Añadir permite crear espacio o proyecto (en móvil no
@@ -73,8 +100,6 @@ export default function ProjectsPage() {
 
       {groups.map((g) => {
         const isOpen = open.has(g.spaceId);
-        // por grupo: dentro de un espacio no se repite ninguna portada
-        const portadas = repartirPortadas(g.items.map((p) => p.id));
         return (
           <section key={g.spaceId} className="section" style={{ marginTop: 26 }}>
             <button className="space-acc" onClick={() => toggle(g.spaceId)} aria-expanded={isOpen}>
@@ -87,18 +112,9 @@ export default function ProjectsPage() {
             </button>
 
             {isOpen && (
-              <div className="cg-grid" style={{ marginTop: 12 }}>
+              <div className="mk-grid">
                 {g.items.map((p) => (
-                  <button key={p.id} className="cg-card" onClick={() => navigate(`/proyectos/${p.id}`)}>
-                    <span className="cg-cover">
-                      <img src={portadas.get(p.id)} alt="" loading="lazy" />
-                    </span>
-                    <span className="cg-body">
-                      <StatusBadge status={p.status} />
-                      <span className="cg-title">{p.name}</span>
-                      <Progress done={p.doneTasks ?? 0} total={p.totalTasks ?? 0} />
-                    </span>
-                  </button>
+                  <TarjetaProyecto key={p.id} p={p} onAbrir={() => navigate(`/proyectos/${p.id}`)} />
                 ))}
               </div>
             )}

@@ -53,6 +53,7 @@ function AgendaSection({
   titleClass,
   events = [],
   eventNote,
+  onCrear,
 }: {
   title: string;
   tasks: Task[];
@@ -60,6 +61,8 @@ function AgendaSection({
   titleClass?: string;
   events?: ImportantEvent[];
   eventNote?: (ev: ImportantEvent) => string;
+  /** crear una tarea para ESTE día; sin esto, la sección no lleva botón */
+  onCrear?: () => void;
 }) {
   const high = tasks.filter((t) => t.priority === 'high');
   const rest = tasks.filter((t) => t.priority !== 'high');
@@ -67,9 +70,17 @@ function AgendaSection({
 
   return (
     <section className="section">
-      <h2 className={titleClass}>
-        {title} · {tasks.length}
-      </h2>
+      <div className="ag-dia">
+        <h2 className={titleClass}>
+          {title} · {tasks.length}
+        </h2>
+        {/* crear aquí ya sabe para qué día es: no hay que elegir la fecha */}
+        {onCrear && (
+          <button className="btn ghost sm" onClick={onCrear}>
+            + Nueva
+          </button>
+        )}
+      </div>
       {events.map((ev) => (
         <EventBand key={ev.id} ev={ev} note={eventNote?.(ev)} />
       ))}
@@ -93,14 +104,15 @@ export default function AgendaPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [eventsList, setEventsList] = useState<ImportantEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [creando, setCreando] = useState(false);
+  // null = cerrado. Un ISO = crear tarea para ese día; '' = sin fecha de salida
+  const [creando, setCreando] = useState<string | null>(null);
   // la vista viaja en la URL: así se puede volver a Macro desde una ficha
   const [params, setParams] = useSearchParams();
   // Macro es la vista por defecto: es la portada del portal
   const pedida = params.get('tab');
   const view: Vista = pedida === 'agenda' || pedida === 'eventos' ? pedida : 'macro';
   const setView = (v: Vista) => {
-    setCreando(false);
+    setCreando(null);
     setParams(v === 'macro' ? {} : { tab: v }, { replace: true });
   };
 
@@ -144,20 +156,15 @@ export default function AgendaPage() {
     <div>
       <div className="page-head">
         <h1>Agenda</h1>
-        {/* crear a la izquierda de las pestañas: la misma posición en todo el
-            portal, y crea lo que la pestaña está enseñando */}
+        {/* Crear vive donde tiene sentido: en Eventos, aquí arriba; en Agenda,
+            en la línea de cada día, que ya dice para cuándo es; en Macro no se
+            crean tareas, se mira el mes. */}
         <div className="head-acciones">
-          <button className="btn corto sm" onClick={() => setCreando(true)}>
-            {view === 'eventos' ? (
-              <>
-                + Nuevo<span className="solo-ancho"> evento</span>
-              </>
-            ) : (
-              <>
-                + Nueva<span className="solo-ancho"> tarea</span>
-              </>
-            )}
-          </button>
+          {view === 'eventos' && (
+            <button className="btn corto sm" onClick={() => setCreando('')}>
+              + Nuevo<span className="solo-ancho"> evento</span>
+            </button>
+          )}
           <div className="seg" role="tablist">
             {VISTAS.map(([v, etiqueta]) => (
               <button
@@ -175,7 +182,7 @@ export default function AgendaPage() {
       </div>
 
       {view === 'eventos' ? (
-        <EventosTab creando={creando} onCerrarCreacion={() => setCreando(false)} />
+        <EventosTab creando={creando !== null} onCerrarCreacion={() => setCreando(null)} />
       ) : view === 'macro' ? (
         <MacroTab />
       ) : (
@@ -194,6 +201,7 @@ export default function AgendaPage() {
               tasks={day.tasks}
               onChanged={load}
               events={eventsList.filter((ev) => nextOccurrence(ev) === day.iso)}
+              onCrear={() => setCreando(day.iso)}
             />
           ))}
 
@@ -217,7 +225,9 @@ export default function AgendaPage() {
 
       {/* en Eventos la ventana la abre la propia pestaña, que es quien sabe
           recargar su lista */}
-      {creando && view !== 'eventos' && <AddTaskModal onClose={() => setCreando(false)} onCreated={load} />}
+      {creando !== null && view !== 'eventos' && (
+        <AddTaskModal fechaPorDefecto={creando || undefined} onClose={() => setCreando(null)} onCreated={load} />
+      )}
     </div>
   );
 }

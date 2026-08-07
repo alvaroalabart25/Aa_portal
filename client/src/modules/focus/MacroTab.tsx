@@ -196,7 +196,7 @@ function TarjetaMelon({ item }: { item: FocusItem }) {
         <span className="mk-t">{item.title}</span>
         <span className="mk-sub">
           {item.scope === 'trabajo' ? 'Trabajo' : 'Personal'}
-          {total > 0 ? ` · ${hechas} de ${total} tareas` : ' · sin tareas todavía'}
+          {total > 0 ? ` · ${hechas} de ${total} ${total === 1 ? 'tarea' : 'tareas'}` : ' · sin tareas todavía'}
           {item.arrastra && ` · viene de ${nombreMes(item.arrastra)}`}
         </span>
       </span>

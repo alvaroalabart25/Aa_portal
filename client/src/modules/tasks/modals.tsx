@@ -120,16 +120,19 @@ export function AddTaskModal({
   onClose,
   onCreated,
   fixedProjectId,
+  fechaPorDefecto,
 }: {
   onClose: () => void;
   onCreated: () => void;
   fixedProjectId?: number;
+  /** vencimiento de salida: al crear desde un día de la agenda, ese día */
+  fechaPorDefecto?: string;
 }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectId, setProjectId] = useState<number | ''>(fixedProjectId ?? '');
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<Priority>('medium');
-  const [dueDate, setDueDate] = useState('');
+  const [dueDate, setDueDate] = useState(fechaPorDefecto ?? '');
   const [melones, setMelones] = useState<MelonBreve[]>([]);
   const [melonId, setMelonId] = useState<number | ''>('');
   const [saving, setSaving] = useState(false);

@@ -104,7 +104,7 @@ export default function AgendaPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [eventsList, setEventsList] = useState<ImportantEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  // null = cerrado. Un ISO = crear tarea para ese día; '' = sin fecha de salida
+  // null = cerrado. Un ISO = crear una tarea con ese vencimiento ya puesto.
   const [creando, setCreando] = useState<string | null>(null);
   // la vista viaja en la URL: así se puede volver a Macro desde una ficha
   const [params, setParams] = useSearchParams();
@@ -156,15 +156,10 @@ export default function AgendaPage() {
     <div>
       <div className="page-head">
         <h1>Agenda</h1>
-        {/* Crear vive donde tiene sentido: en Eventos, aquí arriba; en Agenda,
-            en la línea de cada día, que ya dice para cuándo es; en Macro no se
-            crean tareas, se mira el mes. */}
+        {/* La cabecera es para moverse entre pestañas y nada más. Crear vive en
+            la línea de la lista a la que pertenece: el día en Agenda, «Próximos»
+            en Eventos. En Macro no se crea nada, se mira el mes. */}
         <div className="head-acciones">
-          {view === 'eventos' && (
-            <button className="btn corto sm" onClick={() => setCreando('')}>
-              + Nuevo<span className="solo-ancho"> evento</span>
-            </button>
-          )}
           <div className="seg" role="tablist">
             {VISTAS.map(([v, etiqueta]) => (
               <button
@@ -182,7 +177,7 @@ export default function AgendaPage() {
       </div>
 
       {view === 'eventos' ? (
-        <EventosTab creando={creando !== null} onCerrarCreacion={() => setCreando(null)} />
+        <EventosTab />
       ) : view === 'macro' ? (
         <MacroTab />
       ) : (
@@ -223,9 +218,7 @@ export default function AgendaPage() {
         </>
       )}
 
-      {/* en Eventos la ventana la abre la propia pestaña, que es quien sabe
-          recargar su lista */}
-      {creando !== null && view !== 'eventos' && (
+      {creando !== null && (
         <AddTaskModal fechaPorDefecto={creando || undefined} onClose={() => setCreando(null)} onCreated={load} />
       )}
     </div>

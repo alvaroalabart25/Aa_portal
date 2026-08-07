@@ -14,17 +14,8 @@ import {
 /**
  * Tab Eventos: gestión completa (crear, editar, borrar). Es el ÚNICO sitio
  * donde se editan; el resto de vistas los muestran en modo lectura.
- *
- * El botón de crear puede venir de fuera (la cabecera de la página), para que
- * en toda la Agenda haya un solo sitio desde el que se crea.
  */
-export default function EventosTab({
-  creando = false,
-  onCerrarCreacion,
-}: {
-  creando?: boolean;
-  onCerrarCreacion?: () => void;
-} = {}) {
+export default function EventosTab() {
   const [eventsList, setEventsList] = useState<ImportantEvent[]>([]);
   const [editing, setEditing] = useState<ImportantEvent | 'new' | null>(null);
 
@@ -88,7 +79,14 @@ export default function EventosTab({
       )}
 
       <section className="section">
-        <h2>Próximos · {upcoming.length}</h2>
+        {/* crear, en la línea de la lista a la que pertenece: la cabecera de la
+            página es para moverse entre pestañas, no para crear */}
+        <div className="ag-dia">
+          <h2>Próximos · {upcoming.length}</h2>
+          <button className="btn ghost sm" onClick={() => setEditing('new')}>
+            + Nuevo
+          </button>
+        </div>
         {upcoming.length === 0 && <div className="empty">Sin eventos. Añade el primero.</div>}
         <div className="event-list">{upcoming.map(renderRow)}</div>
       </section>
@@ -98,15 +96,8 @@ export default function EventosTab({
         hasta que los des por hechos (✓) o los elimines.
       </p>
 
-      {(editing || creando) && (
-        <EventoModal
-          event={editing && editing !== 'new' ? editing : null}
-          onClose={() => {
-            setEditing(null);
-            onCerrarCreacion?.();
-          }}
-          onSaved={load}
-        />
+      {editing && (
+        <EventoModal event={editing === 'new' ? null : editing} onClose={() => setEditing(null)} onSaved={load} />
       )}
     </div>
   );

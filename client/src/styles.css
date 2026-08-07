@@ -207,6 +207,7 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 
 /* Crear + pestañas, en este orden y en la misma esquina en todo el portal */
 .head-acciones { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.seg .solo-movil { display: none; }
 .btn.corto { white-space: nowrap; }
 .progress { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); white-space: nowrap; }
 .progress .bar { width: 120px; height: 6px; background: var(--paper-soft); border-radius: 99px; overflow: hidden; flex-shrink: 0; }
@@ -833,42 +834,72 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 }
 .mc-tope.pasado { color: var(--danger); border-color: #eed4d4; background: #fdf5f5; font-weight: 600; }
 
-.mc-lista { display: flex; flex-direction: column; gap: 2px; margin-top: 12px; }
-.mc-hechos { margin-top: 10px; opacity: 0.72; }
-.mc-fila {
-  display: flex; align-items: center; gap: 11px;
-  padding: 10px 4px; border-bottom: 1px solid var(--line); font-size: 14.5px;
+.mc-hechos { margin-top: 10px; opacity: 0.68; }
+
+/* ---------- Tarjetas del mes (melones, formaciones, libros) ----------
+   La portada del mes se lee de un vistazo, no se lee línea a línea: cada cosa
+   es una tarjeta con UN dato visual (el aro de avance, la semana de puntos) y
+   un gesto. Todo lo demás vive en la ficha. */
+.mk-grid { display: grid; gap: 10px; margin-top: 12px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.mk {
+  position: relative; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; background: var(--paper);
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
-.mc-fila:hover { background: var(--paper-soft); }
-.mc-fila.hecho .mc-titulo { color: var(--ink-muted); text-decoration: line-through; }
+.mk:hover { border-color: var(--ink-muted); box-shadow: 0 1px 10px rgba(10, 10, 10, 0.05); }
+.mk.hecho { opacity: 0.72; }
+.mk.hecho .mk-t { text-decoration: line-through; }
+/* el enlace cubre la tarjeta entera; los botones van por encima */
+.mk-todo { position: absolute; inset: 0; border-radius: 14px; }
+.mk-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.mk-t { font-family: var(--font-title); font-weight: 600; font-size: 15.5px; line-height: 1.3; }
+.mk-sub { font-size: 12.5px; color: var(--ink-muted); }
 
-.mc-check {
-  width: 20px; height: 20px; flex: 0 0 auto; padding: 0;
-  border: 1.5px solid var(--ink-muted); border-radius: 6px; background: none;
-  font-size: 12px; line-height: 1; display: inline-flex; align-items: center; justify-content: center;
+/* Aro de avance: un solo número, sin barras que compitan con el título */
+.mk-aro {
+  position: relative; flex: 0 0 auto; width: 54px; height: 54px; border-radius: 50%;
+  background: conic-gradient(var(--ink) var(--pct), var(--paper-soft) 0);
+  display: grid; place-items: center;
 }
-.mc-check:hover { border-color: var(--ink); background: var(--paper-soft); }
-.mc-check.puesto { background: var(--ink); border-color: var(--ink); color: var(--paper); }
-.mc-check.libre { background: var(--paper-soft); border-style: dashed; color: var(--ink-muted); }
-
-.mc-titulo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.mc-titulo:hover { text-decoration: underline; }
-.mc-etiquetas { display: flex; gap: 8px; flex-wrap: wrap; font-size: 11px; color: var(--ink-muted); }
-.mc-ambito { text-transform: uppercase; letter-spacing: 0.05em; }
-/* Que algo lleve meses abierto es información, no un detalle a esconder */
-.mc-arrastra { color: #b35309; }
-
-.mc-avance { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; font-size: 12.5px; color: var(--ink-soft); }
-.mc-bar { display: block; width: 68px; height: 5px; background: var(--paper-soft); border-radius: 99px; overflow: hidden; }
-.mc-bar-fill { display: block; height: 100%; background: var(--ink); border-radius: 99px; }
-.mc-sintareas { flex: 0 0 auto; font-size: 12px; }
-
-.mc-racha { flex: 0 0 auto; font-size: 12.5px; white-space: nowrap; }
-.mc-libre {
-  flex: 0 0 auto; border: 1px solid var(--line); background: none; border-radius: 20px;
-  padding: 3px 9px; font-size: 11.5px; color: var(--ink-muted);
+.mk-aro::after {
+  content: ''; position: absolute; inset: 6px; border-radius: 50%; background: var(--paper);
 }
-.mc-libre:hover { color: var(--ink); border-color: var(--ink-muted); }
+.mk-aro-n { position: relative; z-index: 1; font-size: 12.5px; font-weight: 600; letter-spacing: -0.02em; }
+
+/* La tarjeta con gesto diario se lee de arriba abajo: título, la semana, y los
+   dos gestos. En una fila el título se quedaba en una columna de una palabra. */
+.mk-diaria .mk-txt, .mk-diaria .mk-semana { flex: 1 0 100%; }
+.mk-libre { margin-left: auto; }
+
+/* La última semana en puntos: dice si el hábito está vivo mejor que un número */
+.mk-semana { display: flex; gap: 7px; position: relative; z-index: 1; max-width: 230px; justify-content: space-between; }
+.mk-dia {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  font-size: 9.5px; color: var(--ink-muted); letter-spacing: 0.04em;
+}
+.mk-dia-punto { width: 9px; height: 9px; border-radius: 50%; border: 1px solid var(--line); }
+.mk-dia.hecho .mk-dia-punto { background: var(--ink); border-color: var(--ink); }
+.mk-dia.libre .mk-dia-punto { border-color: var(--ink-muted); border-style: dashed; }
+.mk-dia.hoy .mk-dia-punto { box-shadow: 0 0 0 2px var(--paper), 0 0 0 3px var(--ink); }
+.mk-dia.hoy { color: var(--ink); font-weight: 600; }
+
+/* Gestos: encima del enlace que cubre la tarjeta */
+.mk-check, .mk-hoy, .mk-libre { position: relative; z-index: 1; flex: 0 0 auto; }
+.mk-check {
+  width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line);
+  background: none; color: transparent; font-size: 14px; line-height: 1;
+}
+.mk-check:hover { border-color: var(--ink); color: var(--ink-muted); }
+.mk-check.puesto { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.mk-hoy {
+  border: 1px solid var(--ink); border-radius: 20px; background: none;
+  padding: 6px 14px; font-size: 12.5px; font-weight: 500; white-space: nowrap;
+}
+.mk-hoy:hover { background: var(--ink-soft); }
+.mk-hoy.puesto { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.mk-hoy.libre { background: var(--paper-soft); border-color: var(--ink-muted); color: var(--ink-muted); }
+.mk-libre { background: none; border: none; padding: 0; font-size: 11.5px; color: var(--ink-muted); text-decoration: underline; }
+.mk-libre:hover { color: var(--ink); }
 
 /* Ficha */
 .mc-ficha-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 14px 0 4px; }
@@ -938,12 +969,18 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
      los gestos de excepción, para que lo que se lea sean los títulos. */
   .mc-bloque { margin-top: 20px; }
   .mc-head h2 { font-size: 17.5px; }
-  .mc-fila { gap: 9px; font-size: 14px; }
-  .mc-avance .mc-bar { width: 44px; }
-  /* «hoy no toca» sin caja: es la excepción del día, no un botón principal, y
-     con borde se comía el ancho del título */
-  .mc-libre { border: none; padding: 2px 0; text-decoration: underline; }
   .mc-tarea-estado { display: none; }
+  /* Las tareas del día no se repiten aquí: están enteras en la pestaña Agenda */
+  .solo-ancho-bloque { display: none; }
+  /* Tarjetas a una columna y algo más apretadas */
+  .mk-grid { grid-template-columns: 1fr; gap: 8px; }
+  .mk { padding: 12px 13px; gap: 10px; }
+  .mk-aro { width: 46px; height: 46px; }
+  .mk-aro::after { inset: 5px; }
+  .mk-t { font-size: 14.5px; }
+  /* la semana ocupa su propia línea, con el gesto de hoy al lado */
+  .mk-semana { max-width: 220px; }
+  .seg .solo-movil { display: block; }
   .mc-buscar { max-width: none; }
   /* Dos semanas por fila: envuelto a lo que quepa, hoy caía en mitad de la
      cuadrícula y no se leía como un calendario */

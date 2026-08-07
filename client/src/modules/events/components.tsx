@@ -33,7 +33,16 @@ export function EventBand({ ev, note }: { ev: ImportantEvent; note?: string }) {
 // en rojo hasta borrarlos) y los eventos que vienen, ordenados por cercanía y
 // con cuenta atrás. La ventana por defecto es la semana; los radares fiscales
 // piden la suya, más larga.
-export function EventsRadar({ scope, dias = RADAR_DIAS }: { scope?: EventScope; dias?: number }) {
+export function EventsRadar({
+  scope,
+  dias = RADAR_DIAS,
+  vacio,
+}: {
+  scope?: EventScope;
+  dias?: number;
+  /** qué decir cuando no hay nada; sin esto, el radar simplemente no se pinta */
+  vacio?: string;
+}) {
   const [eventsList, setEventsList] = useState<ImportantEvent[]>([]);
   const ventana = dias;
 
@@ -60,7 +69,9 @@ export function EventsRadar({ scope, dias = RADAR_DIAS }: { scope?: EventScope; 
     .filter((x) => x.days >= 0 && x.days <= ventana)
     .sort((a, b) => a.days - b.days);
 
-  if (overdue.length === 0 && alerts.length === 0) return null;
+  if (overdue.length === 0 && alerts.length === 0) {
+    return vacio ? <p className="muted mc-vacio">{vacio}</p> : null;
+  }
 
   return (
     <div className="radar">
@@ -88,7 +99,9 @@ export function EventsRadar({ scope, dias = RADAR_DIAS }: { scope?: EventScope; 
           style={{ borderLeftColor: eventColor(e) }}
         >
           <span className="event-pin">{e.emoji}</span>
-          <span className={`event-when${days <= 7 ? ' soon' : ''}`}>{whenLabel(days)}</span>
+          {/* el rojo, reservado a hoy: con la ventana de una semana salía toda
+              la lista en rojo y dejaba de significar «esto es lo urgente» */}
+          <span className={`event-when${days === 0 ? ' soon' : ''}`}>{whenLabel(days)}</span>
           <span className="event-title">{e.title}</span>
           <span className="badge">
             <span className="dot" style={{ background: eventColor(e) }} />

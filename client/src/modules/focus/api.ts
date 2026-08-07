@@ -22,6 +22,8 @@ export interface FocusItem {
   arrastra: string | null;
   racha: number;
   hoy: Marca | null;
+  /** los últimos 7 días, del más antiguo al de hoy (vacío si no es diario) */
+  semana: { date: string; mark: Marca | null }[];
 }
 
 export interface FocusMes {

@@ -28,6 +28,18 @@ function hoyMadrid(): string {
 }
 const mesDe = (iso: string) => iso.slice(0, 7);
 
+/** Los `n` días que acaban hoy, del más antiguo al más reciente. */
+function ultimosDias(hoy: string, n: number): string[] {
+  const fechas: string[] = [];
+  const d = new Date(`${hoy}T12:00:00`);
+  d.setDate(d.getDate() - (n - 1));
+  for (let i = 0; i < n; i += 1) {
+    fechas.push(new Intl.DateTimeFormat('en-CA', { dateStyle: 'short' }).format(d));
+    d.setDate(d.getDate() + 1);
+  }
+  return fechas;
+}
+
 /** Racha: días seguidos hacia atrás con marca (hecha o libre), contando hoy si la hay. */
 function racha(fechas: string[], hoy: string): number {
   const puestas = new Set(fechas);
@@ -78,7 +90,7 @@ focusModule.get('/', ah(async (req: AuthedRequest, res) => {
   // Marcas diarias de los que tienen gesto diario, para la racha y el «¿hoy?»
   const conDiario = delMes.filter((f) => f.daily === 1).map((f) => f.id);
   const marcas = new Map<number, string[]>();
-  const hoyMarcado = new Map<number, 'hecho' | 'libre'>();
+  const porFecha = new Map<number, Map<string, 'hecho' | 'libre'>>();
   if (conDiario.length) {
     const rows = await db
       .select({ itemId: focusDaily.itemId, doneDate: focusDaily.doneDate, mark: focusDaily.mark })
@@ -88,16 +100,26 @@ focusModule.get('/', ah(async (req: AuthedRequest, res) => {
     for (const r of rows) {
       if (!marcas.has(r.itemId)) marcas.set(r.itemId, []);
       marcas.get(r.itemId)!.push(r.doneDate);
-      if (r.doneDate === hoy) hoyMarcado.set(r.itemId, r.mark);
+      if (!porFecha.has(r.itemId)) porFecha.set(r.itemId, new Map());
+      porFecha.get(r.itemId)!.set(r.doneDate, r.mark);
     }
   }
+
+  // La última semana, para pintarla en la tarjeta. Sale de las marcas que ya
+  // están cargadas: ni una consulta más.
+  const semana = ultimosDias(hoy, 7);
+  const semanaDe = (id: number) => {
+    const suyas = porFecha.get(id);
+    return semana.map((date) => ({ date, mark: suyas?.get(date) ?? null }));
+  };
 
   const items = delMes.map(({ tareasTotal, tareasHechas, ...f }) => ({
     ...f,
     tareas: { hechas: Number(tareasHechas ?? 0), total: Number(tareasTotal ?? 0) },
     arrastra: f.status === 'activo' && f.startMonth < mes ? f.startMonth : null,
     racha: f.daily === 1 ? racha(marcas.get(f.id) ?? [], hoy) : 0,
-    hoy: f.daily === 1 ? (hoyMarcado.get(f.id) ?? null) : null,
+    hoy: f.daily === 1 ? (porFecha.get(f.id)?.get(hoy) ?? null) : null,
+    semana: f.daily === 1 ? semanaDe(f.id) : [],
   }));
 
   // Recuento de melones activos por ámbito, para el aviso de dispersión

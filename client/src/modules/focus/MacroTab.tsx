@@ -6,7 +6,17 @@ import { RADAR_DIAS } from '../events/types';
 import { tasksApi } from '../tasks/api';
 import TaskTable from '../tasks/TaskTable';
 import type { Task } from '../tasks/types';
-import { focusApi, nombreMes, nombreMesCap, NOMBRE_TIPO, type FocusItem, type FocusKind, type FocusMes, type FocusScope } from './api';
+import {
+  focusApi,
+  nombreMes,
+  nombreMesCap,
+  NOMBRE_TIPO,
+  type FocusItem,
+  type FocusKind,
+  type FocusMes,
+  type FocusScope,
+  type Marca,
+} from './api';
 
 function isoLocal(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -16,19 +26,24 @@ function isoLocal(d: Date): string {
 const PESO: Record<string, number> = { high: 0, medium: 1, low: 2 };
 const porPrioridad = (l: Task[]) => l.slice().sort((a, b) => PESO[a.priority] - PESO[b.priority]);
 
+// Ventana de los eventos de arriba. En el móvil se puede pedir solo hoy: es la
+// única información del día que queda en esta pantalla.
+const VENTANAS = { hoy: 0, semana: RADAR_DIAS, mes: 31 } as const;
+type Ventana = keyof typeof VENTANAS;
+
 /**
- * Macro: la vista de pájaro. Lo que tengo entre manos este mes (melones,
- * formaciones, libros) frente a lo que toca hoy.
+ * Macro: la vista de pájaro. Lo que tengo entre manos este mes —melones,
+ * formaciones, libros— en tarjetas, con los eventos que vienen arriba.
  *
- * Las tareas de hoy y los eventos van en versión MÍNIMA a propósito: enteros
- * ya están en Agenda, y repetirlos sería tener dos pantallas diciendo lo mismo.
- * Esta enmarca; Agenda ejecuta.
+ * En el móvil no se enseñan las tareas: para eso está la pestaña Agenda, y
+ * repetirlas aquí convertía la portada del mes en una lista interminable.
+ * Esta pantalla enmarca; Agenda ejecuta.
  */
 export default function MacroTab() {
   const [mes, setMes] = useState<FocusMes | null>(null);
   const [tareas, setTareas] = useState<Task[]>([]);
   const [creando, setCreando] = useState<FocusKind | null>(null);
-  const [verMes, setVerMes] = useState(false);
+  const [ventana, setVentana] = useState<Ventana>('semana');
 
   const cargar = useCallback(async () => {
     const [m, t] = await Promise.all([focusApi.mes(), tasksApi.list({ status: 'open' })]);
@@ -55,7 +70,32 @@ export default function MacroTab() {
     <div>
       <p className="muted mc-mes">{nombreMesCap(mes.month)} · lo que tengo entre manos</p>
 
-      <BloqueMelones mes={mes} onCrear={() => setCreando('melon')} onCambio={cargar} />
+      {/* Lo que viene, arriba del todo: es lo primero que se mira al abrir */}
+      <section className="section mc-bloque">
+        <div className="mc-head">
+          <h2>Lo que viene</h2>
+          <div className="seg" role="tablist">
+            {(['hoy', 'semana', 'mes'] as Ventana[]).map((v) => (
+              <button
+                key={v}
+                role="tab"
+                aria-selected={ventana === v}
+                // «Hoy» solo en el móvil: en el ordenador cabe la semana entera
+                className={`${ventana === v ? 'active' : ''}${v === 'hoy' ? ' solo-movil' : ''}`}
+                onClick={() => setVentana(v)}
+              >
+                {v === 'hoy' ? 'Hoy' : v === 'semana' ? 'Semana' : 'Mes'}
+              </button>
+            ))}
+          </div>
+        </div>
+        <EventsRadar
+          dias={VENTANAS[ventana]}
+          vacio={ventana === 'hoy' ? 'Hoy no hay nada señalado.' : `Nada a la vista ${ventana === 'semana' ? 'esta semana' : 'este mes'}.`}
+        />
+      </section>
+
+      <BloqueMelones mes={mes} onCrear={() => setCreando('melon')} />
 
       <BloqueDiario
         titulo={NOMBRE_TIPO.formacion.plural}
@@ -75,16 +115,16 @@ export default function MacroTab() {
         onCambio={cargar}
       />
 
-      {/* Las tareas se ven, no se cuentan: Macro es la portada y hay que saber
-          qué toca hoy sin saltar a otra pantalla. */}
+      {/* Las tareas, solo en el ordenador: en el móvil están en Agenda y aquí
+          alargaban la pantalla sin aportar nada nuevo. */}
       {hoy.vencidas.length > 0 && (
-        <section className="section mc-bloque">
+        <section className="section mc-bloque solo-ancho-bloque">
           <h2 className="overdue">Vencidas · {hoy.vencidas.length}</h2>
           <TaskTable tasks={hoy.vencidas} onChanged={cargar} />
         </section>
       )}
 
-      <section className="section mc-bloque">
+      <section className="section mc-bloque solo-ancho-bloque">
         <div className="mc-head">
           <h2>Hoy{hoy.deHoy.length > 0 ? ` · ${hoy.deHoy.length}` : ''}</h2>
           <Link to="/agenda?tab=agenda" className="btn ghost sm">
@@ -96,21 +136,6 @@ export default function MacroTab() {
         ) : (
           <TaskTable tasks={hoy.deHoy} onChanged={cargar} />
         )}
-      </section>
-
-      <section className="section mc-bloque">
-        <div className="mc-head">
-          <h2>{verMes ? 'Este mes' : 'Esta semana'}</h2>
-          <div className="seg" role="tablist">
-            <button role="tab" aria-selected={!verMes} className={!verMes ? 'active' : ''} onClick={() => setVerMes(false)}>
-              Semana
-            </button>
-            <button role="tab" aria-selected={verMes} className={verMes ? 'active' : ''} onClick={() => setVerMes(true)}>
-              Mes
-            </button>
-          </div>
-        </div>
-        <EventsRadar dias={verMes ? 31 : RADAR_DIAS} />
       </section>
 
       {creando && (
@@ -129,7 +154,7 @@ export default function MacroTab() {
 
 // ---------------------------------------------------------------- melones
 
-function BloqueMelones({ mes, onCrear, onCambio }: { mes: FocusMes; onCrear: () => void; onCambio: () => void }) {
+function BloqueMelones({ mes, onCrear }: { mes: FocusMes; onCrear: () => void }) {
   const melones = mes.items.filter((i) => i.kind === 'melon');
   const activos = melones.filter((m) => m.status === 'activo');
   const hechos = melones.filter((m) => m.status === 'hecho');
@@ -164,17 +189,17 @@ function BloqueMelones({ mes, onCrear, onCambio }: { mes: FocusMes; onCrear: () 
           personales, y cuélgales las tareas que ya tienes.
         </p>
       ) : (
-        <div className="mc-lista">
+        <div className="mk-grid">
           {activos.map((m) => (
-            <FilaMelon key={m.id} item={m} onCambio={onCambio} />
+            <TarjetaMelon key={m.id} item={m} />
           ))}
         </div>
       )}
 
       {hechos.length > 0 && (
-        <div className="mc-lista mc-hechos">
+        <div className="mk-grid mc-hechos">
           {hechos.map((m) => (
-            <FilaMelon key={m.id} item={m} onCambio={onCambio} />
+            <TarjetaMelon key={m.id} item={m} />
           ))}
         </div>
       )}
@@ -182,40 +207,33 @@ function BloqueMelones({ mes, onCrear, onCambio }: { mes: FocusMes; onCrear: () 
   );
 }
 
-function FilaMelon({ item, onCambio }: { item: FocusItem; onCambio: () => void }) {
+/**
+ * Melón en tarjeta: un aro con el avance y poco más. El aro dice de un vistazo
+ * si el objetivo está vivo o parado, que es lo único que hace falta saber desde
+ * la portada; el detalle está a un toque.
+ */
+function TarjetaMelon({ item }: { item: FocusItem }) {
   const { hechas, total } = item.tareas;
   const pct = total > 0 ? Math.round((hechas / total) * 100) : 0;
   const hecho = item.status === 'hecho';
 
   return (
-    <div className={`mc-fila${hecho ? ' hecho' : ''}`}>
-      <button
-        className="mc-check"
-        aria-label={hecho ? 'Reabrir' : 'Dar por hecho'}
-        onClick={async () => {
-          await focusApi.editar(item.id, { status: hecho ? 'activo' : 'hecho' });
-          onCambio();
-        }}
-      >
-        {hecho ? '✓' : ''}
-      </button>
-      <Link to={`/macro/${item.id}`} className="mc-titulo">
-        {item.title}
-        <span className="mc-etiquetas">
-          <span className="mc-ambito">{item.scope === 'trabajo' ? 'trabajo' : 'personal'}</span>
-          {item.arrastra && <span className="mc-arrastra">viene de {nombreMes(item.arrastra)}</span>}
+    <div className={`mk${hecho ? ' hecho' : ''}`}>
+      <Link to={`/macro/${item.id}`} className="mk-todo" aria-label={item.title} />
+
+      <span className="mk-aro" style={{ ['--pct' as string]: `${pct}%` }} aria-hidden="true">
+        <span className="mk-aro-n">{total > 0 ? `${pct}%` : '—'}</span>
+      </span>
+
+      <span className="mk-txt">
+        <span className="mk-t">{item.title}</span>
+        <span className="mk-sub">
+          {item.scope === 'trabajo' ? 'Trabajo' : 'Personal'}
+          {total > 0 ? ` · ${hechas} de ${total} tareas` : ' · sin tareas todavía'}
+          {item.arrastra && ` · viene de ${nombreMes(item.arrastra)}`}
         </span>
-      </Link>
-      {total > 0 ? (
-        <span className="mc-avance">
-          <span className="mc-bar">
-            <span className="mc-bar-fill" style={{ width: `${pct}%` }} />
-          </span>
-          {hechas}/{total}
-        </span>
-      ) : (
-        <span className="muted mc-sintareas">sin tareas</span>
-      )}
+      </span>
+
     </div>
   );
 }
@@ -254,9 +272,9 @@ function BloqueDiario({
       {activos.length === 0 && hechos.length === 0 ? (
         <p className="muted mc-vacio">{vacio}</p>
       ) : (
-        <div className="mc-lista">
+        <div className="mk-grid">
           {[...activos, ...hechos].map((i) => (
-            <FilaDiaria key={i.id} item={i} onCambio={onCambio} />
+            <TarjetaDiaria key={i.id} item={i} onCambio={onCambio} />
           ))}
         </div>
       )}
@@ -264,63 +282,79 @@ function BloqueDiario({
   );
 }
 
-/**
- * Fila con gesto diario. Es un hábito: se marca hoy y mañana vuelve limpio.
- * No hay «mover a mañana» a propósito — un día que no fue, no fue, y eso es la
- * información útil. «Hoy no toca» es el día de descanso adrede y no rompe la racha.
- */
-function FilaDiaria({ item, onCambio }: { item: FocusItem; onCambio: () => void }) {
-  const hecho = item.status === 'hecho';
+const INICIAL_DIA = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
 
-  async function marcar(m: 'hecho' | 'libre' | 'ninguno') {
+/**
+ * Formación o libro en tarjeta, con la última semana a la vista.
+ *
+ * Es un hábito: se marca hoy y mañana vuelve limpio. No hay «mover a mañana» a
+ * propósito — un día que no fue, no fue, y eso es justo la información útil.
+ * «Hoy no toca» es el descanso adrede y no rompe la racha.
+ */
+function TarjetaDiaria({ item, onCambio }: { item: FocusItem; onCambio: () => void }) {
+  const hecho = item.status === 'hecho';
+  const diario = item.daily === 1 && !hecho;
+
+  async function marcar(m: Marca | 'ninguno') {
     await focusApi.marcarDia(item.id, m);
     onCambio();
   }
 
   return (
-    <div className={`mc-fila${hecho ? ' hecho' : ''}`}>
-      {item.daily === 1 && !hecho ? (
-        <button
-          className={`mc-check${item.hoy ? ' puesto' : ''}${item.hoy === 'libre' ? ' libre' : ''}`}
-          aria-label={item.hoy ? 'Desmarcar hoy' : 'Marcar hoy como hecho'}
-          title={item.hoy === 'libre' ? 'Hoy marcado como libre' : 'Hoy'}
-          onClick={() => marcar(item.hoy ? 'ninguno' : 'hecho')}
-        >
-          {item.hoy === 'hecho' ? '✓' : item.hoy === 'libre' ? '–' : ''}
-        </button>
+    <div className={`mk mk-diaria${hecho ? ' hecho' : ''}`}>
+      <Link to={`/macro/${item.id}`} className="mk-todo" aria-label={item.title} />
+
+      <span className="mk-txt">
+        <span className="mk-t">{item.title}</span>
+        <span className="mk-sub">
+          {diario
+            ? item.racha > 0
+              ? `🔥 ${item.racha} ${item.racha === 1 ? 'día seguido' : 'días seguidos'}`
+              : 'Sin racha todavía'
+            : hecho
+              ? 'Terminado'
+              : 'Sin gesto diario'}
+          {item.arrastra && ` · viene de ${nombreMes(item.arrastra)}`}
+        </span>
+      </span>
+
+      {diario ? (
+        <>
+          <span className="mk-semana" aria-hidden="true">
+            {item.semana.map((d, i) => {
+              const esHoy = i === item.semana.length - 1;
+              return (
+                <span key={d.date} className={`mk-dia${d.mark ? ` ${d.mark}` : ''}${esHoy ? ' hoy' : ''}`}>
+                  <span className="mk-dia-punto" />
+                  {INICIAL_DIA[new Date(`${d.date}T12:00:00`).getDay()]}
+                </span>
+              );
+            })}
+          </span>
+
+          <button
+            className={`mk-hoy${item.hoy ? ' puesto' : ''}${item.hoy === 'libre' ? ' libre' : ''}`}
+            onClick={() => marcar(item.hoy ? 'ninguno' : 'hecho')}
+          >
+            {item.hoy === 'hecho' ? '✓ Hecho hoy' : item.hoy === 'libre' ? 'Hoy libre' : 'Marcar hoy'}
+          </button>
+          {!item.hoy && (
+            <button className="mk-libre" onClick={() => marcar('libre')} title="No rompe la racha">
+              hoy no toca
+            </button>
+          )}
+        </>
       ) : (
         <button
-          className="mc-check"
+          className={`mk-check${hecho ? ' puesto' : ''}`}
           aria-label={hecho ? 'Reabrir' : 'Dar por terminado'}
           onClick={async () => {
             await focusApi.editar(item.id, { status: hecho ? 'activo' : 'hecho' });
             onCambio();
           }}
         >
-          {hecho ? '✓' : ''}
+          ✓
         </button>
-      )}
-
-      <Link to={`/macro/${item.id}`} className="mc-titulo">
-        {item.title}
-        <span className="mc-etiquetas">
-          {item.arrastra && <span className="mc-arrastra">viene de {nombreMes(item.arrastra)}</span>}
-        </span>
-      </Link>
-
-      {item.daily === 1 && !hecho && (
-        <>
-          {item.racha > 0 && (
-            <span className="mc-racha" title="Días seguidos">
-              🔥 {item.racha}
-            </span>
-          )}
-          {!item.hoy && (
-            <button className="mc-libre" onClick={() => marcar('libre')} title="No rompe la racha">
-              hoy no toca
-            </button>
-          )}
-        </>
       )}
     </div>
   );

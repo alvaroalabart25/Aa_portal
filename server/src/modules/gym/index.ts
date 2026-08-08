@@ -748,3 +748,65 @@ gymModule.get('/sesion/olvidada', ah(async (req: AuthedRequest, res) => {
   const minutos = (Date.now() - new Date(row.lastSet).getTime()) / 60000;
   res.json(minutos >= MINUTOS_INACTIVO ? { ...row, minutos: Math.round(minutos) } : null);
 }));
+
+
+// ---------- La semana ----------
+
+/** Veces por semana a las que aspira. Si algún día cambia, se cambia aquí. */
+export const OBJETIVO_SEMANAL = 3;
+
+/** Lunes de la semana de `iso`, en formato ISO. La semana empieza en lunes. */
+function lunesDe(iso: string): string {
+  const d = new Date(`${iso}T12:00:00`);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return new Intl.DateTimeFormat('en-CA', { dateStyle: 'short' }).format(d);
+}
+
+/**
+ * GET /semana — cuántas veces has ido esta semana y con qué carga.
+ *
+ * Devuelve números, no frases: la recomendación se arma en el cliente para que
+ * se vea de dónde sale. Un consejo cuyo motivo no se puede leer es un oráculo.
+ */
+gymModule.get('/semana', ah(async (req: AuthedRequest, res) => {
+  const hoy = hoyMadrid();
+  const lunes = lunesDe(hoy);
+
+  const sesiones = await db
+    .select({
+      id: gymSessions.id,
+      dayName: gymDays.name,
+      sessionDate: gymSessions.sessionDate,
+      energy: gymSessions.energy,
+      sets: sql<number>`(select count(*) from gym_sets gs where gs.session_id = gym_sessions.id)`,
+      volume: sql<string | null>`(
+        select sum(gs.weight * gs.reps) from gym_sets gs
+        where gs.session_id = gym_sessions.id and gs.weight is not null and gs.reps is not null
+      )`,
+    })
+    .from(gymSessions)
+    .innerJoin(gymDays, eq(gymSessions.dayId, gymDays.id))
+    .where(and(eq(gymSessions.userId, req.userId!), sql`${gymSessions.endedAt} is not null`))
+    .orderBy(desc(gymSessions.sessionDate))
+    .limit(30);
+
+  const semana = sesiones.filter((s) => s.sessionDate >= lunes && s.sessionDate <= hoy);
+  const conVolumen = sesiones.filter((s) => s.volume != null).slice(0, 8);
+  const media = conVolumen.length
+    ? Math.round(conVolumen.reduce((n, s) => n + Number(s.volume), 0) / conVolumen.length)
+    : null;
+
+  res.json({
+    today: hoy,
+    weekStart: lunes,
+    target: OBJETIVO_SEMANAL,
+    week: semana.map((s) => ({ ...s, volume: s.volume == null ? null : Math.round(Number(s.volume)) })),
+    last: sesiones[0]
+      ? {
+          ...sesiones[0],
+          volume: sesiones[0].volume == null ? null : Math.round(Number(sesiones[0].volume)),
+        }
+      : null,
+    avgVolume: media,
+  });
+}));

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Modal from '../../components/Modal';
 import { tasksApi } from '../tasks/api';
 import TaskTable from '../tasks/TaskTable';
+import BloqueGimnasio from '../gym/BloqueGimnasio';
 import type { Task } from '../tasks/types';
 import {
   focusApi,
@@ -81,6 +82,10 @@ export default function MacroTab() {
         onCrear={() => setCreando('libro')}
         onCambio={cargar}
       />
+
+      {/* Debajo de Libros: es otra cosa que se sostiene con constancia, no una
+          tarea del día */}
+      <BloqueGimnasio />
 
       {/* Las tareas, solo en el ordenador: en el móvil están en Agenda y aquí
           alargaban la pantalla sin aportar nada nuevo. */}

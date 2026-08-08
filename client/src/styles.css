@@ -1651,3 +1651,19 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .fiesta-notas::placeholder { color: #6a6a6a; }
 .fiesta-saltar { background: none; border: none; color: #8f8f8f; font-size: 13px; padding: 12px; }
 .fiesta-saltar:hover { color: #fff; }
+
+/* ---------- El gimnasio en la portada del mes ---------- */
+.gs-semana { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.gs-dia {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  font-size: 10.5px; color: var(--ink-muted); letter-spacing: 0.04em;
+}
+.gs-punto { width: 11px; height: 11px; border-radius: 50%; border: 1px solid var(--line); }
+.gs-dia.fue .gs-punto { background: var(--ink); border-color: var(--ink); }
+.gs-dia.fue { color: var(--ink); font-weight: 600; }
+/* los días ya pasados sin ir se ven, pero apagados: son los que faltaron */
+.gs-dia.pasado .gs-punto { border-style: dashed; }
+.gs-dia.hoy .gs-punto { box-shadow: 0 0 0 2px var(--paper), 0 0 0 3px var(--ink); }
+.gs-dia.hoy { color: var(--ink); font-weight: 600; }
+.gs-cuenta { margin-left: auto; font-family: var(--font-title); font-weight: 600; font-size: 15px; color: var(--ink-muted); }
+.gs-msg { font-size: 13px; line-height: 1.6; color: var(--ink-soft); margin: 10px 0 0; max-width: 560px; }

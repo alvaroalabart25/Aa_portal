@@ -179,7 +179,27 @@ export interface MetaGym {
   currentDate: string | null;
 }
 
+export interface SesionBreve {
+  id: number;
+  dayName: string;
+  sessionDate: string;
+  energy: number | null;
+  sets: number;
+  volume: number | null;
+}
+
+export interface SemanaGym {
+  today: string;
+  weekStart: string;
+  target: number;
+  week: SesionBreve[];
+  last: SesionBreve | null;
+  /** media de kilos movidos en las últimas sesiones, para comparar */
+  avgVolume: number | null;
+}
+
 export const gymApi = {
+  semana: () => get<SemanaGym>('/gym/semana'),
   rutina: () => get<Rutina>('/gym/rutina'),
   // el catálogo vive en el servidor: copiarlo aquí acabaría en dos versiones
   partes: () => get<Parte[]>('/gym/partes'),

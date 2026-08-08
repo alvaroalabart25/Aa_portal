@@ -65,7 +65,10 @@ export default function SesionPage() {
       (n, e) => n + e.done.reduce((m, d) => m + (d.weight && d.reps ? Number(d.weight) * d.reps : 0), 0),
       0,
     );
-    const min = Math.round((Date.now() - new Date(datos.session.startedAt).getTime()) / 60000);
+    // De la primera serie a la última: si cierras desde el coche, esos minutos
+    // no cuentan. El reloj se paró cuando dejaste de levantar.
+    const marcas = datos.exercises.flatMap((e) => e.done).map((d) => new Date(d.createdAt).getTime());
+    const min = marcas.length > 1 ? Math.round((Math.max(...marcas) - Math.min(...marcas)) / 60000) : 0;
     return (
       <Celebracion
         sesionId={sesionId}

@@ -455,9 +455,18 @@ gymModule.post('/sesiones/:id(\\d+)/cerrar', ah(async (req: AuthedRequest, res) 
     if (parsed.data.energy !== undefined) encuesta.energy = parsed.data.energy;
     if (parsed.data.feeling !== undefined) encuesta.feeling = parsed.data.feeling;
   }
+  // El entrenamiento acabó en la ÚLTIMA SERIE, no cuando te acuerdas de cerrar.
+  // Si cierras desde el coche dos horas después, esas dos horas no son
+  // entrenamiento: la marca se queda donde dejaste de levantar.
+  const [ultima] = await db
+    .select({ cuando: sql<string | null>`max(${gymSets.createdAt})` })
+    .from(gymSets)
+    .where(eq(gymSets.sessionId, id));
+  const fin = ultima?.cuando ? new Date(ultima.cuando) : new Date();
+
   const [r] = await db
     .update(gymSessions)
-    .set({ endedAt: new Date(), ...encuesta })
+    .set({ endedAt: fin, ...encuesta })
     .where(and(eq(gymSessions.id, id), eq(gymSessions.userId, req.userId!), isNull(gymSessions.endedAt)));
   if (r.affectedRows === 0) return res.status(404).json({ error: 'Sesión no encontrada o ya cerrada' });
   const [row] = await db.select().from(gymSessions).where(eq(gymSessions.id, id));

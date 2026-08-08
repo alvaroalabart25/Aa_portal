@@ -38,7 +38,7 @@ export default function ProjectPage() {
   async function removeProject() {
     if (!confirm('¿Eliminar este proyecto? Se archivará junto con sus tareas (podrás recuperarlo, nada se borra de verdad).')) return;
     await projectsApi.archive(projectId);
-    navigate(`/espacios/${project?.spaceId}`);
+    navigate('/proyectos');
   }
 
   if (!project) return <p className="muted">Cargando…</p>;
@@ -46,8 +46,10 @@ export default function ProjectPage() {
   return (
     <div>
       <div className="crumbs">
-        <Link to="/espacios">Espacios</Link> ›{' '}
-        <Link to={`/espacios/${project.spaceId}`}>{project.spaceName}</Link> ›{' '}
+        {/* el espacio ya no tiene página propia: va como texto, no como enlace
+            a ninguna parte */}
+        <Link to="/proyectos">Proyectos</Link> ›{' '}
+        <span>{project.spaceName}</span> ›{' '}
         <span style={{ color: 'var(--ink)' }}>{project.name}</span>
       </div>
 

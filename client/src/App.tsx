@@ -3,8 +3,6 @@ import { isLoggedIn } from './lib/auth';
 import Layout from './shell/Layout';
 import Login from './pages/Login';
 import AgendaPage from './modules/tasks/AgendaPage';
-import SpacesPage from './modules/tasks/SpacesPage';
-import SpacePage from './modules/tasks/SpacePage';
 import ProjectsPage from './modules/tasks/ProjectsPage';
 import ProjectPage from './modules/tasks/ProjectPage';
 import TasksPage from './modules/tasks/TasksPage';
@@ -36,8 +34,10 @@ export default function App() {
           <Route element={<Layout />}>
             <Route path="/" element={<Navigate to="/agenda" replace />} />
             <Route path="/agenda" element={<AgendaPage />} />
-            <Route path="/espacios" element={<SpacesPage />} />
-            <Route path="/espacios/:id" element={<SpacePage />} />
+            {/* Espacios y Proyectos eran dos pantallas que contaban lo mismo de
+                dos formas. Ahora es una: las direcciones viejas siguen valiendo. */}
+            <Route path="/espacios" element={<Navigate to="/proyectos" replace />} />
+            <Route path="/espacios/:id" element={<Navigate to="/proyectos" replace />} />
             <Route path="/proyectos" element={<ProjectsPage />} />
             <Route path="/proyectos/:id" element={<ProjectPage />} />
             <Route path="/tareas" element={<TasksPage />} />

@@ -310,6 +310,8 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 
 /* ---------- Proyectos: el espacio y sus señales ---------- */
 .pr-espacio { margin-top: 26px; }
+/* el acordeón y su menú de tres puntos, en la misma línea */
+.pr-espacio-head { display: flex; align-items: center; gap: 8px; }
 .space-acc { flex-wrap: wrap; }
 .pr-espacio-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pr-espacio-meta { display: flex; align-items: center; gap: 9px; flex: 1; min-width: 0; }
@@ -1045,32 +1047,6 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
   /* Sin ratón no hay hover: la ✕ de desvincular tiene que verse sola, y con
      sitio para el dedo */
   .mc-tarea-x { color: var(--ink-muted); padding: 4px 6px; }
-}
-
-/* ---------- Tarjetas con portada (Espacios y Proyectos) ---------- */
-.cg-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
-.cg-card {
-  display: flex; flex-direction: column; text-align: left; padding: 0;
-  border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
-  background: var(--paper); cursor: pointer; font: inherit; color: inherit;
-  transition: border-color 0.12s, box-shadow 0.12s;
-}
-.cg-card:hover { border-color: var(--ink-muted); box-shadow: 0 2px 10px rgba(10, 10, 10, 0.06); }
-.cg-cover { position: relative; display: block; aspect-ratio: 3 / 2; background: var(--paper-soft); }
-.cg-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.cg-badge {
-  position: absolute; bottom: 8px; right: 8px;
-  background: rgba(10, 10, 10, 0.78); color: var(--paper);
-  font-size: 11px; font-weight: 500; border-radius: 20px; padding: 3px 9px;
-}
-.cg-body { display: flex; flex-direction: column; gap: 7px; padding: 11px 13px 13px; align-items: flex-start; }
-.cg-title {
-  display: inline-flex; align-items: center; gap: 8px;
-  font-family: var(--font-title); font-weight: 600; font-size: 15.5px; line-height: 1.3;
-}
-@media (max-width: 720px) {
-  .cg-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
-  .cg-title { font-size: 14.5px; }
 }
 
 /* ---------- Códigos de recuperación del segundo factor ---------- */

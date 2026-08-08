@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Modal from '../../components/Modal';
-import { projectsApi } from './api';
+import { projectsApi, spacesApi } from './api';
 import { KebabMenu } from './components';
 import { AddProjectModal, AddSpaceModal } from './modals';
-import type { Project } from './types';
+import type { Project, Space } from './types';
 
 const ESTADO_PROYECTO: Record<string, string> = { completed: 'Completado', cancelled: 'Cancelado' };
 
@@ -65,37 +65,39 @@ function TarjetaProyecto({ p, onAbrir }: { p: Project; onAbrir: () => void }) {
 // existe la sección Espacios).
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [spaces, setSpaces] = useState<Space[]>([]);
   const [showClosed, setShowClosed] = useState(false);
   const [choosing, setChoosing] = useState(false);
   const [adding, setAdding] = useState<'space' | 'project' | null>(null);
+  const [enEspacio, setEnEspacio] = useState<number | null>(null);
+  const [renombrando, setRenombrando] = useState<Space | null>(null);
   // Abiertos de salida: llegar a una lista de espacios cerrados no cuenta nada.
   // El que quiera plegar uno, lo pliega.
   const [cerrados, setCerrados] = useState<Set<number>>(new Set());
   const navigate = useNavigate();
 
-  const load = useCallback(
-    async () => setProjects(await projectsApi.list({ status: showClosed ? 'all' : 'active' })),
-    [showClosed],
-  );
+  const load = useCallback(async () => {
+    const [p, e] = await Promise.all([
+      projectsApi.list({ status: showClosed ? 'all' : 'active' }),
+      spacesApi.list(),
+    ]);
+    setProjects(p);
+    setSpaces(e);
+  }, [showClosed]);
   useEffect(() => {
     load();
   }, [load]);
 
-  const groups = useMemo(() => {
-    const map = new Map<number, { spaceId: number; spaceName: string; spaceColor: string; items: Project[] }>();
-    for (const p of projects) {
-      if (!map.has(p.spaceId)) {
-        map.set(p.spaceId, {
-          spaceId: p.spaceId,
-          spaceName: p.spaceName ?? '',
-          spaceColor: p.spaceColor ?? '#0a0a0a',
-          items: [],
-        });
-      }
-      map.get(p.spaceId)!.items.push(p);
-    }
-    return [...map.values()].sort((a, b) => a.spaceName.localeCompare(b.spaceName));
-  }, [projects]);
+  // Se parte de los ESPACIOS, no de los proyectos: si se armara con los
+  // proyectos, un espacio recién creado no aparecería hasta tener el primero, y
+  // parecería que no se ha guardado.
+  const groups = useMemo(
+    () =>
+      spaces
+        .map((e) => ({ space: e, items: projects.filter((p) => p.spaceId === e.id) }))
+        .sort((a, b) => a.space.name.localeCompare(b.space.name)),
+    [spaces, projects],
+  );
 
   function toggle(spaceId: number) {
     setCerrados((prev) => {
@@ -127,46 +129,75 @@ export default function ProjectsPage() {
       </div>
 
       {groups.map((g) => {
-        const abierto = !cerrados.has(g.spaceId);
+        const abierto = !cerrados.has(g.space.id);
         // el avance del espacio entero: la suma de lo suyo
         const total = g.items.reduce((n, p) => n + (p.totalTasks ?? 0), 0);
         const hechas = g.items.reduce((n, p) => n + (p.doneTasks ?? 0), 0);
         const vencidas = g.items.reduce((n, p) => n + (p.overdueTasks ?? 0), 0);
         const pct = total > 0 ? Math.round((hechas / total) * 100) : 0;
         return (
-          <section key={g.spaceId} className="section pr-espacio">
-            <button className="space-acc" onClick={() => toggle(g.spaceId)} aria-expanded={abierto}>
-              <span className="chev">{abierto ? '▾' : '▸'}</span>
-              <span className="dot" style={{ background: g.spaceColor, width: 10, height: 10 }} />
-              <span className="pr-espacio-t">{g.spaceName}</span>
-              {/* en el móvil todo esto baja a su propia línea, debajo del nombre */}
-              <span className="pr-espacio-meta">
-                <span className="pr-espacio-n">
-                  {g.items.length} {g.items.length === 1 ? 'proyecto' : 'proyectos'}
-                  {total > 0 && ` · ${pct}%`}
-                </span>
-                {vencidas > 0 && (
-                  <span className="pr-senal vencidas">
-                    {vencidas} {vencidas === 1 ? 'vencida' : 'vencidas'}
+          <section key={g.space.id} className="section pr-espacio">
+            <div className="pr-espacio-head">
+              <button className="space-acc" onClick={() => toggle(g.space.id)} aria-expanded={abierto}>
+                <span className="chev">{abierto ? '▾' : '▸'}</span>
+                <span className="dot" style={{ background: g.space.color, width: 10, height: 10 }} />
+                <span className="pr-espacio-t">{g.space.name}</span>
+                {/* en el móvil todo esto baja a su propia línea, debajo del nombre */}
+                <span className="pr-espacio-meta">
+                  <span className="pr-espacio-n">
+                    {g.items.length} {g.items.length === 1 ? 'proyecto' : 'proyectos'}
+                    {total > 0 && ` · ${pct}%`}
                   </span>
-                )}
-                {/* la barra dice de un vistazo cómo va el espacio entero */}
-                <span className="pr-barra" aria-hidden="true">
-                  <span style={{ width: `${pct}%`, background: g.spaceColor }} />
+                  {vencidas > 0 && (
+                    <span className="pr-senal vencidas">
+                      {vencidas} {vencidas === 1 ? 'vencida' : 'vencidas'}
+                    </span>
+                  )}
+                  {/* la barra dice de un vistazo cómo va el espacio entero */}
+                  <span className="pr-barra" aria-hidden="true">
+                    <span style={{ width: `${pct}%`, background: g.space.color }} />
+                  </span>
                 </span>
-              </span>
-            </button>
+              </button>
 
-            {abierto && (
-              <div className="mk-grid">
-                {g.items.map((p) => (
-                  <TarjetaProyecto key={p.id} p={p} onAbrir={() => navigate(`/proyectos/${p.id}`)} />
-                ))}
-              </div>
-            )}
+              {/* Lo que antes vivía en la ficha del espacio: renombrarlo, meterle
+                  un proyecto y eliminarlo. Aquí mismo, sin salir de la lista. */}
+              <KebabMenu
+                items={[
+                  { label: 'Nuevo proyecto aquí', onClick: () => setEnEspacio(g.space.id) },
+                  { label: 'Renombrar espacio', onClick: () => setRenombrando(g.space) },
+                  {
+                    label: 'Eliminar espacio',
+                    danger: true,
+                    onClick: async () => {
+                      if (
+                        !confirm(
+                          `¿Eliminar «${g.space.name}»? Se archiva con sus ${g.items.length} proyectos y sus tareas. Nada se borra de verdad.`,
+                        )
+                      )
+                        return;
+                      await spacesApi.archive(g.space.id);
+                      load();
+                    },
+                  },
+                ]}
+              />
+            </div>
+
+            {abierto &&
+              (g.items.length === 0 ? (
+                <p className="muted mc-vacio">Sin proyectos en este espacio.</p>
+              ) : (
+                <div className="mk-grid">
+                  {g.items.map((p) => (
+                    <TarjetaProyecto key={p.id} p={p} onAbrir={() => navigate(`/proyectos/${p.id}`)} />
+                  ))}
+                </div>
+              ))}
           </section>
         );
       })}
+
       {projects.length === 0 && <div className="empty">No hay proyectos todavía.</div>}
 
       {choosing && (
@@ -195,6 +226,66 @@ export default function ProjectsPage() {
       )}
       {adding === 'project' && <AddProjectModal onClose={() => setAdding(null)} onCreated={load} />}
       {adding === 'space' && <AddSpaceModal onClose={() => setAdding(null)} onCreated={load} />}
+      {enEspacio != null && (
+        <AddProjectModal fixedSpaceId={enEspacio} onClose={() => setEnEspacio(null)} onCreated={load} />
+      )}
+      {renombrando && (
+        <RenombrarEspacio
+          space={renombrando}
+          onClose={() => setRenombrando(null)}
+          onGuardado={() => {
+            setRenombrando(null);
+            load();
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+
+/** Renombrar un espacio sin salir de la lista. */
+function RenombrarEspacio({
+  space,
+  onClose,
+  onGuardado,
+}: {
+  space: Space;
+  onClose: () => void;
+  onGuardado: () => void;
+}) {
+  const [name, setName] = useState(space.name);
+  const [busy, setBusy] = useState(false);
+
+  return (
+    <Modal title="Renombrar espacio" onClose={onClose}>
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          if (!name.trim()) return;
+          setBusy(true);
+          try {
+            await spacesApi.update(space.id, { name: name.trim() });
+            onGuardado();
+          } finally {
+            setBusy(false);
+          }
+        }}
+        style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+      >
+        <div className="field">
+          <label htmlFor="sp-n">Nombre</label>
+          <input id="sp-n" value={name} autoFocus onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div className="modal-actions">
+          <button type="button" className="btn ghost" onClick={onClose}>
+            Cancelar
+          </button>
+          <button className="btn" disabled={busy || !name.trim()}>
+            {busy ? 'Guardando…' : 'Guardar'}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }

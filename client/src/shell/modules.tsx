@@ -40,14 +40,6 @@ const icons = {
       <path d="M12 9v3M7 15v-3h10v3" />
     </svg>
   ),
-  spaces: (
-    <svg width="16" height="16" viewBox="0 0 24 24" {...stroke}>
-      <rect x="3" y="3" width="8" height="8" rx="1.5" />
-      <rect x="13" y="3" width="8" height="8" rx="1.5" />
-      <rect x="3" y="13" width="8" height="8" rx="1.5" />
-      <rect x="13" y="13" width="8" height="8" rx="1.5" />
-    </svg>
-  ),
   projects: (
     <svg width="16" height="16" viewBox="0 0 24 24" {...stroke}>
       <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
@@ -179,7 +171,8 @@ export const MODULES: PortalModule[] = [
     title: 'Organización',
     icon: icons.org,
     children: [
-      { id: 'spaces', title: 'Espacios', path: '/espacios', icon: icons.spaces },
+      // Espacios y Proyectos son la misma pantalla: los espacios agrupan y los
+      // proyectos son lo que se mira, así que no hacen falta dos entradas
       { id: 'projects', title: 'Proyectos', path: '/proyectos', icon: icons.projects },
       { id: 'tasks', title: 'Tareas', path: '/tareas', icon: icons.tasks },
       // (Eventos vive como pestaña de Agenda: es donde se miran las fechas)

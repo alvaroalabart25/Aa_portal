@@ -47,9 +47,10 @@ export default function TaskPage() {
           ‹ Agenda
         </Link>
         <span className="tk-path">
-          <Link to="/espacios">Espacios</Link>
+          <Link to="/proyectos">Proyectos</Link>
           <span className="tk-sep">›</span>
-          <Link to={`/espacios/${task.spaceId}`}>{task.spaceName}</Link>
+          {/* el espacio agrupa, pero ya no es una página: no se enlaza */}
+          <span>{task.spaceName}</span>
         </span>
       </div>
 

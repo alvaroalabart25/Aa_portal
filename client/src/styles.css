@@ -97,6 +97,12 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   /* «+ Nueva tarea» se queda en «+ Nueva»: en el móvil el contexto lo pone el
      título de la página, y así el botón no empuja a las pestañas */
   .solo-ancho { display: none; }
+  /* Botones más pequeños en todo el portal, como los de Macro: en una pantalla
+     de 375 px un botón de 14 px con 16 de aire pesa más que el contenido al que
+     acompaña. Los que sí mandan (terminar un entrenamiento, cerrar sesión)
+     llevan su propio tamaño más abajo y no les afecta. */
+  .btn { padding: 6px 12px; font-size: 13px; }
+  .btn.sm { padding: 4px 9px; font-size: 12.5px; }
   /* Título, botón y pestañas comparten los 375 px: todo encoge un punto */
   .page-head:has(.head-acciones) { gap: 8px; }
   .page-head:has(.head-acciones) h1 { font-size: 22px; }
@@ -863,7 +869,10 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 
 /* ---------- Macro: la vista de pájaro del mes ---------- */
 .mc-mes { font-size: 13px; margin: 6px 0 0; }
-.mc-bloque { margin-top: 26px; }
+/* el primer bloque va pegado a la línea del mes: el aire es para SEPARAR
+   bloques entre sí, no para dejar la cabecera flotando */
+.mc-bloque:first-of-type { margin-top: 22px; }
+.mc-bloque { margin-top: 40px; }
 .mc-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .mc-vacio { font-size: 13px; line-height: 1.6; margin: 8px 0 0; max-width: 560px; }
 .mc-sub { font-family: var(--font-title); font-size: 13px; font-weight: 600; color: var(--ink-muted); margin: 18px 0 6px; }
@@ -1011,7 +1020,7 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 @media (max-width: 720px) {
   /* Macro es la portada del mes: se aprieta el ritmo vertical y se quita peso a
      los gestos de excepción, para que lo que se lea sean los títulos. */
-  .mc-bloque { margin-top: 20px; }
+  .mc-bloque { margin-top: 32px; }
   .mc-head h2 { font-size: 17.5px; }
   .mc-tarea-estado { display: none; }
   /* Las tareas del día no se repiten aquí: están enteras en la pestaña Agenda */

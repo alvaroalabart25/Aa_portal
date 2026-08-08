@@ -17,6 +17,7 @@ import {
   type SesionHistorial,
 } from './api';
 import { CondicionanteModal, EjercicioModal, MetaModal } from './modals';
+import { notaDelDia } from './score';
 
 type Vista = 'entrenar' | 'rutina' | 'objetivo';
 
@@ -232,6 +233,11 @@ function duracion(h: SesionHistorial): string | null {
 
 function LaRutina({ rutina, onCambio }: { rutina: Rutina; onCambio: () => void }) {
   const [editando, setEditando] = useState<{ dayId: number; ejercicio?: Ejercicio } | null>(null);
+  const [partes, setPartes] = useState<Parte[]>([]);
+
+  useEffect(() => {
+    gymApi.partes().then(setPartes).catch(() => {});
+  }, []);
 
   return (
     <div>
@@ -247,6 +253,8 @@ function LaRutina({ rutina, onCambio }: { rutina: Rutina; onCambio: () => void }
               + Ejercicio
             </button>
           </div>
+
+          <NotaDia dia={d} partes={partes} />
 
           {d.exercises.length === 0 ? (
             <p className="muted mc-vacio">Sin ejercicios todavía.</p>
@@ -283,6 +291,51 @@ function LaRutina({ rutina, onCambio }: { rutina: Rutina; onCambio: () => void }
             onCambio();
           }}
         />
+      )}
+    </div>
+  );
+}
+
+/**
+ * La nota del día, con su desglose a un toque.
+ *
+ * El número sin el desglose sería un oráculo: se enseña siempre de dónde sale,
+ * porque es una regla escrita a mano y se puede estar en desacuerdo con ella.
+ */
+function NotaDia({ dia, partes }: { dia: DiaRutina; partes: Parte[] }) {
+  const [abierto, setAbierto] = useState(false);
+  const nota = useMemo(() => (partes.length ? notaDelDia(dia, partes) : null), [dia, partes]);
+  if (!nota) return null;
+
+  const nivel = nota.total >= 8 ? 'bien' : nota.total >= 6 ? 'parcial' : 'cero';
+
+  return (
+    <div className="gy-nota">
+      <button className={`gy-nota-head ${nivel}`} onClick={() => setAbierto((v) => !v)}>
+        <span className="gy-nota-n">{String(nota.total).replace('.', ',')}</span>
+        <span className="gy-nota-de">/ 10</span>
+        <span className="gy-nota-t">
+          {nota.total >= 8 ? 'día bien montado' : nota.total >= 6 ? 'le falta algo' : 'desequilibrado'}
+        </span>
+        <span className="gy-nota-chev">{abierto ? '▾' : '▸'}</span>
+      </button>
+
+      {abierto && (
+        <div className="gy-nota-detalle">
+          {nota.criterios.map((c) => (
+            <div key={c.id} className="gy-crit">
+              <span className="gy-crit-l">{c.label}</span>
+              <span className="gy-crit-p">
+                {String(c.puntos).replace('.', ',')}/{c.tope}
+              </span>
+              <span className="gy-crit-d">{c.detalle}</span>
+            </div>
+          ))}
+          <p className="muted gy-crit-nota">
+            Es una regla mía, no ciencia del deporte: mide estos cuatro criterios y nada más. No sabe si el ejercicio
+            es bueno para ti, si la técnica es correcta ni si el peso es el que toca.
+          </p>
+        </div>
       )}
     </div>
   );

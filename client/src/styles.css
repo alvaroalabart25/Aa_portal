@@ -1353,6 +1353,28 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .gy-parte.vacia .gy-parte-n { color: var(--danger); }
 .gy-parte-idea { flex: 1 0 100%; font-size: 12px; color: var(--ink-muted); font-style: italic; }
 
+/* La nota del día: el número siempre con su desglose a un toque */
+.gy-nota { margin-top: 10px; }
+.gy-nota-head {
+  display: flex; align-items: baseline; gap: 7px; width: 100%; text-align: left;
+  border: 1px solid var(--line); border-radius: 99px; background: none;
+  padding: 6px 14px; cursor: pointer; color: inherit;
+}
+.gy-nota-n { font-family: var(--font-title); font-weight: 600; font-size: 17px; }
+.gy-nota-de { font-size: 12px; color: var(--ink-muted); }
+.gy-nota-t { flex: 1; min-width: 0; font-size: 12.5px; color: var(--ink-muted); }
+.gy-nota-chev { font-size: 11px; color: var(--ink-muted); }
+.gy-nota-head.bien { border-color: var(--ink); }
+.gy-nota-head.parcial { border-color: #f0c58a; background: #fdf4e7; }
+.gy-nota-head.cero { border-color: #eed4d4; background: #fdf5f5; }
+
+.gy-nota-detalle { margin-top: 8px; padding-left: 2px; }
+.gy-crit { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; padding: 5px 0; font-size: 13px; }
+.gy-crit-l { flex: 1; min-width: 0; }
+.gy-crit-p { flex: 0 0 auto; font-size: 12.5px; color: var(--ink-muted); }
+.gy-crit-d { flex: 1 0 100%; font-size: 12px; color: var(--ink-muted); }
+.gy-crit-nota { font-size: 12px; line-height: 1.6; margin-top: 8px; }
+
 /* Condicionantes: lesiones con las que se entrena */
 .gy-conds { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 .gy-cond {
@@ -1441,4 +1463,89 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
   /* en el móvil la referencia de la vez anterior baja a su línea */
   .gy-serie { flex-wrap: wrap; }
   .gy-antes { order: 5; width: 100%; padding-left: 26px; }
+}
+
+/* ---------- Modo foco ----------
+   La pantalla entera en negro y sin menú: en el gimnasio no se navega, se
+   levanta. Todo lo que no sea la serie que toca estorba. */
+.foco {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; flex-direction: column;
+  background: #0a0a0a; color: #fff;
+  padding: calc(14px + env(safe-area-inset-top)) 18px calc(14px + env(safe-area-inset-bottom));
+  animation: foco-entra 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* El negro entra desde el centro y lo de dentro sube en cascada: da la señal de
+   «se acabó mirar el móvil, empieza la serie». */
+@keyframes foco-entra {
+  from { opacity: 0; transform: scale(1.03); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes foco-sube {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: none; }
+}
+.foco-centro > * { animation: foco-sube 460ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+.foco-centro > *:nth-child(1) { animation-delay: 80ms; }
+.foco-centro > *:nth-child(2) { animation-delay: 130ms; }
+.foco-centro > *:nth-child(3) { animation-delay: 180ms; }
+.foco-centro > *:nth-child(4) { animation-delay: 230ms; }
+.foco-centro > *:nth-child(5) { animation-delay: 280ms; }
+.foco-centro > *:nth-child(6) { animation-delay: 320ms; }
+.foco-centro > *:nth-child(n + 7) { animation-delay: 360ms; }
+.foco-top, .foco-pie { animation: foco-sube 400ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards; animation-delay: 200ms; }
+/* Quien pide menos movimiento, menos movimiento */
+@media (prefers-reduced-motion: reduce) {
+  .foco, .foco-centro > *, .foco-top, .foco-pie { animation: none; }
+}
+.foco-top { display: flex; align-items: center; justify-content: space-between; flex: 0 0 auto; }
+.foco-x {
+  width: 40px; height: 40px; border-radius: 12px; border: 1px solid #333;
+  background: none; color: #fff; font-size: 16px;
+}
+.foco-cuenta { font-family: var(--font-title); font-weight: 600; font-size: 17px; color: #8f8f8f; }
+
+.foco-centro { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 10px; min-height: 0; }
+.foco-et { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.1em; color: #8f8f8f; }
+.foco-ej { font-family: var(--font-title); font-weight: 600; font-size: 30px; line-height: 1.15; margin: 0; max-width: 15ch; }
+.foco-serie { font-size: 15px; color: #c9c9c9; }
+
+/* Campos enormes: se rellenan con el pulgar, de pie y sudando */
+.foco-campos { display: flex; gap: 14px; margin: 6px 0 2px; }
+.foco-campos label { display: flex; flex-direction: column-reverse; gap: 6px; align-items: center; }
+.foco-campos span { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #8f8f8f; }
+.foco-campos input {
+  width: 120px; text-align: center; font-family: var(--font-title); font-weight: 600;
+  font-size: 34px; padding: 12px 6px; border-radius: 14px;
+  border: 1px solid #333; background: #141414; color: #fff;
+}
+.foco-campos input:focus { border-color: #fff; outline: none; }
+
+.foco-antes { font-size: 13px; color: #8f8f8f; margin: 0; }
+.foco-btn {
+  border: 1px solid #fff; background: #fff; color: #0a0a0a; border-radius: 99px;
+  padding: 13px 26px; font-size: 15px; font-weight: 600; font-family: var(--font-title);
+}
+.foco-btn.grande { width: 100%; max-width: 420px; padding: 17px; font-size: 17px; margin-top: 4px; }
+.foco-btn:disabled { opacity: 0.5; }
+
+/* El reloj del descanso: lo único en pantalla mientras corre */
+.foco-reloj { font-family: var(--font-title); font-weight: 600; font-size: 68px; letter-spacing: -0.03em; line-height: 1; }
+/* Notas de entrenador: frases fijas, no un plan */
+.foco-msg { font-size: 14px; color: #b9b9b9; margin: 2px 0 0; line-height: 1.5; max-width: 32ch; }
+.foco-nota { font-size: 12.5px; color: #8f8f8f; margin: 0; line-height: 1.5; max-width: 34ch; }
+.foco-aviso { font-size: 13px; line-height: 1.5; margin: 0; padding: 9px 12px; border-radius: 10px; max-width: 34ch; }
+.foco-aviso.cuidado { background: #2a2008; color: #f0c58a; }
+.foco-aviso.evitar { background: #2a0d0d; color: #f0a0a0; }
+
+.foco-pie { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.foco-mini { background: none; border: none; color: #8f8f8f; font-size: 13.5px; padding: 8px 4px; }
+.foco-mini:disabled { opacity: 0.35; }
+.foco-pie-t { font-size: 12px; color: #6a6a6a; }
+
+.gy-foco { display: block; width: 100%; margin-top: 14px; padding: 13px; font-size: 15px; }
+
+@media (min-width: 721px) {
+  .foco-ej { font-size: 40px; max-width: 20ch; }
+  .foco-reloj { font-size: 96px; }
 }

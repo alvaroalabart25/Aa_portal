@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import ModoFoco from './ModoFoco';
 import {
   gymApi,
   kg,
@@ -29,6 +30,7 @@ export default function SesionPage() {
   const [condiciones, setCondiciones] = useState<Condicionante[]>([]);
   const [cerrando, setCerrando] = useState(false);
   const [error, setError] = useState('');
+  const [foco, setFoco] = useState(false);
 
   const cargar = useCallback(async () => setDatos(await gymApi.sesion(sesionId)), [sesionId]);
   useEffect(() => {
@@ -57,6 +59,18 @@ export default function SesionPage() {
     } finally {
       setCerrando(false);
     }
+  }
+
+  if (foco) {
+    return (
+      <ModoFoco
+        ejercicios={datos.exercises}
+        sesionId={sesionId}
+        condiciones={condiciones}
+        onCambio={cargar}
+        onSalir={() => setFoco(false)}
+      />
+    );
   }
 
   return (
@@ -103,6 +117,13 @@ export default function SesionPage() {
         </label>
       )}
       {error && <div className="error-msg">{error}</div>}
+
+      {/* La lista entera vale para consultar; para entrenar, una cosa delante */}
+      {!cerrada && (
+        <button className="btn gy-foco" onClick={() => setFoco(true)}>
+          Modo foco · una serie cada vez
+        </button>
+      )}
 
       {datos.exercises.map((e) => (
         <BloqueEjercicio

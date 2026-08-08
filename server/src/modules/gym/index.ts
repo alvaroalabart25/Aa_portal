@@ -316,6 +316,16 @@ gymModule.get('/sesiones/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
     previa.get(s.exerciseId)!.push(s);
   }
 
+  // Lo que sueles descansar en cada ejercicio. Con esto el cliente puede
+  // proponer un descanso que se parezca a tu realidad y no a un número redondo.
+  const medias = ids.length
+    ? await db
+        .select({ exerciseId: gymSets.exerciseId, media: sql<string | null>`avg(${gymSets.restBefore})` })
+        .from(gymSets)
+        .where(and(eq(gymSets.userId, req.userId!), inArray(gymSets.exerciseId, ids), sql`${gymSets.restBefore} is not null`))
+        .groupBy(gymSets.exerciseId)
+    : [];
+
   res.json({
     session: sesion,
     day: dia ?? null,
@@ -323,6 +333,7 @@ gymModule.get('/sesiones/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
       ...e,
       done: hechas.filter((h) => h.exerciseId === e.id),
       previous: { date: fechaDe.get(e.id) ?? null, sets: previa.get(e.id) ?? [] },
+      restAvg: Math.round(Number(medias.find((m) => m.exerciseId === e.id)?.media ?? 0)) || null,
     })),
   });
 }));
@@ -331,8 +342,13 @@ const serieInput = z.object({
   exerciseId: z.number().int().positive(),
   setNumber: z.number().int().min(1).max(30),
   reps: z.number().int().min(0).max(1000).nullish(),
+  plannedReps: z.number().int().min(0).max(1000).nullish(),
   seconds: z.number().int().min(0).max(7200).nullish(),
   weight: z.number().min(0).max(999).nullish(),
+  // segundos descansados antes de la serie y lo que duró la serie
+  restBefore: z.number().int().min(0).max(7200).nullish(),
+  duration: z.number().int().min(0).max(7200).nullish(),
+  punishment: z.boolean().optional(),
 });
 
 gymModule.post('/sesiones/:id(\\d+)/series', ah(async (req: AuthedRequest, res) => {
@@ -362,9 +378,10 @@ gymModule.post('/sesiones/:id(\\d+)/series', ah(async (req: AuthedRequest, res) 
       ),
     );
 
-  const { weight, ...resto } = parsed.data;
+  const { weight, punishment, ...resto } = parsed.data;
   const [r] = await db.insert(gymSets).values({
     ...resto,
+    punishment: punishment ? 1 : 0,
     weight: weight == null ? null : String(weight),
     // el nombre viaja con la serie: la rutina cambia y el histórico no puede
     // quedarse sin saber qué se levantó
@@ -475,6 +492,11 @@ gymModule.get('/historial', ah(async (req: AuthedRequest, res) => {
       feeling: gymSessions.feeling,
       notes: gymSessions.notes,
       sets: sql<number>`(select count(*) from gym_sets gs where gs.session_id = gym_sessions.id)`,
+      // La duración honesta va de la PRIMERA serie a la ÚLTIMA, no de abrir a
+      // cerrar: irse del gimnasio sin cerrar la sesión no puede convertir hora
+      // y media en tres horas.
+      firstSet: sql<string | null>`(select min(gs.created_at) from gym_sets gs where gs.session_id = gym_sessions.id)`,
+      lastSet: sql<string | null>`(select max(gs.created_at) from gym_sets gs where gs.session_id = gym_sessions.id)`,
       // volumen = suma de peso × repeticiones; sin peso (dominadas) no suma
       volume: sql<string | null>`(
         select sum(gs.weight * gs.reps) from gym_sets gs
@@ -677,4 +699,39 @@ gymModule.delete('/condicionantes/:id(\\d+)', ah(async (req: AuthedRequest, res)
     .where(and(eq(gymConditions.id, Number(req.params.id)), eq(gymConditions.userId, req.userId!)));
   if (r.affectedRows === 0) return res.status(404).json({ error: 'Condicionante no encontrado' });
   res.json({ deleted: true });
+}));
+
+// ---------- La sesión que se quedó abierta ----------
+
+/** Minutos sin apuntar nada tras los que damos por hecho que ya no entrenas. */
+export const MINUTOS_INACTIVO = 90;
+
+/**
+ * GET /sesion/olvidada — una sesión abierta, con series y sin actividad desde
+ * hace rato. El cliente la usa para preguntar la encuesta al volver.
+ *
+ * No se cierra sola a propósito: cerrarla sería decidir por él cuándo acabó de
+ * entrenar. Lo que sí es automático es la DURACIÓN, que va de la primera serie
+ * a la última y por tanto no crece mientras el móvil está en el bolsillo.
+ */
+gymModule.get('/sesion/olvidada', ah(async (req: AuthedRequest, res) => {
+  const [row] = await db
+    .select({
+      id: gymSessions.id,
+      dayId: gymSessions.dayId,
+      dayName: gymDays.name,
+      sessionDate: gymSessions.sessionDate,
+      startedAt: gymSessions.startedAt,
+      sets: sql<number>`(select count(*) from gym_sets gs where gs.session_id = gym_sessions.id)`,
+      lastSet: sql<string | null>`(select max(gs.created_at) from gym_sets gs where gs.session_id = gym_sessions.id)`,
+    })
+    .from(gymSessions)
+    .innerJoin(gymDays, eq(gymSessions.dayId, gymDays.id))
+    .where(and(eq(gymSessions.userId, req.userId!), isNull(gymSessions.endedAt)))
+    .orderBy(desc(gymSessions.startedAt))
+    .limit(1);
+
+  if (!row || Number(row.sets) === 0 || !row.lastSet) return res.json(null);
+  const minutos = (Date.now() - new Date(row.lastSet).getTime()) / 60000;
+  res.json(minutos >= MINUTOS_INACTIVO ? { ...row, minutos: Math.round(minutos) } : null);
 }));

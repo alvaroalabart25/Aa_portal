@@ -96,8 +96,14 @@ export interface Serie {
   exerciseId: number;
   setNumber: number;
   reps: number | null;
+  plannedReps: number | null;
   seconds: number | null;
   weight: string | null;
+  /** segundos descansados ANTES de esta serie, y lo que duró la serie */
+  restBefore: number | null;
+  duration: number | null;
+  punishment: number;
+  createdAt: string;
 }
 
 export interface Sesion {
@@ -115,6 +121,8 @@ export interface Sesion {
 export interface EjercicioEnSesion extends Ejercicio {
   done: Serie[];
   previous: { date: string | null; sets: Omit<Serie, 'id'>[] };
+  /** lo que sueles descansar en este ejercicio, en segundos */
+  restAvg: number | null;
 }
 
 export interface SesionDetalle {
@@ -135,6 +143,20 @@ export interface SesionHistorial {
   notes: string | null;
   sets: number;
   volume: string | null;
+  /** la duración honesta va de aquí a aquí, no de abrir a cerrar */
+  firstSet: string | null;
+  lastSet: string | null;
+}
+
+export interface SesionOlvidada {
+  id: number;
+  dayId: number;
+  dayName: string;
+  sessionDate: string;
+  startedAt: string;
+  sets: number;
+  lastSet: string;
+  minutos: number;
 }
 
 export type TipoMeta = 'fase' | 'peso' | 'ejercicio' | 'libre';
@@ -175,12 +197,23 @@ export const gymApi = {
   reordenar: (que: 'dias' | 'ejercicios', ids: number[]) => post<{ ok: true }>('/gym/orden', { que, ids }),
 
   sesionAbierta: () => get<Sesion | null>('/gym/sesion/abierta'),
+  sesionOlvidada: () => get<SesionOlvidada | null>('/gym/sesion/olvidada'),
   empezar: (dayId: number) => post<Sesion>('/gym/sesiones', { dayId }),
   sesion: (id: number) => get<SesionDetalle>(`/gym/sesiones/${id}`),
   cambiarDia: (id: number, dayId: number) => patch<Sesion>(`/gym/sesiones/${id}`, { dayId }),
   marcarSerie: (
     id: number,
-    data: { exerciseId: number; setNumber: number; reps?: number | null; seconds?: number | null; weight?: number | null },
+    data: {
+      exerciseId: number;
+      setNumber: number;
+      reps?: number | null;
+      plannedReps?: number | null;
+      seconds?: number | null;
+      weight?: number | null;
+      restBefore?: number | null;
+      duration?: number | null;
+      punishment?: boolean;
+    },
   ) => post<Serie>(`/gym/sesiones/${id}/series`, data),
   borrarSerie: (id: number, serieId: number) => del<{ deleted: boolean }>(`/gym/sesiones/${id}/series/${serieId}`),
   cerrar: (id: number, encuesta: { notes?: string | null; energy?: number; feeling?: number } = {}) =>
@@ -222,3 +255,32 @@ export const kg = (v: string | number | null | undefined) => {
   const n = Number(v);
   return `${n % 1 === 0 ? n : n.toFixed(1).replace('.', ',')} kg`;
 };
+
+
+/**
+ * El descanso que se propone para la siguiente serie.
+ *
+ * Mezcla lo que descansaste hace un momento (pesa más: es la fatiga de HOY) con
+ * lo que sueles descansar en ese ejercicio, y añade un margen porque la fatiga
+ * sube según avanza la sesión. Si te pasaste mucho del propuesto, el margen es
+ * mayor: te está diciendo que hoy necesitas más.
+ */
+export function descansoSugerido({
+  ultimoReal,
+  ultimoSugerido,
+  media,
+  objetivo,
+}: {
+  ultimoReal: number | null;
+  ultimoSugerido: number | null;
+  media: number | null;
+  objetivo: number | null;
+}): number {
+  const base = objetivo || 90;
+  if (!ultimoReal) return Math.round(media ? 0.5 * media + 0.5 * base : base);
+  const mezcla = media ? 0.65 * ultimoReal + 0.35 * media : ultimoReal;
+  // ¿te pasaste del propuesto? cuánto, marca cuánto margen darte
+  const exceso = ultimoSugerido ? ultimoReal / ultimoSugerido : 1;
+  const margen = exceso > 1.5 ? 60 : exceso > 1.15 ? 30 : 15;
+  return Math.min(360, Math.max(30, Math.round((mezcla + margen) / 5) * 5));
+}

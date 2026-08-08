@@ -113,6 +113,15 @@ const COLUMNAS = [
   // interesa mirar cuando algo se repite.
   ['gym_sessions', 'energy', 'ADD COLUMN energy tinyint NULL AFTER ended_at'],
   ['gym_sessions', 'feeling', 'ADD COLUMN feeling tinyint NULL AFTER energy'],
+  // Para que el aviso de «¿has acabado?» no se repita cada hora
+  ['gym_sessions', 'nudged_at', 'ADD COLUMN nudged_at datetime NULL AFTER feeling'],
+  // Los tiempos de verdad: cuánto descansaste ANTES de esta serie y cuánto duró
+  // la serie. Son lo que hace que el descanso propuesto pueda adaptarse.
+  ['gym_sets', 'rest_before', 'ADD COLUMN rest_before int NULL AFTER set_number'],
+  ['gym_sets', 'duration', 'ADD COLUMN duration int NULL AFTER rest_before'],
+  // Lo que ibas a hacer frente a lo que hiciste: la diferencia es la señal
+  ['gym_sets', 'planned_reps', 'ADD COLUMN planned_reps int NULL AFTER reps'],
+  ['gym_sets', 'punishment', 'ADD COLUMN punishment tinyint NOT NULL DEFAULT 0 AFTER weight'],
 ];
 for (const [tabla, columna, ddl] of COLUMNAS) {
   const [hay] = await conn.query(

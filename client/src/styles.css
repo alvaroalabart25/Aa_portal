@@ -1296,9 +1296,11 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 /* Historial: una línea por sesión, para leerlo de arriba abajo */
 .gy-hist { display: flex; flex-direction: column; margin-top: 12px; }
 .gy-hist-fila {
-  display: flex; align-items: baseline; gap: 10px; padding: 8px 2px;
-  border-bottom: 1px solid var(--line); font-size: 13.5px;
+  display: flex; align-items: baseline; gap: 10px; padding: 10px 4px; width: 100%; text-align: left;
+  border: none; border-bottom: 1px solid var(--line); background: none; font: inherit; color: inherit;
+  font-size: 13.5px; cursor: pointer;
 }
+.gy-hist-fila:hover { background: var(--paper-soft); }
 .gy-hist-f { flex: 0 0 56px; color: var(--ink-muted); font-size: 12.5px; }
 .gy-hist-d { flex: 1; min-width: 0; font-weight: 500; }
 .gy-hist-n { flex: 0 0 auto; color: var(--ink-muted); font-size: 12px; text-align: right; }
@@ -1542,6 +1544,10 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 
 /* El reloj del descanso: lo único en pantalla mientras corre */
 .foco-reloj { font-family: var(--font-title); font-weight: 600; font-size: 68px; letter-spacing: -0.03em; line-height: 1; }
+.foco-reloj.chico { font-size: 46px; color: #c9c9c9; }
+/* pasado el descanso propuesto, el de arriba se queda en 0:00 y este cuenta lo
+   que descansas de más: sin él no se ve si te has pasado 20 s o tres minutos */
+.foco-extra { font-family: var(--font-title); font-weight: 600; font-size: 22px; color: #8f8f8f; }
 /* Notas de entrenador: frases fijas, no un plan */
 .foco-msg { font-size: 14px; color: #b9b9b9; margin: 2px 0 0; line-height: 1.5; max-width: 32ch; }
 .foco-nota { font-size: 12.5px; color: #8f8f8f; margin: 0; line-height: 1.5; max-width: 34ch; }
@@ -1553,6 +1559,39 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .foco-mini { background: none; border: none; color: #8f8f8f; font-size: 13.5px; padding: 8px 4px; }
 .foco-mini:disabled { opacity: 0.35; }
 .foco-pie-t { font-size: 12px; color: #6a6a6a; }
+
+/* Ya entrenaste hoy: no se propone nada más, la rotación sigue mañana */
+.gy-hoy {
+  display: flex; flex-direction: column; gap: 3px; margin-top: 12px;
+  border: 1px solid var(--line); border-radius: 14px; padding: 16px; background: var(--paper-soft);
+}
+.gy-hoy-t { font-family: var(--font-title); font-weight: 600; font-size: 17px; }
+.gy-hoy-s { font-size: 13px; color: var(--ink-muted); }
+
+/* La sesión que te dejaste abierta al irte */
+.gy-olvidada {
+  display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left;
+  margin-top: 14px; padding: 14px 16px; border-radius: 14px; cursor: pointer;
+  border: 1px solid #f0c58a; background: #fdf4e7; color: #7a4708;
+}
+
+/* Ficha de un entrenamiento cerrado */
+.gy-res-cifras { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 10px; font-size: 13px; color: var(--ink-muted); }
+.gy-res-cifras b { font-family: var(--font-title); font-size: 19px; color: var(--ink); margin-right: 3px; }
+.gy-res-encuesta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.gy-res-notas { font-size: 13.5px; line-height: 1.6; margin-top: 10px; }
+.gy-res-ej { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.gy-res-ej.saltado { opacity: 0.55; }
+.gy-res-ej-head { display: flex; align-items: baseline; gap: 10px; }
+.gy-res-ej-n { flex: 1; min-width: 0; font-weight: 500; font-size: 14.5px; }
+.gy-res-ej-s { flex: 0 0 auto; font-size: 12px; color: var(--ink-muted); }
+.gy-res-series { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+.gy-res-serie {
+  font-size: 12.5px; border: 1px solid var(--line); border-radius: 8px; padding: 3px 9px; color: var(--ink-soft);
+}
+/* la de castigo se ve distinta: es información, no una serie más */
+.gy-res-serie.castigo { border-color: #f0c58a; background: #fdf4e7; color: #7a4708; }
+.gy-res-serie b { color: var(--danger); }
 
 .gy-foco { display: block; width: 100%; margin-top: 14px; padding: 13px; font-size: 15px; }
 

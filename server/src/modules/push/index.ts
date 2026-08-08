@@ -1,12 +1,14 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import webpush from 'web-push';
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { ah } from '../../lib/async';
 import { db } from '../../db';
 import {
   events,
   frontIntegrity,
+  gymDays,
+  gymSessions,
   notificationPrefs,
   pushSubscriptions,
   routineChecks,
@@ -305,6 +307,35 @@ pushRunner.post('/run', ah(async (req, res) => {
   const { iso: today, hhmm } = madridNow();
   const allUsers = await db.select({ id: users.id }).from(users);
   const results: Array<{ user: number; type: string; sent: number }> = [];
+
+  // Aviso de gimnasio: no va por hora fija como los demás, va por condición
+  // —hay una sesión abierta y hace rato que no apuntas nada—, así que se
+  // comprueba en cada pasada. Como el disparador externo corre una vez por
+  // hora, el aviso puede llegar hasta una hora tarde: es el precio de no tener
+  // un servidor despierto todo el rato.
+  const olvidadas = await db
+    .select({
+      id: gymSessions.id,
+      userId: gymSessions.userId,
+      dayName: gymDays.name,
+      series: sql<number>`(select count(*) from gym_sets gs where gs.session_id = gym_sessions.id)`,
+      lastSet: sql<string | null>`(select max(gs.created_at) from gym_sets gs where gs.session_id = gym_sessions.id)`,
+    })
+    .from(gymSessions)
+    .innerJoin(gymDays, eq(gymSessions.dayId, gymDays.id))
+    .where(and(isNull(gymSessions.endedAt), isNull(gymSessions.nudgedAt)));
+
+  for (const s of olvidadas) {
+    if (Number(s.series) === 0 || !s.lastSet) continue;
+    if ((Date.now() - new Date(s.lastSet).getTime()) / 60000 < 90) continue;
+    await db.update(gymSessions).set({ nudgedAt: new Date() }).where(eq(gymSessions.id, s.id));
+    const sent = await sendToUser(s.userId, {
+      title: '¿Has acabado de entrenar?',
+      body: `${s.dayName}: ${s.series} series apuntadas y la sesión sigue abierta. Ciérrala y cuenta cómo fue.`,
+      url: '/gimnasio',
+    });
+    results.push({ user: s.userId, type: 'gym_abierta', sent });
+  }
 
   for (const u of allUsers) {
     const rows = await db.select().from(notificationPrefs).where(eq(notificationPrefs.userId, u.id));

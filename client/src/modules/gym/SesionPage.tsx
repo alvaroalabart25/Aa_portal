@@ -77,6 +77,8 @@ export default function SesionPage() {
     );
   }
 
+  if (cerrada) return <Resumen datos={datos} />;
+
   if (foco) {
     return (
       <ModoFoco
@@ -355,6 +357,110 @@ function FilaSerie({
       >
         ✓
       </button>
+    </div>
+  );
+}
+
+
+const ENERGIA_TXT = ['', 'Sin fuerza', 'Justo', 'Normal', 'Fuerte', 'Voy sobrado'];
+const ANIMO_TXT = ['', 'Mal', 'Regular', 'Ni fu ni fa', 'Contento', 'Genial'];
+
+/**
+ * Un entrenamiento ya cerrado, en modo lectura.
+ *
+ * La duración va de la PRIMERA serie a la ÚLTIMA, no de abrir a cerrar la
+ * sesión: irse del gimnasio con el móvil en el bolsillo no puede convertir hora
+ * y media en tres horas.
+ */
+function Resumen({ datos }: { datos: SesionDetalle }) {
+  const series = datos.exercises.flatMap((e) => e.done);
+  const volumen = series.reduce((n, d) => n + (d.weight && d.reps ? Number(d.weight) * d.reps : 0), 0);
+  const tiempos = series.map((d) => new Date(d.createdAt ?? datos.session.startedAt).getTime()).filter(Boolean);
+  const minutos =
+    tiempos.length > 1 ? Math.round((Math.max(...tiempos) - Math.min(...tiempos)) / 60000) : null;
+  const descansos = series.map((d) => d.restBefore).filter((x): x is number => x != null);
+  const descansoMedio = descansos.length ? Math.round(descansos.reduce((a, b) => a + b, 0) / descansos.length) : null;
+
+  return (
+    <div>
+      <div className="tk-crumbs">
+        <Link to="/gimnasio" className="btn ghost sm tk-back">
+          ‹ Gimnasio
+        </Link>
+        <span className="tk-path">
+          {new Date(`${datos.session.sessionDate}T12:00:00`).toLocaleDateString('es-ES', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+          })}
+        </span>
+      </div>
+
+      <div className="page-head">
+        <h1>{datos.day?.name ?? 'Entrenamiento'}</h1>
+      </div>
+
+      <div className="gy-res-cifras">
+        <span>
+          <b>{series.length}</b> series
+        </span>
+        {volumen > 0 && (
+          <span>
+            <b>{Math.round(volumen).toLocaleString('es-ES')}</b> kg movidos
+          </span>
+        )}
+        {minutos != null && (
+          <span>
+            <b>{minutos}</b> min entrenando
+          </span>
+        )}
+        {descansoMedio != null && (
+          <span>
+            <b>{Math.floor(descansoMedio / 60)}:{String(descansoMedio % 60).padStart(2, '0')}</b> de descanso medio
+          </span>
+        )}
+      </div>
+
+      {(datos.session.energy || datos.session.feeling || datos.session.notes) && (
+        <section className="section mc-bloque">
+          <h2>Cómo te viste</h2>
+          <div className="gy-res-encuesta">
+            {datos.session.energy && <span className="pr-senal">Energía · {ENERGIA_TXT[datos.session.energy]}</span>}
+            {datos.session.feeling && <span className="pr-senal">Ánimo · {ANIMO_TXT[datos.session.feeling]}</span>}
+          </div>
+          {datos.session.notes && <p className="gy-res-notas">{datos.session.notes}</p>}
+        </section>
+      )}
+
+      <section className="section mc-bloque">
+        <h2>Lo que hiciste</h2>
+        {datos.exercises.map((e) => (
+          <div key={e.id} className={`gy-res-ej${e.done.length === 0 ? ' saltado' : ''}`}>
+            <div className="gy-res-ej-head">
+              <span className="gy-res-ej-n">{e.name}</span>
+              <span className="gy-res-ej-s">
+                {e.done.length === 0 ? 'te lo saltaste' : `${e.done.length} de ${e.targetSets} series`}
+              </span>
+            </div>
+            {e.done.length > 0 && (
+              <div className="gy-res-series">
+                {e.done
+                  .slice()
+                  .sort((a, b) => a.setNumber - b.setNumber)
+                  .map((d) => (
+                    <span key={d.id} className={`gy-res-serie${d.punishment ? ' castigo' : ''}`}>
+                      {d.weight ? `${numTxt(d.weight)} × ` : ''}
+                      {d.seconds != null ? `${d.seconds}s` : d.reps}
+                      {d.plannedReps != null && d.reps != null && d.reps < d.plannedReps && (
+                        <b title={`Ibas a por ${d.plannedReps}`}> ↓</b>
+                      )}
+                    </span>
+                  ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </section>
     </div>
   );
 }

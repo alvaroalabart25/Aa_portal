@@ -15,6 +15,7 @@ import {
   type Rutina,
   type Sesion,
   type SesionHistorial,
+  type SesionOlvidada,
 } from './api';
 import { CondicionanteModal, EjercicioModal, MetaModal } from './modals';
 import { notaDelDia } from './score';
@@ -101,18 +102,29 @@ function siguienteDia(dias: DiaRutina[]): DiaRutina | null {
 function Entrenar({ rutina }: { rutina: Rutina }) {
   const navigate = useNavigate();
   const [abierta, setAbierta] = useState<Sesion | null>(null);
+  const [olvidada, setOlvidada] = useState<SesionOlvidada | null>(null);
   const [historial, setHistorial] = useState<SesionHistorial[]>([]);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     gymApi.sesionAbierta().then(setAbierta).catch(() => {});
+    gymApi.sesionOlvidada().then(setOlvidada).catch(() => {});
     gymApi.historial(8).then(setHistorial).catch(() => {});
   }, []);
 
-  // Con una sesión abierta no se enseña «te toca»: estarías leyendo que te toca
-  // Espalda mientras tienes Pecho a medias justo encima. Primero se cierra o se
-  // tira lo que hay.
-  const toca = useMemo(() => (abierta ? null : siguienteDia(rutina.days)), [rutina.days, abierta]);
+  // Lo de hoy, si ya está hecho. Entonces no se propone nada más: la rotación
+  // se reanuda mañana, que es como se entrena de verdad.
+  const hoyHecho = useMemo(
+    () => rutina.days.find((d) => d.lastDone === rutina.today) ?? null,
+    [rutina.days, rutina.today],
+  );
+
+  // Con una sesión abierta tampoco se enseña «te toca»: estarías leyendo que te
+  // toca Espalda mientras tienes Pecho a medias justo encima.
+  const toca = useMemo(
+    () => (abierta || hoyHecho ? null : siguienteDia(rutina.days)),
+    [rutina.days, abierta, hoyHecho],
+  );
   const resto = rutina.days.filter((d) => d.id !== toca?.id);
 
   async function empezar(dayId: number) {
@@ -131,7 +143,20 @@ function Entrenar({ rutina }: { rutina: Rutina }) {
 
   return (
     <div>
-      {abierta && (
+      {/* Te fuiste sin cerrar: se te pregunta al volver, no se cierra sola. La
+          hora ya está bien igualmente, porque la duración se mide de la primera
+          serie a la última. */}
+      {olvidada && (
+        <button className="gy-olvidada" onClick={() => navigate(`/gimnasio/sesion/${olvidada.id}`)}>
+          <span className="gy-continuar-t">¿Cómo fue el entrenamiento?</span>
+          <span className="gy-continuar-s">
+            {olvidada.dayName} · {olvidada.sets} series y sin cerrar desde hace{' '}
+            {olvidada.minutos >= 120 ? `${Math.round(olvidada.minutos / 60)} h` : `${olvidada.minutos} min`} · ciérralo →
+          </span>
+        </button>
+      )}
+
+      {abierta && !olvidada && (
         <div className="gy-abierta">
           <button className="gy-continuar" onClick={() => navigate(`/gimnasio/sesion/${abierta.id}`)}>
             <span className="gy-continuar-t">Tienes un entrenamiento a medias</span>
@@ -152,6 +177,17 @@ function Entrenar({ rutina }: { rutina: Rutina }) {
             Descartarlo
           </button>
         </div>
+      )}
+
+      {hoyHecho && !abierta && (
+        <section className="section mc-bloque">
+          <div className="gy-hoy">
+            <span className="gy-hoy-t">Hoy ya has entrenado</span>
+            <span className="gy-hoy-s">
+              {hoyHecho.name} · mañana te toca {siguienteDia(rutina.days)?.name ?? 'el siguiente'}
+            </span>
+          </div>
+        </section>
       )}
 
       {toca && (
@@ -201,7 +237,7 @@ function Entrenar({ rutina }: { rutina: Rutina }) {
           <h2>Últimos entrenamientos</h2>
           <div className="gy-hist">
             {historial.map((h) => (
-              <div key={h.id} className="gy-hist-fila">
+              <button key={h.id} className="gy-hist-fila" onClick={() => navigate(`/gimnasio/sesion/${h.id}`)}>
                 <span className="gy-hist-f">{fechaCorta(h.sessionDate)}</span>
                 <span className="gy-hist-d">{h.dayName}</span>
                 <span className="gy-hist-n">
@@ -209,7 +245,7 @@ function Entrenar({ rutina }: { rutina: Rutina }) {
                   {h.volume ? ` · ${Math.round(Number(h.volume)).toLocaleString('es-ES')} kg` : ''}
                   {duracion(h) ? ` · ${duracion(h)}` : ''}
                 </span>
-              </div>
+              </button>
             ))}
           </div>
         </section>
@@ -222,9 +258,13 @@ function fechaCorta(iso: string): string {
   return new Date(`${iso}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 }
 
+/**
+ * De la PRIMERA serie a la ÚLTIMA, no de abrir a cerrar: si te vas del gimnasio
+ * sin cerrar la sesión, el reloj deja de contar solo, porque ya no apuntas nada.
+ */
 function duracion(h: SesionHistorial): string | null {
-  if (!h.endedAt) return null;
-  const min = Math.round((new Date(h.endedAt).getTime() - new Date(h.startedAt).getTime()) / 60000);
+  if (!h.firstSet || !h.lastSet) return null;
+  const min = Math.round((new Date(h.lastSet).getTime() - new Date(h.firstSet).getTime()) / 60000);
   if (min <= 0 || min > 300) return null;
   return min >= 60 ? `${Math.floor(min / 60)} h ${min % 60} min` : `${min} min`;
 }

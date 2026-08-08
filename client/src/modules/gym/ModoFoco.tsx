@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  descansoSugerido,
   gymApi,
   listaMusculos,
   nombreMusculo,
@@ -9,14 +10,26 @@ import {
 } from './api';
 
 const DESCANSO_POR_DEFECTO = 90;
+/** Con estas repeticiones o menos, el peso era demasiado. Regla suya. */
+const REPES_DE_CASTIGO = 5;
+
+type Fase = 'descanso' | 'lista' | 'enCurso' | 'apuntar';
+
+/** «8-10» → 8, «13» → 13, «al fallo» → nada. El primer número que aparezca. */
+function delObjetivo(txt: string | null | undefined): number | null {
+  const m = String(txt ?? '').match(/\d+/);
+  return m ? Number(m[0]) : null;
+}
+
+const reloj = (s: number) => `${Math.floor(Math.abs(s) / 60)}:${String(Math.abs(s) % 60).padStart(2, '0')}`;
 
 /**
  * Modo foco: la pantalla entera en negro, sin menú y con UNA cosa delante.
  *
- * En el gimnasio no se navega: se levanta, se apunta y se descansa. Todo lo que
- * no sea la serie que toca sobra, así que aquí no hay lista, ni pestañas, ni
- * barra de abajo. Al marcar una serie arranca solo el descanso, porque mirar el
- * reloj es la parte que siempre se olvida.
+ * El ciclo es descanso → preparar → serie → apuntar, y no al revés, porque el
+ * peso se decide DESCANSANDO, cuando sabes cómo estás. Además así el descanso
+ * lo cierras tú al empezar la serie, y eso es lo que permite medirlo de verdad:
+ * un descanso que acaba solo mide lo que yo propuse, no lo que tú necesitas.
  */
 export default function ModoFoco({
   ejercicios,
@@ -31,101 +44,171 @@ export default function ModoFoco({
   onCambio: () => Promise<void> | void;
   onSalir: () => void;
 }) {
+  const [saltados, setSaltados] = useState<number[]>([]);
+  const lista = useMemo(() => ejercicios.filter((e) => !saltados.includes(e.id)), [ejercicios, saltados]);
+
   // Se entra por donde se quedó: el primer hueco sin marcar
   const primerHueco = useMemo(() => {
-    for (let i = 0; i < ejercicios.length; i += 1) {
-      const e = ejercicios[i];
+    for (let i = 0; i < lista.length; i += 1) {
+      const e = lista[i];
       for (let n = 1; n <= e.targetSets; n += 1) {
         if (!e.done.some((d) => d.setNumber === n)) return { ei: i, serie: n };
       }
     }
-    return { ei: Math.max(0, ejercicios.length - 1), serie: 1 };
-  }, [ejercicios]);
+    return { ei: Math.max(0, lista.length - 1), serie: 1 };
+  }, [lista]);
 
   const [ei, setEi] = useState(primerHueco.ei);
   const [serie, setSerie] = useState(primerHueco.serie);
-  const [descanso, setDescanso] = useState<number | null>(null);
+  // La primera serie del día no tiene descanso previo que medir
+  const [fase, setFase] = useState<Fase>('lista');
   const [guardando, setGuardando] = useState(false);
+  const [castigo, setCastigo] = useState<{ peso: number; serie: number } | null>(null);
+  const [esCastigo, setEsCastigo] = useState(false);
 
-  const ejercicio = ejercicios[ei];
+  const ejercicio = lista[ei];
   const porTiempo = ejercicio?.kind === 'tiempo';
   const antes = ejercicio?.previous.sets.find((s) => s.setNumber === serie);
   const hecha = ejercicio?.done.find((d) => d.setNumber === serie);
 
   const [peso, setPeso] = useState('');
-  const [medida, setMedida] = useState('');
-  const [fijando, setFijando] = useState(false);
+  const [previstas, setPrevistas] = useState('');
+  const [reales, setReales] = useState('');
 
-  // Al cambiar de serie, los campos ya vienen puestos. Por orden: lo que ya
-  // marcaste en esta serie, lo de la misma serie la vez anterior, lo que
-  // acabas de hacer en la serie de antes HOY, y por último el objetivo. La
-  // tercera es la que salva el primer día: sin histórico, lo que hiciste hace
-  // dos minutos es la mejor pista que hay.
+  // Los relojes van contra la hora, no contando ticks: si se apaga la pantalla
+  // o el móvil se duerme, al volver los números siguen siendo los buenos.
+  const [sugerido, setSugerido] = useState(DESCANSO_POR_DEFECTO);
+  const [transcurrido, setTranscurrido] = useState(0);
+  const inicioRef = useRef<number>(Date.now());
+  const [serieSegs, setSerieSegs] = useState(0);
+  const ultimoRef = useRef<{ real: number; sugerido: number } | null>(null);
+
+  useEffect(() => {
+    if (fase !== 'descanso' && fase !== 'enCurso') return;
+    const t = window.setInterval(() => {
+      const s = Math.round((Date.now() - inicioRef.current) / 1000);
+      if (fase === 'descanso') {
+        setTranscurrido(s);
+        if (s === sugerido && 'vibrate' in navigator) navigator.vibrate?.([120, 60, 120]);
+      } else setSerieSegs(s);
+    }, 250);
+    return () => window.clearInterval(t);
+  }, [fase, sugerido]);
+
+  // Al cambiar de serie, lo previsto viene puesto: lo de la misma serie la vez
+  // anterior, o lo que acabas de hacer hace dos minutos, o el objetivo.
   useEffect(() => {
     if (!ejercicio) return;
     const previaHoy = ejercicio.done.find((d) => d.setNumber === serie - 1);
     setPeso(numTxt(hecha?.weight ?? antes?.weight ?? previaHoy?.weight ?? ejercicio.targetWeight));
-    const v = porTiempo
-      ? (hecha?.seconds ?? antes?.seconds ?? previaHoy?.seconds)
-      : (hecha?.reps ?? antes?.reps ?? previaHoy?.reps);
-    setMedida(v == null ? '' : String(v));
+    const v =
+      (porTiempo
+        ? (hecha?.seconds ?? antes?.seconds ?? previaHoy?.seconds)
+        : (hecha?.reps ?? antes?.reps ?? previaHoy?.reps)) ?? delObjetivo(ejercicio.targetReps);
+    setPrevistas(v == null ? '' : String(v));
+    setReales(v == null ? '' : String(v));
   }, [ei, serie, ejercicio, hecha, antes, porTiempo]);
 
-  // El descanso corre contra el reloj, no contando ticks: si la pantalla se
-  // apaga o el móvil se duerme, al volver el número sigue siendo el bueno.
-  const finRef = useRef<number>(0);
-  useEffect(() => {
-    if (descanso == null) return;
-    const t = window.setInterval(() => {
-      const quedan = Math.max(0, Math.round((finRef.current - Date.now()) / 1000));
-      setDescanso(quedan);
-      if (quedan === 0) {
-        window.clearInterval(t);
-        if ('vibrate' in navigator) navigator.vibrate?.([120, 60, 120]);
+  const avanzar = useCallback(
+    (aDescanso: boolean) => {
+      if (!ejercicio) return;
+      if (serie < ejercicio.targetSets) setSerie(serie + 1);
+      else if (ei < lista.length - 1) {
+        setEi(ei + 1);
+        setSerie(1);
       }
-    }, 250);
-    return () => window.clearInterval(t);
-  }, [descanso != null]); // eslint-disable-line react-hooks/exhaustive-deps
+      setEsCastigo(false);
+      if (aDescanso) {
+        inicioRef.current = Date.now();
+        setTranscurrido(0);
+        setFase('descanso');
+      } else setFase('lista');
+    },
+    [ejercicio, serie, ei, lista.length],
+  );
 
-  const avanzar = useCallback(() => {
-    if (!ejercicio) return;
-    if (serie < ejercicio.targetSets) setSerie(serie + 1);
-    else if (ei < ejercicios.length - 1) {
-      setEi(ei + 1);
-      setSerie(1);
-    }
-  }, [ejercicio, serie, ei, ejercicios.length]);
+  function empezarSerie() {
+    if (fase === 'descanso') ultimoRef.current = { real: transcurrido, sugerido };
+    inicioRef.current = Date.now();
+    setSerieSegs(0);
+    setFase('enCurso');
+  }
 
-  async function marcar() {
+  async function apuntar() {
     if (!ejercicio) return;
     setGuardando(true);
     try {
-      const v = medida.trim() === '' ? null : Number(medida.replace(',', '.'));
+      const hechas = reales.trim() === '' ? null : Number(reales.replace(',', '.'));
+      const plan = previstas.trim() === '' ? null : Number(previstas.replace(',', '.'));
+      const kgNum = peso.trim() === '' ? null : Number(peso.replace(',', '.'));
       await gymApi.marcarSerie(sesionId, {
         exerciseId: ejercicio.id,
-        setNumber: serie,
-        reps: porTiempo ? null : v,
-        seconds: porTiempo ? v : null,
-        weight: peso.trim() === '' ? null : Number(peso.replace(',', '.')),
+        setNumber: esCastigo ? ejercicio.targetSets + 1 : serie,
+        reps: porTiempo ? null : hechas,
+        plannedReps: porTiempo ? null : plan,
+        seconds: porTiempo ? hechas : null,
+        weight: kgNum,
+        restBefore: ultimoRef.current?.real ?? null,
+        duration: serieSegs || null,
+        punishment: esCastigo,
       });
       await onCambio();
-      const segundos = ejercicio.restSeconds || DESCANSO_POR_DEFECTO;
-      finRef.current = Date.now() + segundos * 1000;
-      setDescanso(segundos);
+
+      // El próximo descanso se calcula con lo que acabas de descansar de verdad
+      setSugerido(
+        descansoSugerido({
+          ultimoReal: ultimoRef.current?.real ?? null,
+          ultimoSugerido: ultimoRef.current?.sugerido ?? null,
+          media: ejercicio.restAvg,
+          objetivo: ejercicio.restSeconds,
+        }),
+      );
+
+      // ¿Se te fue el peso? Se propone, no se impone.
+      const previoHoy = ejercicio.done.filter((d) => d.setNumber < serie).at(-1);
+      if (!esCastigo && !porTiempo && hechas != null && hechas <= REPES_DE_CASTIGO) {
+        const menos = previoHoy?.weight ? Number(previoHoy.weight) : kgNum ? Math.round(kgNum * 0.8 * 2) / 2 : null;
+        if (menos) {
+          setCastigo({ peso: menos, serie: serie });
+          setGuardando(false);
+          return;
+        }
+      }
+      avanzar(true);
     } finally {
       setGuardando(false);
     }
   }
 
-  if (!ejercicio) return null;
+  function saltarEjercicio() {
+    if (!ejercicio) return;
+    setSaltados((p) => [...p, ejercicio.id]);
+    setSerie(1);
+    setFase('lista');
+    setEi((i) => Math.min(i, Math.max(0, lista.length - 2)));
+  }
+
+  if (!ejercicio) {
+    return (
+      <div className="foco">
+        <div className="foco-centro">
+          <h1 className="foco-ej">No queda nada</h1>
+          <button className="foco-btn" onClick={onSalir}>
+            Salir y cerrar
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const esUltimaSerie = serie === ejercicio.targetSets;
-  const esUltimoEjercicio = ei === ejercicios.length - 1;
+  const esUltimoEjercicio = ei === lista.length - 1;
   const hechasTotal = ejercicios.reduce((n, e) => n + e.done.length, 0);
-  const totalSeries = ejercicios.reduce((n, e) => n + e.targetSets, 0);
+  const totalSeries = lista.reduce((n, e) => n + e.targetSets, 0);
   const aviso = condiciones.find((c) =>
     listaMusculos(c.muscles).some((m) => listaMusculos(ejercicio.muscles).includes(m)),
   );
+  const restante = sugerido - transcurrido;
 
   return (
     <div className="foco">
@@ -138,25 +221,107 @@ export default function ModoFoco({
         </span>
       </div>
 
-      {descanso != null ? (
-        <div className="foco-centro" key="descanso">
-          <span className="foco-et">Descanso</span>
-          <span className="foco-reloj">{`${Math.floor(descanso / 60)}:${String(descanso % 60).padStart(2, '0')}`}</span>
-          <p className="foco-msg">{mensajeDescanso(descanso, esUltimaSerie, esUltimoEjercicio, ejercicio, serie)}</p>
+      {castigo ? (
+        <div className="foco-centro" key="castigo">
+          <span className="foco-et">Se te fue el peso</span>
+          <h1 className="foco-ej">¿Serie de castigo?</h1>
+          <p className="foco-msg">
+            Has hecho {reales} repeticiones. Una serie más con {numTxt(castigo.peso)} kg y la dejas bien cerrada.
+          </p>
           <button
-            className="foco-btn"
+            className="foco-btn grande"
             onClick={() => {
-              setDescanso(null);
-              avanzar();
+              setPeso(numTxt(castigo.peso));
+              setEsCastigo(true);
+              setCastigo(null);
+              inicioRef.current = Date.now();
+              setTranscurrido(0);
+              setFase('descanso');
             }}
           >
-            {descanso === 0 ? 'A por la siguiente' : 'Saltar el descanso'}
+            Sí, serie de castigo
+          </button>
+          <button
+            className="foco-fijar"
+            onClick={() => {
+              setCastigo(null);
+              avanzar(true);
+            }}
+          >
+            No, sigo
+          </button>
+        </div>
+      ) : fase === 'descanso' ? (
+        <div className="foco-centro" key={`descanso-${serie}`}>
+          <span className="foco-et">Descanso{esCastigo ? ' · antes del castigo' : ''}</span>
+          <span className={`foco-reloj${restante < 0 ? ' pasado' : ''}`}>{reloj(Math.max(0, restante))}</span>
+          {/* pasado el propuesto, un segundo reloj hacia arriba: para ver
+              cuánto de más estás descansando sin perder el primero */}
+          {restante <= 0 && (
+            <span className="foco-extra">
+              +{reloj(-restante)} de más
+            </span>
+          )}
+          <p className="foco-msg">
+            {restante <= 0
+              ? 'Descansa si estás fatigado: la siguiente la vas a dar todo.'
+              : mensajeDescanso(restante, esUltimaSerie, esUltimoEjercicio, ejercicio, serie)}
+          </p>
+
+          {/* el peso y las repes se deciden AQUÍ, descansando, que es cuando
+              sabes cómo estás */}
+          <span className="foco-et">Para la siguiente</span>
+          <div className="foco-campos">
+            <label>
+              <span>kg</span>
+              <input inputMode="decimal" value={peso} onChange={(e) => setPeso(e.target.value)} />
+            </label>
+            <label>
+              <span>{porTiempo ? 'seg' : 'repes'}</span>
+              <input inputMode="numeric" value={previstas} onChange={(e) => setPrevistas(e.target.value)} />
+            </label>
+          </div>
+
+          <button className="foco-btn grande" onClick={empezarSerie}>
+            Empezar la serie
+          </button>
+        </div>
+      ) : fase === 'enCurso' ? (
+        <div className="foco-centro" key={`curso-${serie}`}>
+          <span className="foco-et">{ejercicio.name}</span>
+          <h1 className="foco-ej">
+            {peso ? `${peso} kg` : 'Sin peso'} × {previstas || '?'}
+          </h1>
+          <span className="foco-reloj chico">{reloj(serieSegs)}</span>
+          <p className="foco-msg">{mensajeSerie(serie, ejercicio, esUltimoEjercicio, esCastigo)}</p>
+          <button className="foco-btn grande" onClick={() => setFase('apuntar')}>
+            Serie hecha
+          </button>
+        </div>
+      ) : fase === 'apuntar' ? (
+        <div className="foco-centro" key={`apuntar-${serie}`}>
+          <span className="foco-et">{ejercicio.name}</span>
+          <h1 className="foco-ej">¿Cuántas te han salido?</h1>
+          <div className="foco-campos">
+            <label>
+              <span>kg</span>
+              <input inputMode="decimal" value={peso} onChange={(e) => setPeso(e.target.value)} />
+            </label>
+            <label>
+              <span>{porTiempo ? 'seg' : 'repes'}</span>
+              <input inputMode="numeric" value={reales} onChange={(e) => setReales(e.target.value)} />
+            </label>
+          </div>
+          <p className="foco-antes">
+            Ibas a por {previstas || '?'}
+            {serieSegs ? ` · ${reloj(serieSegs)} de serie` : ''}
+          </p>
+          <button className="foco-btn grande" disabled={guardando} onClick={apuntar}>
+            {guardando ? 'Guardando…' : 'Guardar y descansar'}
           </button>
         </div>
       ) : (
-        // la clave cambia con cada serie: así cada pantalla entra sola, en vez
-        // de que los números cambien de golpe debajo del dedo
-        <div className="foco-centro" key={`${ejercicio.id}-${serie}`}>
+        <div className="foco-centro" key={`lista-${ejercicio.id}-${serie}`}>
           {listaMusculos(ejercicio.muscles).length > 0 && (
             <span className="foco-et">{listaMusculos(ejercicio.muscles).map(nombreMusculo).join(' · ')}</span>
           )}
@@ -173,7 +338,7 @@ export default function ModoFoco({
             </label>
             <label>
               <span>{porTiempo ? 'seg' : 'repes'}</span>
-              <input inputMode="numeric" value={medida} onChange={(e) => setMedida(e.target.value)} />
+              <input inputMode="numeric" value={previstas} onChange={(e) => setPrevistas(e.target.value)} />
             </label>
           </div>
 
@@ -183,33 +348,10 @@ export default function ModoFoco({
               : `Objetivo: ${ejercicio.targetSets} × ${ejercicio.targetReps}`}
           </p>
 
-          {/* El kg de arriba es lo que levantas HOY y se guarda al marcar la
-              serie. El objetivo del ejercicio es otra cosa y hasta ahora solo se
-              podía tocar en Rutina: si el número que traía era una barbaridad,
-              volvía a salir cada día. Desde aquí se corrige de un toque. */}
-          {peso.trim() !== '' && numTxt(ejercicio.targetWeight) !== peso.trim() && (
-            <button
-              className="foco-fijar"
-              disabled={fijando}
-              onClick={async () => {
-                setFijando(true);
-                try {
-                  await gymApi.editarEjercicio(ejercicio.id, { targetWeight: Number(peso.replace(',', '.')) });
-                  await onCambio();
-                } finally {
-                  setFijando(false);
-                }
-              }}
-            >
-              {fijando ? 'Guardando…' : `Dejar ${peso} kg como objetivo del ejercicio`}
-            </button>
-          )}
-
-          <button className="foco-btn grande" disabled={guardando} onClick={marcar}>
-            {guardando ? 'Guardando…' : hecha ? 'Rehacer esta serie' : 'Serie hecha'}
+          <button className="foco-btn grande" onClick={empezarSerie}>
+            Empezar la serie
           </button>
 
-          <p className="foco-msg">{mensajeSerie(serie, ejercicio, esUltimoEjercicio, antes, medida)}</p>
           {aviso && (
             <p className={`foco-aviso ${aviso.severity}`}>
               {aviso.severity === 'evitar' ? 'Evitar' : 'Ojo'}
@@ -222,32 +364,14 @@ export default function ModoFoco({
       )}
 
       <div className="foco-pie">
-        <button
-          className="foco-mini"
-          disabled={ei === 0 && serie === 1}
-          onClick={() => {
-            setDescanso(null);
-            if (serie > 1) setSerie(serie - 1);
-            else if (ei > 0) {
-              setEi(ei - 1);
-              setSerie(ejercicios[ei - 1].targetSets);
-            }
-          }}
-        >
-          ‹ Anterior
+        <button className="foco-mini" onClick={saltarEjercicio} disabled={lista.length <= 1}>
+          Saltar ejercicio
         </button>
         <span className="foco-pie-t">
-          {ei + 1} de {ejercicios.length} ejercicios
+          {ei + 1} de {lista.length}
         </span>
-        <button
-          className="foco-mini"
-          disabled={esUltimoEjercicio && esUltimaSerie}
-          onClick={() => {
-            setDescanso(null);
-            avanzar();
-          }}
-        >
-          Saltar ›
+        <button className="foco-mini" disabled={esUltimoEjercicio && esUltimaSerie} onClick={() => avanzar(false)}>
+          Saltar serie ›
         </button>
       </div>
     </div>
@@ -255,24 +379,14 @@ export default function ModoFoco({
 }
 
 /**
- * Notas de entrenador. Son frases fijas elegidas por el momento, no consejo
- * médico ni un plan: recuerdan lo que se olvida cuando llevas una hora dentro.
+ * Notas de entrenador. Frases fijas elegidas por el momento, no consejo médico
+ * ni un plan: recuerdan lo que se olvida cuando llevas una hora dentro.
  */
-function mensajeSerie(
-  serie: number,
-  ejercicio: EjercicioEnSesion,
-  esUltimoEjercicio: boolean,
-  antes: { weight: string | null; reps: number | null; seconds: number | null } | undefined,
-  medida: string,
-): string {
+function mensajeSerie(serie: number, ejercicio: EjercicioEnSesion, esUltimoEjercicio: boolean, esCastigo: boolean): string {
+  if (esCastigo) return 'Esta va limpia: peso que controlas y técnica perfecta.';
   if (serie === ejercicio.targetSets && esUltimoEjercicio) return 'Última serie del día. Déjalo todo aquí.';
   if (serie === ejercicio.targetSets) return 'Última de este ejercicio. Aquí es donde se gana.';
-  if (serie === 1) return 'Primera serie: técnica antes que peso.';
-
-  const anterior = antes?.reps ?? null;
-  const ahora = medida.trim() === '' ? null : Number(medida);
-  if (anterior != null && ahora != null && ahora > anterior) return `Vas por encima de la última vez. Sin romper la forma.`;
-  if (serie === 2) return 'La segunda es la que marca el ritmo del resto.';
+  if (serie === 1) return 'Técnica antes que peso.';
   return 'Controla la bajada: es donde está el trabajo de verdad.';
 }
 
@@ -283,12 +397,9 @@ function mensajeDescanso(
   ejercicio: EjercicioEnSesion,
   serie: number,
 ): string {
-  if (quedan === 0) {
-    if (esUltimaSerie && esUltimoEjercicio) return 'Ya está. Solo queda cerrar el entrenamiento.';
-    if (esUltimaSerie) return 'Siguiente ejercicio.';
-    return `Toca la serie ${serie + 1} de ${ejercicio.targetSets}.`;
-  }
   if (quedan > 60) return 'Respira por la nariz y suelta despacio.';
   if (quedan > 25) return 'Colócate y repasa el primer movimiento.';
-  return 'Preparado.';
+  if (esUltimaSerie && esUltimoEjercicio) return 'La última del día. Cuando quieras.';
+  if (esUltimaSerie) return `Última de ${ejercicio.name.toLowerCase()}.`;
+  return `Ahora la ${serie} de ${ejercicio.targetSets}.`;
 }

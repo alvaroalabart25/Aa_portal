@@ -747,6 +747,8 @@ export const gymSessions = mysqlTable('gym_sessions', {
   // reventado y contento, o fresco y de bajón. Un solo número los taparía.
   energy: int('energy'),
   feeling: int('feeling'),
+  // cuándo se avisó de «¿has acabado?», para no repetirlo cada hora
+  nudgedAt: datetime('nudged_at'),
   notes: text('notes'),
 });
 
@@ -771,9 +773,17 @@ export const gymSets = mysqlTable('gym_sets', {
     .references(() => gymExercises.id),
   exerciseName: varchar('exercise_name', { length: 160 }).notNull(),
   setNumber: int('set_number').notNull(),
+  // Los tiempos de verdad: lo que se descansó ANTES de esta serie y lo que duró
+  // la serie. Son la materia prima del descanso adaptativo, y sin medirlos no
+  // hay forma de saber que hoy necesitas el doble que el martes.
+  restBefore: int('rest_before'),
+  duration: int('duration'),
   reps: int('reps'),
+  // lo que ibas a hacer: la diferencia con `reps` es lo que dispara el castigo
+  plannedReps: int('planned_reps'),
   seconds: int('seconds'),
   weight: decimal('weight', { precision: 6, scale: 2 }),
+  punishment: int('punishment').notNull().default(0),
   createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 

@@ -60,10 +60,13 @@ function weekdayOf(iso: string): number {
 }
 
 // Tipos de aviso disponibles (el configurador los pinta de aquí)
-export const NOTIFICATION_TYPES: Array<{ type: string; label: string; defaultTime: string }> = [
+export const NOTIFICATION_TYPES: Array<{ type: string; label: string; defaultTime: string; sinHora?: boolean }> = [
   { type: 'tasks_due', label: 'Tareas que vencen hoy', defaultTime: '08:30' },
   { type: 'events_radar', label: 'Eventos importantes (hitos del radar)', defaultTime: '09:00' },
   { type: 'routine_incomplete', label: 'Rutina incompleta', defaultTime: '21:00' },
+  // Este no va por hora: salta cuando llevas un rato sin apuntar nada en el
+  // gimnasio. Por eso lleva `sinHora` y el configurador no le pinta reloj.
+  { type: 'gym_activa', label: '¿Sigues entrenando? (sesión de gimnasio parada)', defaultTime: '00:00', sinHora: true },
 ];
 
 async function sendToUser(userId: number, payload: { title: string; body: string; url?: string }) {
@@ -203,6 +206,7 @@ pushModule.get('/prefs', ah(async (req: AuthedRequest, res) => {
       label: t.label,
       enabled: byType.has(t.type) ? byType.get(t.type)!.enabled === 1 : true,
       sendTime: byType.get(t.type)?.sendTime ?? t.defaultTime,
+      sinHora: t.sinHora ?? false,
     })),
   });
 }));
@@ -308,39 +312,14 @@ pushRunner.post('/run', ah(async (req, res) => {
   const allUsers = await db.select({ id: users.id }).from(users);
   const results: Array<{ user: number; type: string; sent: number }> = [];
 
-  // Aviso de gimnasio: no va por hora fija como los demás, va por condición
-  // —hay una sesión abierta y hace rato que no apuntas nada—, así que se
-  // comprueba en cada pasada. Como el disparador externo corre una vez por
-  // hora, el aviso puede llegar hasta una hora tarde: es el precio de no tener
-  // un servidor despierto todo el rato.
-  const olvidadas = await db
-    .select({
-      id: gymSessions.id,
-      userId: gymSessions.userId,
-      dayName: gymDays.name,
-      series: sql<number>`(select count(*) from gym_sets gs where gs.session_id = gym_sessions.id)`,
-      lastSet: sql<string | null>`(select max(gs.created_at) from gym_sets gs where gs.session_id = gym_sessions.id)`,
-    })
-    .from(gymSessions)
-    .innerJoin(gymDays, eq(gymSessions.dayId, gymDays.id))
-    .where(and(isNull(gymSessions.endedAt), isNull(gymSessions.nudgedAt)));
-
-  for (const s of olvidadas) {
-    if (Number(s.series) === 0 || !s.lastSet) continue;
-    if ((Date.now() - new Date(s.lastSet).getTime()) / 60000 < 90) continue;
-    await db.update(gymSessions).set({ nudgedAt: new Date() }).where(eq(gymSessions.id, s.id));
-    const sent = await sendToUser(s.userId, {
-      title: '¿Has acabado de entrenar?',
-      body: `${s.dayName}: ${s.series} series apuntadas y la sesión sigue abierta. Ciérrala y cuenta cómo fue.`,
-      url: '/gimnasio',
-    });
-    results.push({ user: s.userId, type: 'gym_abierta', sent });
-  }
+  const delGym = await avisarGimnasio();
+  results.push(...delGym);
 
   for (const u of allUsers) {
     const rows = await db.select().from(notificationPrefs).where(eq(notificationPrefs.userId, u.id));
     const byType = new Map(rows.map((r) => [r.type, r]));
     for (const t of NOTIFICATION_TYPES) {
+      if (t.sinHora) continue; // ese va por su cuenta, no por hora
       const pref = byType.get(t.type);
       const enabled = pref ? pref.enabled === 1 : true;
       const sendTime = pref?.sendTime ?? t.defaultTime;
@@ -366,3 +345,55 @@ pushRunner.post('/run', ah(async (req, res) => {
 
 // referencia usada solo para tipado/documentación del radar
 void spaces;
+
+
+/** Minutos sin apuntar una serie tras los que preguntamos si sigue entrenando. */
+export const MINUTOS_PARA_PREGUNTAR = 10;
+
+/**
+ * «¿Sigues entrenando?»: la sesión sigue abierta y hace rato que no apuntas
+ * nada. No va por hora como el resto de avisos, va por condición, así que lo
+ * llama el reloj interno de la API cada pocos minutos y no el cron de fuera
+ * (que solo pasa una vez por hora y llegaría tardísimo).
+ *
+ * Se pregunta, no se cierra: cerrar por él sería decidir cuándo acabó. Y el
+ * aviso se rearma solo en cuanto apunta otra serie.
+ */
+export async function avisarGimnasio(): Promise<Array<{ user: number; type: string; sent: number }>> {
+  if (!vapidConfigured()) return [];
+  setupVapid();
+
+  const abiertas = await db
+    .select({
+      id: gymSessions.id,
+      userId: gymSessions.userId,
+      dayName: gymDays.name,
+      series: sql<number>`(select count(*) from gym_sets gs where gs.session_id = gym_sessions.id)`,
+      lastSet: sql<string | null>`(select max(gs.created_at) from gym_sets gs where gs.session_id = gym_sessions.id)`,
+    })
+    .from(gymSessions)
+    .innerJoin(gymDays, eq(gymSessions.dayId, gymDays.id))
+    .where(and(isNull(gymSessions.endedAt), isNull(gymSessions.nudgedAt)));
+
+  const salida: Array<{ user: number; type: string; sent: number }> = [];
+  for (const s of abiertas) {
+    if (Number(s.series) === 0 || !s.lastSet) continue;
+    const minutos = (Date.now() - new Date(s.lastSet).getTime()) / 60000;
+    if (minutos < MINUTOS_PARA_PREGUNTAR) continue;
+
+    const [pref] = await db
+      .select()
+      .from(notificationPrefs)
+      .where(and(eq(notificationPrefs.userId, s.userId), eq(notificationPrefs.type, 'gym_activa')));
+    if (pref && pref.enabled === 0) continue;
+
+    await db.update(gymSessions).set({ nudgedAt: new Date() }).where(eq(gymSessions.id, s.id));
+    const sent = await sendToUser(s.userId, {
+      title: '¿Sigues entrenando?',
+      body: `${s.dayName}: llevas ${Math.round(minutos)} min sin apuntar nada. Si ya has acabado, ciérralo y cuenta cómo fue.`,
+      url: '/gimnasio',
+    });
+    salida.push({ user: s.userId, type: 'gym_activa', sent });
+  }
+  return salida;
+}

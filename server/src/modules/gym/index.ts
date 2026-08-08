@@ -389,6 +389,10 @@ gymModule.post('/sesiones/:id(\\d+)/series', ah(async (req: AuthedRequest, res) 
     sessionId: id,
     userId: req.userId!,
   });
+  // Apuntar una serie es la prueba de que sigues entrenando: se rearma el aviso
+  // para que pueda volver a saltar si te paras de nuevo.
+  await db.update(gymSessions).set({ nudgedAt: null }).where(eq(gymSessions.id, id));
+
   const [row] = await db.select().from(gymSets).where(eq(gymSets.id, r.insertId));
   res.status(201).json(row);
 }));

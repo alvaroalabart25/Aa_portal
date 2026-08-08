@@ -6,6 +6,8 @@ interface Pref {
   label: string;
   enabled: boolean;
   sendTime: string;
+  /** avisos que no van por hora sino por condición */
+  sinHora?: boolean;
 }
 
 function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
@@ -157,13 +159,21 @@ export default function NotificacionesPage() {
                 <input type="checkbox" checked={p.enabled} onChange={(e) => updatePref(p, { enabled: e.target.checked })} />
                 {p.label}
               </label>
-              <select value={p.sendTime} disabled={!p.enabled} onChange={(e) => updatePref(p, { sendTime: e.target.value })} style={{ padding: '4px 8px' }}>
-                {HOURS.map((h) => (
-                  <option key={h} value={h}>
-                    {h}
-                  </option>
-                ))}
-              </select>
+              {/* Los avisos por condición no tienen hora: pintar un reloj que no
+                  hace nada sería mentir sobre cómo funcionan. */}
+              {p.sinHora ? (
+                <span className="muted" style={{ fontSize: 12.5 }}>
+                  cuando toca
+                </span>
+              ) : (
+                <select value={p.sendTime} disabled={!p.enabled} onChange={(e) => updatePref(p, { sendTime: e.target.value })} style={{ padding: '4px 8px' }}>
+                  {HOURS.map((h) => (
+                    <option key={h} value={h}>
+                      {h}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           ))}
         </div>

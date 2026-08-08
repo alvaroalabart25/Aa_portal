@@ -12,7 +12,7 @@ import { roadmapModule } from './modules/roadmap';
 import { routineModule } from './modules/routine';
 import { healthModule } from './modules/health';
 import { diaryModule } from './modules/diary';
-import { pushModule, pushRunner } from './modules/push';
+import { avisarGimnasio, pushModule, pushRunner } from './modules/push';
 import { trackModule, trackSetup } from './modules/track';
 import { dreamImagesRouter, dreamsModule } from './modules/dreams';
 import { focusModule } from './modules/focus';
@@ -172,3 +172,11 @@ if (selfPingUrl) {
   }, 10 * 60 * 1000);
   console.log('Despertador interno activo (siesta 1:00-6:00 Madrid)');
 }
+
+// «¿Sigues entrenando?»: este aviso no puede esperar al cron de fuera, que pasa
+// una vez por hora. Lo mira el propio proceso cada 5 minutos, que es la
+// resolución que hace falta para una regla de 10. Solo funciona con la API
+// despierta; el despertador de arriba se encarga de eso durante el día.
+setInterval(() => {
+  void avisarGimnasio().catch((e) => console.error('[gym] aviso fallido:', (e as Error).message.slice(0, 120)));
+}, 5 * 60 * 1000);

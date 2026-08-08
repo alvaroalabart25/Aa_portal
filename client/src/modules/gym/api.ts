@@ -106,6 +106,9 @@ export interface Sesion {
   sessionDate: string;
   startedAt: string;
   endedAt: string | null;
+  /** cómo se vio, del 1 al 5; dos ejes distintos */
+  energy: number | null;
+  feeling: number | null;
   notes: string | null;
 }
 
@@ -127,6 +130,8 @@ export interface SesionHistorial {
   sessionDate: string;
   startedAt: string;
   endedAt: string | null;
+  energy: number | null;
+  feeling: number | null;
   notes: string | null;
   sets: number;
   volume: string | null;
@@ -178,7 +183,8 @@ export const gymApi = {
     data: { exerciseId: number; setNumber: number; reps?: number | null; seconds?: number | null; weight?: number | null },
   ) => post<Serie>(`/gym/sesiones/${id}/series`, data),
   borrarSerie: (id: number, serieId: number) => del<{ deleted: boolean }>(`/gym/sesiones/${id}/series/${serieId}`),
-  cerrar: (id: number, notes?: string | null) => post<Sesion>(`/gym/sesiones/${id}/cerrar`, { notes }),
+  cerrar: (id: number, encuesta: { notes?: string | null; energy?: number; feeling?: number } = {}) =>
+    post<Sesion>(`/gym/sesiones/${id}/cerrar`, encuesta),
   tirar: (id: number) => del<{ deleted: boolean }>(`/gym/sesiones/${id}`),
   historial: (limit = 30) => get<SesionHistorial[]>(`/gym/historial?limit=${limit}`),
 

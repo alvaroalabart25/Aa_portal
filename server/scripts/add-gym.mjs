@@ -108,6 +108,11 @@ const COLUMNAS = [
   // Partes dentro del bloque: «pecho» no dice si trabajas el superior o solo el
   // medio. `muscles` se calcula a partir de aquí, no se escribe a mano.
   ['gym_exercises', 'parts', "ADD COLUMN parts varchar(320) NOT NULL DEFAULT '' AFTER muscles"],
+  // Cómo te viste, del 1 al 5. Dos ejes porque no son lo mismo: se puede acabar
+  // reventado y contento, o fresco y de bajón. Mezclarlos borraría justo lo que
+  // interesa mirar cuando algo se repite.
+  ['gym_sessions', 'energy', 'ADD COLUMN energy tinyint NULL AFTER ended_at'],
+  ['gym_sessions', 'feeling', 'ADD COLUMN feeling tinyint NULL AFTER energy'],
 ];
 for (const [tabla, columna, ddl] of COLUMNAS) {
   const [hay] = await conn.query(

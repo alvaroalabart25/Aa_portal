@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import Celebracion from './Celebracion';
 import { EjercicioModal } from './modals';
 import ModoFoco from './ModoFoco';
 import {
@@ -29,10 +30,10 @@ export default function SesionPage() {
   const [datos, setDatos] = useState<SesionDetalle | null>(null);
   const [dias, setDias] = useState<DiaRutina[]>([]);
   const [condiciones, setCondiciones] = useState<Condicionante[]>([]);
-  const [cerrando, setCerrando] = useState(false);
   const [error, setError] = useState('');
   const [foco, setFoco] = useState(false);
   const [editando, setEditando] = useState<EjercicioEnSesion | null>(null);
+  const [celebrando, setCelebrando] = useState(false);
 
   const cargar = useCallback(async () => setDatos(await gymApi.sesion(sesionId)), [sesionId]);
   useEffect(() => {
@@ -54,13 +55,26 @@ export default function SesionPage() {
       navigate('/gimnasio');
       return;
     }
-    setCerrando(true);
-    try {
-      await gymApi.cerrar(sesionId);
-      navigate('/gimnasio');
-    } finally {
-      setCerrando(false);
-    }
+    // la sesión se cierra en la pantalla de fiesta, junto con la encuesta: es
+    // el único momento en que uno se acuerda de cómo se ha visto
+    setCelebrando(true);
+  }
+
+  if (celebrando) {
+    const volumen = datos.exercises.reduce(
+      (n, e) => n + e.done.reduce((m, d) => m + (d.weight && d.reps ? Number(d.weight) * d.reps : 0), 0),
+      0,
+    );
+    const min = Math.round((Date.now() - new Date(datos.session.startedAt).getTime()) / 60000);
+    return (
+      <Celebracion
+        sesionId={sesionId}
+        series={hechas}
+        volumen={volumen || null}
+        minutos={min > 0 && min < 300 ? min : null}
+        onHecho={() => navigate('/gimnasio')}
+      />
+    );
   }
 
   if (foco) {
@@ -143,12 +157,10 @@ export default function SesionPage() {
         <>
           {/* dos cosas distintas y con nombres distintos: terminar GUARDA lo
               hecho, descartar lo BORRA. «Tirar» valía para las dos. */}
-          <button className="btn gy-terminar" disabled={cerrando} onClick={terminar}>
-            {cerrando
-              ? 'Guardando…'
-              : hechas === 0
-                ? 'Descartar · al final no lo hago'
-                : `Terminar y guardar · ${hechas} ${hechas === 1 ? 'serie' : 'series'}`}
+          <button className="btn gy-terminar" onClick={terminar}>
+            {hechas === 0
+              ? 'Descartar · al final no lo hago'
+              : `Terminar y guardar · ${hechas} ${hechas === 1 ? 'serie' : 'series'}`}
           </button>
           {/* tirarla siempre a mano: entrar por error con series ya apuntadas
               también pasa, y no puede obligarte a cerrar un entrenamiento falso */}

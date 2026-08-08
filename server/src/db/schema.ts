@@ -743,6 +743,10 @@ export const gymSessions = mysqlTable('gym_sessions', {
   sessionDate: date('session_date', { mode: 'string' }).notNull(),
   startedAt: datetime('started_at').notNull().default(sql`CURRENT_TIMESTAMP`),
   endedAt: datetime('ended_at'),
+  // Cómo se vio, del 1 al 5. Dos ejes porque no son lo mismo: se puede acabar
+  // reventado y contento, o fresco y de bajón. Un solo número los taparía.
+  energy: int('energy'),
+  feeling: int('feeling'),
   notes: text('notes'),
 });
 

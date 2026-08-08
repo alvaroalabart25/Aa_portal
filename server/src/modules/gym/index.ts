@@ -421,10 +421,22 @@ gymModule.patch('/sesiones/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
 
 gymModule.post('/sesiones/:id(\\d+)/cerrar', ah(async (req: AuthedRequest, res) => {
   const id = Number(req.params.id);
-  const parsed = z.object({ notes: z.string().max(4000).nullish() }).safeParse(req.body ?? {});
+  const parsed = z
+    .object({
+      notes: z.string().max(4000).nullish(),
+      energy: z.number().int().min(1).max(5).nullish(),
+      feeling: z.number().int().min(1).max(5).nullish(),
+    })
+    .safeParse(req.body ?? {});
+  const encuesta: Record<string, unknown> = {};
+  if (parsed.success) {
+    if (parsed.data.notes !== undefined) encuesta.notes = parsed.data.notes;
+    if (parsed.data.energy !== undefined) encuesta.energy = parsed.data.energy;
+    if (parsed.data.feeling !== undefined) encuesta.feeling = parsed.data.feeling;
+  }
   const [r] = await db
     .update(gymSessions)
-    .set({ endedAt: new Date(), ...(parsed.success && parsed.data.notes !== undefined ? { notes: parsed.data.notes } : {}) })
+    .set({ endedAt: new Date(), ...encuesta })
     .where(and(eq(gymSessions.id, id), eq(gymSessions.userId, req.userId!), isNull(gymSessions.endedAt)));
   if (r.affectedRows === 0) return res.status(404).json({ error: 'Sesión no encontrada o ya cerrada' });
   const [row] = await db.select().from(gymSessions).where(eq(gymSessions.id, id));
@@ -459,6 +471,8 @@ gymModule.get('/historial', ah(async (req: AuthedRequest, res) => {
       sessionDate: gymSessions.sessionDate,
       startedAt: gymSessions.startedAt,
       endedAt: gymSessions.endedAt,
+      energy: gymSessions.energy,
+      feeling: gymSessions.feeling,
       notes: gymSessions.notes,
       sets: sql<number>`(select count(*) from gym_sets gs where gs.session_id = gym_sessions.id)`,
       // volumen = suma de peso × repeticiones; sin peso (dominadas) no suma

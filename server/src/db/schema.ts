@@ -710,6 +710,9 @@ export const gymExercises = mysqlTable('gym_exercises', {
   // porque con texto libre se puede pintar la etiqueta pero no contar qué
   // bloque muscular se está quedando sin trabajar.
   muscles: varchar('muscles', { length: 240 }).notNull().default(''),
+  // Partes dentro del bloque: «pecho» no dice si trabajas el superior o solo el
+  // medio, y esa es justo la pregunta. `muscles` se deriva de aquí.
+  parts: varchar('parts', { length: 320 }).notNull().default(''),
   name: varchar('name', { length: 160 }).notNull(),
   // Una plancha no se mide en repeticiones, se mide en segundos
   kind: mysqlEnum('kind', ['repes', 'tiempo']).notNull().default('repes'),
@@ -807,3 +810,33 @@ export const gymGoals = mysqlTable('gym_goals', {
 });
 
 export type GymGoal = typeof gymGoals.$inferSelect;
+
+/**
+ * Condicionantes del cuerpo: lesiones y limitaciones con las que se convive.
+ *
+ * Aparte de los objetivos a propósito: un objetivo es algo a conseguir y esto
+ * es algo con lo que se entrena. Lleva los músculos afectados para poder avisar
+ * en el propio ejercicio, que es donde sirve de algo.
+ */
+export const gymConditions = mysqlTable('gym_conditions', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  title: varchar('title', { length: 160 }).notNull(),
+  side: mysqlEnum('side', ['izquierdo', 'derecho', 'ambos', 'na']).notNull().default('na'),
+  muscles: varchar('muscles', { length: 240 }).notNull().default(''),
+  severity: mysqlEnum('severity', ['cuidado', 'evitar']).notNull().default('cuidado'),
+  advice: text('advice'),
+  notes: text('notes'),
+  since: date('since', { mode: 'string' }),
+  status: mysqlEnum('status', ['activo', 'superado']).notNull().default('activo'),
+  sortOrder: int('sort_order').notNull().default(0),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`)
+    .$onUpdateFn(() => new Date()),
+});
+
+export type GymCondition = typeof gymConditions.$inferSelect;

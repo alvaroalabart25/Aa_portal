@@ -3,8 +3,9 @@ import { z } from 'zod';
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { ah } from '../../lib/async';
 import { db } from '../../db';
-import { gymDays, gymExercises, gymGoals, gymSessions, gymSets, healthEntries } from '../../db/schema';
+import { gymConditions, gymDays, gymExercises, gymGoals, gymSessions, gymSets, healthEntries } from '../../db/schema';
 import type { AuthedRequest } from '../../core/auth/middleware';
+import { limpiarPartes, musculosDePartes, PARTES } from './partes';
 
 /**
  * Gimnasio: la rutina y lo que de verdad se levanta.
@@ -20,8 +21,9 @@ import type { AuthedRequest } from '../../core/auth/middleware';
  */
 export const gymModule = Router();
 
-/** Lista cerrada. Con texto libre se puede pintar la etiqueta, pero no contar
- *  qué bloque muscular se está quedando sin trabajar. */
+/** Los bloques. Los ejercicios se etiquetan por PARTE (ver partes.ts) y el
+ *  bloque sale de ahí; esta lista la usan los condicionantes, que sí van por
+ *  zona entera («el hombro derecho»). */
 export const MUSCULOS = [
   'pecho',
   'espalda',
@@ -42,8 +44,10 @@ function hoyMadrid(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid', dateStyle: 'short' }).format(new Date());
 }
 
-const limpiarMusculos = (v: string) =>
-  [...new Set(v.split(',').map((m) => m.trim().toLowerCase()).filter((m) => (MUSCULOS as readonly string[]).includes(m)))].join(',');
+/** GET /partes — el catálogo, para que el cliente no lo copie y se desincronice. */
+gymModule.get('/partes', ah(async (_req, res) => {
+  res.json(PARTES);
+}));
 
 // ---------- La rutina ----------
 
@@ -126,7 +130,7 @@ gymModule.delete('/dias/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
 const ejercicioInput = z.object({
   dayId: z.number().int().positive(),
   name: z.string().trim().min(1).max(160),
-  muscles: z.string().max(240).default(''),
+  parts: z.string().max(320).default(''),
   kind: z.enum(['repes', 'tiempo']).default('repes'),
   targetSets: z.number().int().min(1).max(20).default(4),
   targetReps: z.string().trim().max(20).default('8-10'),
@@ -149,10 +153,13 @@ gymModule.post('/ejercicios', ah(async (req: AuthedRequest, res) => {
     .from(gymExercises)
     .where(and(eq(gymExercises.dayId, parsed.data.dayId), isNull(gymExercises.archivedAt)));
 
-  const { targetWeight, ...resto } = parsed.data;
+  const { targetWeight, parts, ...resto } = parsed.data;
+  const partes = limpiarPartes(parts);
   const [r] = await db.insert(gymExercises).values({
     ...resto,
-    muscles: limpiarMusculos(resto.muscles),
+    parts: partes,
+    // el bloque se deriva de las partes: un solo sitio donde decirlo
+    muscles: musculosDePartes(partes),
     targetWeight: targetWeight == null ? null : String(targetWeight),
     userId: req.userId!,
     sortOrder: Number(n),
@@ -164,10 +171,14 @@ gymModule.post('/ejercicios', ah(async (req: AuthedRequest, res) => {
 gymModule.patch('/ejercicios/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
   const parsed = ejercicioInput.omit({ dayId: true }).partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
-  const { targetWeight, muscles, ...resto } = parsed.data;
+  const { targetWeight, parts, ...resto } = parsed.data;
   const datos: Record<string, unknown> = { ...resto };
   if (targetWeight !== undefined) datos.targetWeight = targetWeight == null ? null : String(targetWeight);
-  if (muscles !== undefined) datos.muscles = limpiarMusculos(muscles);
+  if (parts !== undefined) {
+    const partes = limpiarPartes(parts);
+    datos.parts = partes;
+    datos.muscles = musculosDePartes(partes);
+  }
   const [r] = await db
     .update(gymExercises)
     .set(datos)
@@ -360,6 +371,41 @@ gymModule.delete('/sesiones/:id(\\d+)/series/:serie(\\d+)', ah(async (req: Authe
   res.json({ deleted: true });
 }));
 
+/**
+ * PATCH /sesiones/:id — cambiar de día una sesión que se abrió equivocada.
+ *
+ * Solo si no hay ninguna serie apuntada: con series ya hechas, cambiar el día
+ * sería mover a otro sitio un trabajo que se hizo en este. Ahí toca cerrarla o
+ * tirarla.
+ */
+gymModule.patch('/sesiones/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
+  const id = Number(req.params.id);
+  const parsed = z.object({ dayId: z.number().int().positive() }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
+
+  const [sesion] = await db
+    .select()
+    .from(gymSessions)
+    .where(and(eq(gymSessions.id, id), eq(gymSessions.userId, req.userId!)));
+  if (!sesion) return res.status(404).json({ error: 'Sesión no encontrada' });
+  if (sesion.endedAt) return res.status(400).json({ error: 'La sesión ya está cerrada' });
+
+  const [{ n }] = await db.select({ n: sql<number>`count(*)` }).from(gymSets).where(eq(gymSets.sessionId, id));
+  if (Number(n) > 0) {
+    return res.status(400).json({ error: 'Ya hay series apuntadas: cierra la sesión o tírala antes de cambiar de día' });
+  }
+
+  const [dia] = await db
+    .select({ id: gymDays.id })
+    .from(gymDays)
+    .where(and(eq(gymDays.id, parsed.data.dayId), eq(gymDays.userId, req.userId!)));
+  if (!dia) return res.status(400).json({ error: 'Ese día no existe' });
+
+  await db.update(gymSessions).set({ dayId: parsed.data.dayId }).where(eq(gymSessions.id, id));
+  const [row] = await db.select().from(gymSessions).where(eq(gymSessions.id, id));
+  res.json(row);
+}));
+
 gymModule.post('/sesiones/:id(\\d+)/cerrar', ah(async (req: AuthedRequest, res) => {
   const id = Number(req.params.id);
   const parsed = z.object({ notes: z.string().max(4000).nullish() }).safeParse(req.body ?? {});
@@ -534,5 +580,74 @@ gymModule.delete('/objetivos/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
     .delete(gymGoals)
     .where(and(eq(gymGoals.id, Number(req.params.id)), eq(gymGoals.userId, req.userId!)));
   if (r.affectedRows === 0) return res.status(404).json({ error: 'Objetivo no encontrado' });
+  res.json({ deleted: true });
+}));
+
+// ---------- Condicionantes del cuerpo ----------
+
+const condicionInput = z.object({
+  title: z.string().trim().min(1).max(160),
+  side: z.enum(['izquierdo', 'derecho', 'ambos', 'na']).default('na'),
+  muscles: z.string().max(240).default(''),
+  severity: z.enum(['cuidado', 'evitar']).default('cuidado'),
+  advice: z.string().max(4000).nullish(),
+  notes: z.string().max(4000).nullish(),
+  since: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullish(),
+  status: z.enum(['activo', 'superado']).optional(),
+});
+
+const limpiarBloques = (v: string) =>
+  [...new Set(v.split(',').map((m) => m.trim().toLowerCase()).filter((m) => (MUSCULOS as readonly string[]).includes(m)))].join(',');
+
+/**
+ * Lo que condiciona el entrenamiento: una lesión, una limitación, una zona
+ * delicada. Va etiquetado por bloque para poder avisar en el propio ejercicio,
+ * que es donde sirve de algo y no en una pantalla que no se abre nunca.
+ */
+gymModule.get('/condicionantes', ah(async (req: AuthedRequest, res) => {
+  const filas = await db
+    .select()
+    .from(gymConditions)
+    .where(eq(gymConditions.userId, req.userId!))
+    .orderBy(asc(gymConditions.sortOrder), asc(gymConditions.id));
+  res.json(filas);
+}));
+
+gymModule.post('/condicionantes', ah(async (req: AuthedRequest, res) => {
+  const parsed = condicionInput.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
+  const [{ n }] = await db
+    .select({ n: sql<number>`count(*)` })
+    .from(gymConditions)
+    .where(eq(gymConditions.userId, req.userId!));
+  const [r] = await db.insert(gymConditions).values({
+    ...parsed.data,
+    muscles: limpiarBloques(parsed.data.muscles),
+    userId: req.userId!,
+    sortOrder: Number(n),
+  });
+  const [row] = await db.select().from(gymConditions).where(eq(gymConditions.id, r.insertId));
+  res.status(201).json(row);
+}));
+
+gymModule.patch('/condicionantes/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
+  const parsed = condicionInput.partial().safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
+  const datos: Record<string, unknown> = { ...parsed.data };
+  if (parsed.data.muscles !== undefined) datos.muscles = limpiarBloques(parsed.data.muscles);
+  const [r] = await db
+    .update(gymConditions)
+    .set(datos)
+    .where(and(eq(gymConditions.id, Number(req.params.id)), eq(gymConditions.userId, req.userId!)));
+  if (r.affectedRows === 0) return res.status(404).json({ error: 'Condicionante no encontrado' });
+  const [row] = await db.select().from(gymConditions).where(eq(gymConditions.id, Number(req.params.id)));
+  res.json(row);
+}));
+
+gymModule.delete('/condicionantes/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
+  const [r] = await db
+    .delete(gymConditions)
+    .where(and(eq(gymConditions.id, Number(req.params.id)), eq(gymConditions.userId, req.userId!)));
+  if (r.affectedRows === 0) return res.status(404).json({ error: 'Condicionante no encontrado' });
   res.json({ deleted: true });
 }));

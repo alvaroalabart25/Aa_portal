@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { gymApi, kg, listaMusculos, nombreMusculo, numTxt, type EjercicioEnSesion, type SesionDetalle } from './api';
+import {
+  gymApi,
+  kg,
+  listaMusculos,
+  nombreMusculo,
+  numTxt,
+  type Condicionante,
+  type DiaRutina,
+  type EjercicioEnSesion,
+  type SesionDetalle,
+} from './api';
 
 /**
  * Seguir el entrenamiento, serie a serie.
@@ -15,11 +25,16 @@ export default function SesionPage() {
   const sesionId = Number(id);
   const navigate = useNavigate();
   const [datos, setDatos] = useState<SesionDetalle | null>(null);
+  const [dias, setDias] = useState<DiaRutina[]>([]);
+  const [condiciones, setCondiciones] = useState<Condicionante[]>([]);
   const [cerrando, setCerrando] = useState(false);
+  const [error, setError] = useState('');
 
   const cargar = useCallback(async () => setDatos(await gymApi.sesion(sesionId)), [sesionId]);
   useEffect(() => {
     cargar();
+    gymApi.rutina().then((r) => setDias(r.days)).catch(() => {});
+    gymApi.condicionantes().then((c) => setCondiciones(c.filter((x) => x.status === 'activo'))).catch(() => {});
   }, [cargar]);
 
   if (!datos) return <p className="muted">Cargando…</p>;
@@ -62,8 +77,42 @@ export default function SesionPage() {
         </div>
       </div>
 
+      {/* Equivocarse de día al entrar es lo más fácil del mundo: mientras no
+          haya nada apuntado, se cambia aquí mismo. */}
+      {!cerrada && hechas === 0 && dias.length > 1 && (
+        <label className="gy-cambiar">
+          <span>¿No era este día?</span>
+          <select
+            value={datos.session.dayId}
+            onChange={async (e) => {
+              setError('');
+              try {
+                await gymApi.cambiarDia(sesionId, Number(e.target.value));
+                await cargar();
+              } catch (err) {
+                setError(err instanceof Error ? err.message : 'No se pudo cambiar');
+              }
+            }}
+          >
+            {dias.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {error && <div className="error-msg">{error}</div>}
+
       {datos.exercises.map((e) => (
-        <BloqueEjercicio key={e.id} ejercicio={e} sesionId={sesionId} onCambio={cargar} bloqueado={cerrada} />
+        <BloqueEjercicio
+          key={e.id}
+          ejercicio={e}
+          sesionId={sesionId}
+          onCambio={cargar}
+          bloqueado={cerrada}
+          condiciones={condiciones}
+        />
       ))}
 
       {!cerrada && (
@@ -81,14 +130,21 @@ function BloqueEjercicio({
   sesionId,
   onCambio,
   bloqueado,
+  condiciones,
 }: {
   ejercicio: EjercicioEnSesion;
   sesionId: number;
   onCambio: () => void;
   bloqueado: boolean;
+  condiciones: Condicionante[];
 }) {
   const series = Array.from({ length: ejercicio.targetSets }, (_, i) => i + 1);
   const completo = ejercicio.done.length >= ejercicio.targetSets;
+  // El aviso sale aquí, delante del ejercicio, y no en una pantalla aparte que
+  // no se abre con el móvil en la mano y sudando
+  const avisos = condiciones.filter((c) =>
+    listaMusculos(c.muscles).some((m) => listaMusculos(ejercicio.muscles).includes(m)),
+  );
 
   return (
     <section className={`gy-bloque${completo ? ' hecho' : ''}`}>
@@ -106,6 +162,17 @@ function BloqueEjercicio({
         </div>
         {completo && <span className="gy-tic">✓</span>}
       </div>
+
+      {avisos.map((c) => (
+        <p key={c.id} className={`gy-aviso ${c.severity}`}>
+          <strong>
+            {c.severity === 'evitar' ? 'Evitar' : 'Ojo'}
+            {c.side !== 'na' ? ` · ${c.side}` : ''}:
+          </strong>{' '}
+          {c.title}
+          {c.advice ? ` — ${c.advice}` : ''}
+        </p>
+      ))}
 
       {ejercicio.notes && <p className="gy-bloque-nota">{ejercicio.notes}</p>}
 

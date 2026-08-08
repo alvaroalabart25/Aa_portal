@@ -39,10 +39,32 @@ export const MUSCULOS: { id: Musculo; label: string; zona: 'Tren superior' | 'Co
 export const nombreMusculo = (id: string) => MUSCULOS.find((m) => m.id === id)?.label ?? id;
 export const listaMusculos = (v: string) => (v ? v.split(',').filter(Boolean) : []);
 
+export interface Parte {
+  id: string;
+  label: string;
+  muscle: Musculo;
+  ideas: string[];
+}
+
+export interface Condicionante {
+  id: number;
+  title: string;
+  side: 'izquierdo' | 'derecho' | 'ambos' | 'na';
+  muscles: string;
+  severity: 'cuidado' | 'evitar';
+  advice: string | null;
+  notes: string | null;
+  since: string | null;
+  status: 'activo' | 'superado';
+  sortOrder: number;
+}
+
 export interface Ejercicio {
   id: number;
   dayId: number;
   muscles: string;
+  /** partes concretas del bloque; el bloque se deriva de aquí */
+  parts: string;
   name: string;
   kind: 'repes' | 'tiempo';
   targetSets: number;
@@ -132,6 +154,8 @@ export interface MetaGym {
 
 export const gymApi = {
   rutina: () => get<Rutina>('/gym/rutina'),
+  // el catálogo vive en el servidor: copiarlo aquí acabaría en dos versiones
+  partes: () => get<Parte[]>('/gym/partes'),
 
   crearDia: (data: { name: string; notes?: string | null }) => post<DiaRutina>('/gym/dias', data),
   editarDia: (id: number, data: Partial<{ name: string; notes: string | null }>) =>
@@ -148,6 +172,7 @@ export const gymApi = {
   sesionAbierta: () => get<Sesion | null>('/gym/sesion/abierta'),
   empezar: (dayId: number) => post<Sesion>('/gym/sesiones', { dayId }),
   sesion: (id: number) => get<SesionDetalle>(`/gym/sesiones/${id}`),
+  cambiarDia: (id: number, dayId: number) => patch<Sesion>(`/gym/sesiones/${id}`, { dayId }),
   marcarSerie: (
     id: number,
     data: { exerciseId: number; setNumber: number; reps?: number | null; seconds?: number | null; weight?: number | null },
@@ -156,6 +181,12 @@ export const gymApi = {
   cerrar: (id: number, notes?: string | null) => post<Sesion>(`/gym/sesiones/${id}/cerrar`, { notes }),
   tirar: (id: number) => del<{ deleted: boolean }>(`/gym/sesiones/${id}`),
   historial: (limit = 30) => get<SesionHistorial[]>(`/gym/historial?limit=${limit}`),
+
+  condicionantes: () => get<Condicionante[]>('/gym/condicionantes'),
+  crearCondicionante: (data: Record<string, unknown>) => post<Condicionante>('/gym/condicionantes', data),
+  editarCondicionante: (id: number, data: Record<string, unknown>) =>
+    patch<Condicionante>(`/gym/condicionantes/${id}`, data),
+  borrarCondicionante: (id: number) => del<{ deleted: boolean }>(`/gym/condicionantes/${id}`),
 
   objetivos: () => get<MetaGym[]>('/gym/objetivos'),
   crearObjetivo: (data: Record<string, unknown>) => post<MetaGym>('/gym/objetivos', data),

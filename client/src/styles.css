@@ -1313,19 +1313,51 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .gy-nombre:hover { text-decoration: underline dotted; }
 .gy-nombre-input { font-family: var(--font-title); font-size: 19px; font-weight: 600; padding: 2px 6px; }
 
-/* Cobertura: qué bloques trabajas y cuáles no */
-.gy-cob { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
-.gy-cob-t { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-muted); }
-.gy-cob-fila { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-.gy-mus {
-  display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
-  border: 1px solid var(--line); border-radius: 99px; padding: 3px 10px; color: var(--ink-muted);
+/* Cobertura: qué bloques trabajas, y por dentro qué partes te faltan */
+.gy-cob { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.gy-bl { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.gy-bl-head {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  border: none; background: none; padding: 11px 13px; cursor: pointer; font: inherit; color: inherit;
 }
-.gy-mus b { font-size: 11.5px; font-weight: 600; }
-.gy-mus.cero { color: var(--danger); border-color: #eed4d4; background: #fdf5f5; }
-.gy-mus.poco { color: #b0640b; border-color: #f0c58a; background: #fdf4e7; }
-.gy-mus.justo { color: var(--ink); }
-.gy-mus.bien { color: var(--paper); background: var(--ink); border-color: var(--ink); }
+.gy-bl-head:hover { background: var(--paper-soft); }
+.gy-bl-n { flex: 1; min-width: 0; font-weight: 500; font-size: 14.5px; }
+.gy-bl-s { flex: 0 0 auto; font-size: 12.5px; color: var(--ink-muted); }
+/* el estado en palabras, que es lo que se lee de un vistazo */
+.gy-bl-e { flex: 0 0 auto; font-size: 11px; border-radius: 99px; padding: 2px 8px; border: 1px solid var(--line); color: var(--ink-muted); }
+.gy-bl-chev { flex: 0 0 auto; color: var(--ink-muted); font-size: 12px; }
+.gy-bl.bien .gy-bl-e { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.gy-bl.parcial .gy-bl-e { color: #b0640b; border-color: #f0c58a; background: #fdf4e7; }
+.gy-bl.cero .gy-bl-e { color: var(--danger); border-color: #eed4d4; background: #fdf5f5; }
+
+.gy-bl-partes { border-top: 1px solid var(--line); padding: 4px 13px 10px; }
+.gy-parte { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; padding: 6px 0; font-size: 13px; }
+.gy-parte-n { flex: 1; min-width: 0; }
+.gy-parte-s { flex: 0 0 auto; font-size: 12.5px; color: var(--ink-muted); }
+.gy-parte.vacia .gy-parte-n { color: var(--danger); }
+.gy-parte-idea { flex: 1 0 100%; font-size: 12px; color: var(--ink-muted); font-style: italic; }
+
+/* Condicionantes: lesiones con las que se entrena */
+.gy-conds { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.gy-cond {
+  display: flex; flex-direction: column; gap: 3px; width: 100%; text-align: left;
+  border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: none; cursor: pointer;
+}
+.gy-cond:hover { border-color: var(--ink-muted); }
+.gy-cond.evitar { border-color: #eed4d4; background: #fdf5f5; }
+.gy-cond.cuidado { border-color: #f0c58a; background: #fdf4e7; }
+.gy-cond-t { font-weight: 600; font-size: 14.5px; display: flex; align-items: center; gap: 8px; }
+.gy-cond-lado { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid currentColor; border-radius: 99px; padding: 1px 7px; opacity: 0.7; font-weight: 500; }
+.gy-cond-m { font-size: 12px; color: var(--ink-muted); }
+.gy-cond-a { font-size: 12.5px; line-height: 1.5; margin-top: 2px; }
+
+/* El aviso, delante del ejercicio: es donde sirve de algo */
+.gy-aviso { font-size: 12.5px; line-height: 1.5; margin: 10px 0 0; padding: 8px 10px; border-radius: 9px; }
+.gy-aviso.evitar { color: #8a1f1f; background: #fdf5f5; border: 1px solid #eed4d4; }
+.gy-aviso.cuidado { color: #7a4708; background: #fdf4e7; border: 1px solid #f0c58a; }
+
+.gy-picker-zona { margin-top: 8px; }
+.gy-picker-t { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-muted); }
 
 /* Selector de músculos del formulario */
 .gy-mus-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
@@ -1377,6 +1409,9 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 }
 .gy-check:hover { border-color: var(--ink); color: var(--ink-muted); }
 .gy-check.puesto { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+
+.gy-cambiar { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; color: var(--ink-muted); }
+.gy-cambiar select { font-size: 13px; padding: 5px 8px; max-width: 240px; }
 
 .gy-terminar { display: block; width: 100%; margin-top: 24px; padding: 14px; font-size: 15px; }
 

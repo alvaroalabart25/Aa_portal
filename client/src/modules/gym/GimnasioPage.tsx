@@ -9,12 +9,14 @@ import {
   nombreMusculo,
   type DiaRutina,
   type Ejercicio,
+  type Condicionante,
   type MetaGym,
+  type Parte,
   type Rutina,
   type Sesion,
   type SesionHistorial,
 } from './api';
-import { EjercicioModal, MetaModal } from './modals';
+import { CondicionanteModal, EjercicioModal, MetaModal } from './modals';
 
 type Vista = 'entrenar' | 'rutina' | 'objetivo';
 
@@ -299,24 +301,44 @@ function NombreDia({ dia, onCambio }: { dia: DiaRutina; onCambio: () => void }) 
 }
 
 /**
- * Qué bloques trabajas y cuáles no.
+ * Qué trabajas y qué te falta, por dentro de cada bloque.
  *
- * Se cuentan las series de una VUELTA completa a la rutina, no de la semana:
- * como no hay días fijos, una semana pueden ser tres días y otra cuatro, y
- * dividir por semanas daría un número que cambia sin que tú cambies nada.
+ * «Pecho: 31 series» no contesta a la pregunta de verdad, que es si tocas todo
+ * el bloque o repites siempre la misma zona. Por eso se cuenta por PARTE y el
+ * bloque se resume a partir de ahí.
+ *
+ * Se cuenta por VUELTA completa a la rutina, no por semana: como no hay días
+ * fijos, una semana pueden ser tres días y otra cuatro, y el número por semana
+ * cambiaría sin que tú cambies nada.
  */
 function Cobertura({ rutina }: { rutina: Rutina }) {
-  const conteo = useMemo(() => {
+  const [partes, setPartes] = useState<Parte[]>([]);
+  const [abierto, setAbierto] = useState<string | null>(null);
+
+  useEffect(() => {
+    gymApi.partes().then(setPartes).catch(() => {});
+  }, []);
+
+  const series = useMemo(() => {
     const m = new Map<string, number>();
     for (const d of rutina.days) {
       for (const e of d.exercises) {
-        for (const mus of listaMusculos(e.muscles)) m.set(mus, (m.get(mus) ?? 0) + e.targetSets);
+        for (const parte of listaMusculos(e.parts)) m.set(parte, (m.get(parte) ?? 0) + e.targetSets);
       }
     }
     return m;
   }, [rutina]);
 
-  const sinTocar = MUSCULOS.filter((m) => !conteo.get(m.id));
+  const bloques = useMemo(() => {
+    return MUSCULOS.map((bloque) => {
+      const suyas = partes.filter((p) => p.muscle === bloque.id);
+      const total = suyas.reduce((n, p) => n + (series.get(p.id) ?? 0), 0);
+      const vacias = suyas.filter((p) => !series.get(p.id));
+      return { bloque, partes: suyas, total, vacias };
+    }).filter((b) => b.partes.length > 0);
+  }, [partes, series]);
+
+  if (partes.length === 0) return null;
 
   return (
     <section className="section mc-bloque">
@@ -328,31 +350,54 @@ function Cobertura({ rutina }: { rutina: Rutina }) {
       </div>
 
       <div className="gy-cob">
-        {['Tren superior', 'Core', 'Tren inferior'].map((zona) => (
-          <div key={zona} className="gy-cob-zona">
-            <span className="gy-cob-t">{zona}</span>
-            <div className="gy-cob-fila">
-              {MUSCULOS.filter((m) => m.zona === zona).map((m) => {
-                const n = conteo.get(m.id) ?? 0;
-                const nivel = n === 0 ? 'cero' : n < 6 ? 'poco' : n < 10 ? 'justo' : 'bien';
-                return (
-                  <span key={m.id} className={`gy-mus ${nivel}`} title={`${n} series por vuelta`}>
-                    {m.label}
-                    <b>{n}</b>
-                  </span>
-                );
-              })}
+        {bloques.map(({ bloque, partes: suyas, total, vacias }) => {
+          const estado = total === 0 ? 'cero' : vacias.length === 0 ? 'bien' : 'parcial';
+          const abiertoEste = abierto === bloque.id;
+          return (
+            <div key={bloque.id} className={`gy-bl ${estado}`}>
+              <button className="gy-bl-head" onClick={() => setAbierto(abiertoEste ? null : bloque.id)}>
+                <span className="gy-bl-n">{bloque.label}</span>
+                <span className="gy-bl-s">
+                  {total} {total === 1 ? 'serie' : 'series'}
+                </span>
+                <span className="gy-bl-e">
+                  {estado === 'bien'
+                    ? 'bloque completo'
+                    : estado === 'cero'
+                      ? 'sin tocar'
+                      : `falta ${vacias.length} de ${suyas.length}`}
+                </span>
+                <span className="gy-bl-chev">{abiertoEste ? '▾' : '▸'}</span>
+              </button>
+
+              {abiertoEste && (
+                <div className="gy-bl-partes">
+                  {suyas.map((parte) => {
+                    const n = series.get(parte.id) ?? 0;
+                    return (
+                      <div key={parte.id} className={`gy-parte${n === 0 ? ' vacia' : ''}`}>
+                        <span className="gy-parte-n">{parte.label}</span>
+                        <span className="gy-parte-s">{n}</span>
+                        {n === 0 && (
+                          <span className="gy-parte-idea">
+                            probaría con {parte.ideas.slice(0, 2).join(' o ')}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {sinTocar.length > 0 && (
-        <p className="muted mc-vacio">
-          Sin trabajar en toda la vuelta: <strong>{sinTocar.map((m) => m.label).join(', ')}</strong>. El número es
-          orientativo (se suele hablar de 10 series por bloque a la semana), no una regla.
-        </p>
-      )}
+      <p className="muted mc-vacio">
+        «Bloque completo» solo quiere decir que hay al menos un ejercicio por cada parte, no que el volumen sea el
+        correcto. El número de series es orientativo: suele hablarse de unas 10 por bloque a la semana, pero eso lo
+        decides tú, no el portal.
+      </p>
     </section>
   );
 }
@@ -361,13 +406,18 @@ function Cobertura({ rutina }: { rutina: Rutina }) {
 
 function Objetivo({ rutina }: { rutina: Rutina }) {
   const [metas, setMetas] = useState<MetaGym[]>([]);
+  const [condiciones, setCondiciones] = useState<Condicionante[]>([]);
   const [creando, setCreando] = useState(false);
   const [editando, setEditando] = useState<MetaGym | null>(null);
+  const [creandoCond, setCreandoCond] = useState(false);
+  const [editandoCond, setEditandoCond] = useState<Condicionante | null>(null);
 
   const cargar = useCallback(async () => setMetas(await gymApi.objetivos()), []);
+  const cargarCond = useCallback(async () => setCondiciones(await gymApi.condicionantes()), []);
   useEffect(() => {
     cargar();
-  }, [cargar]);
+    cargarCond();
+  }, [cargar, cargarCond]);
 
   const fase = metas.find((m) => m.kind === 'fase' && m.status === 'activo');
   const activas = metas.filter((m) => m.status === 'activo' && m.kind !== 'fase');
@@ -408,6 +458,42 @@ function Objetivo({ rutina }: { rutina: Rutina }) {
         )}
       </section>
 
+      {/* Los condicionantes no son metas: son con lo que se entrena. Por eso van
+          en su propio bloque y no mezclados con lo que quieres conseguir. */}
+      <section className="section mc-bloque">
+        <div className="mc-head">
+          <h2>Condicionantes</h2>
+          <button className="btn ghost sm" onClick={() => setCreandoCond(true)}>
+            + Condicionante
+          </button>
+        </div>
+
+        {condiciones.filter((c) => c.status === 'activo').length === 0 ? (
+          <p className="muted mc-vacio">
+            Nada apuntado. Aquí van las lesiones y limitaciones con las que entrenas (una SLAP en el hombro, una
+            rodilla delicada): salen avisando en los ejercicios de esa zona.
+          </p>
+        ) : (
+          <div className="gy-conds">
+            {condiciones
+              .filter((c) => c.status === 'activo')
+              .map((c) => (
+                <button key={c.id} className={`gy-cond ${c.severity}`} onClick={() => setEditandoCond(c)}>
+                  <span className="gy-cond-t">
+                    {c.title}
+                    {c.side !== 'na' && <span className="gy-cond-lado">{c.side}</span>}
+                  </span>
+                  <span className="gy-cond-m">
+                    {c.severity === 'evitar' ? 'Evitar' : 'Con cuidado'}
+                    {listaMusculos(c.muscles).length > 0 && ` · ${listaMusculos(c.muscles).map(nombreMusculo).join(', ')}`}
+                  </span>
+                  {c.advice && <span className="gy-cond-a">{c.advice}</span>}
+                </button>
+              ))}
+          </div>
+        )}
+      </section>
+
       {logradas.length > 0 && (
         <section className="section mc-bloque">
           <h2>Logradas</h2>
@@ -417,6 +503,21 @@ function Objetivo({ rutina }: { rutina: Rutina }) {
             ))}
           </div>
         </section>
+      )}
+
+      {(creandoCond || editandoCond) && (
+        <CondicionanteModal
+          condicionante={editandoCond ?? undefined}
+          onClose={() => {
+            setCreandoCond(false);
+            setEditandoCond(null);
+          }}
+          onGuardado={() => {
+            setCreandoCond(false);
+            setEditandoCond(null);
+            cargarCond();
+          }}
+        />
       )}
 
       {(creando || editando) && (

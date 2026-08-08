@@ -1,6 +1,17 @@
 import { useState, type FormEvent } from 'react';
 import Modal from '../../components/Modal';
-import { gymApi, listaMusculos, MUSCULOS, type Ejercicio, type MetaGym, type TipoMeta } from './api';
+import { useEffect } from 'react';
+import {
+  gymApi,
+  listaMusculos,
+  MUSCULOS,
+  nombreMusculo,
+  type Condicionante,
+  type Ejercicio,
+  type MetaGym,
+  type Parte,
+  type TipoMeta,
+} from './api';
 
 const num = (v: string) => (v.trim() === '' ? null : Number(v.replace(',', '.')));
 
@@ -17,7 +28,8 @@ export function EjercicioModal({
   onGuardado: () => void;
 }) {
   const [name, setName] = useState(ejercicio?.name ?? '');
-  const [muscles, setMuscles] = useState<string[]>(listaMusculos(ejercicio?.muscles ?? ''));
+  const [partes, setPartes] = useState<Parte[]>([]);
+  const [elegidas, setElegidas] = useState<string[]>(listaMusculos(ejercicio?.parts ?? ''));
   const [kind, setKind] = useState<'repes' | 'tiempo'>(ejercicio?.kind ?? 'repes');
   const [targetSets, setTargetSets] = useState(String(ejercicio?.targetSets ?? 3));
   const [targetReps, setTargetReps] = useState(ejercicio?.targetReps ?? '8-10');
@@ -27,8 +39,12 @@ export function EjercicioModal({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    gymApi.partes().then(setPartes).catch(() => {});
+  }, []);
+
   function alternar(id: string) {
-    setMuscles((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    setElegidas((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }
 
   async function submit(e: FormEvent) {
@@ -38,7 +54,7 @@ export function EjercicioModal({
     setError('');
     const datos = {
       name: name.trim(),
-      muscles: muscles.join(','),
+      parts: elegidas.join(','),
       kind,
       targetSets: Number(targetSets) || 3,
       targetReps: targetReps.trim() || (kind === 'tiempo' ? '60s' : '8-10'),
@@ -73,20 +89,30 @@ export function EjercicioModal({
         </div>
 
         <div className="field">
-          <label>Músculos</label>
-          {/* lista cerrada: es lo que permite decir después qué bloque falta */}
-          <div className="gy-mus-picker">
-            {MUSCULOS.map((m) => (
-              <button
-                type="button"
-                key={m.id}
-                className={`gy-mus-op${muscles.includes(m.id) ? ' puesto' : ''}`}
-                onClick={() => alternar(m.id)}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
+          <label>Qué trabaja</label>
+          {/* por PARTE y no por bloque: es lo que permite decir después que del
+              hombro solo estás tocando el anterior */}
+          {MUSCULOS.map((bloque) => {
+            const suyas = partes.filter((p) => p.muscle === bloque.id);
+            if (suyas.length === 0) return null;
+            return (
+              <div key={bloque.id} className="gy-picker-zona">
+                <span className="gy-picker-t">{bloque.label}</span>
+                <div className="gy-mus-picker">
+                  {suyas.map((parte) => (
+                    <button
+                      type="button"
+                      key={parte.id}
+                      className={`gy-mus-op${elegidas.includes(parte.id) ? ' puesto' : ''}`}
+                      onClick={() => alternar(parte.id)}
+                    >
+                      {parte.label.includes('·') ? parte.label.split('·')[1].trim() : parte.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         <div className="form-grid">
@@ -298,6 +324,171 @@ export function MetaModal({
           {meta && meta.status === 'logrado' && (
             <button type="button" className="btn ghost" onClick={() => marcar('activo')}>
               Reabrir
+            </button>
+          )}
+          <button className="btn" disabled={busy || !title.trim()}>
+            {busy ? 'Guardando…' : 'Guardar'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+
+const LADOS: [Condicionante['side'], string][] = [
+  ['na', 'Sin lado'],
+  ['izquierdo', 'Izquierdo'],
+  ['derecho', 'Derecho'],
+  ['ambos', 'Ambos'],
+];
+
+/** Una lesión o limitación con la que se entrena. */
+export function CondicionanteModal({
+  condicionante,
+  onClose,
+  onGuardado,
+}: {
+  condicionante?: Condicionante;
+  onClose: () => void;
+  onGuardado: () => void;
+}) {
+  const [title, setTitle] = useState(condicionante?.title ?? '');
+  const [side, setSide] = useState<Condicionante['side']>(condicionante?.side ?? 'na');
+  const [muscles, setMuscles] = useState<string[]>(listaMusculos(condicionante?.muscles ?? ''));
+  const [severity, setSeverity] = useState<Condicionante['severity']>(condicionante?.severity ?? 'cuidado');
+  const [advice, setAdvice] = useState(condicionante?.advice ?? '');
+  const [notes, setNotes] = useState(condicionante?.notes ?? '');
+  const [since, setSince] = useState(condicionante?.since ?? '');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!title.trim()) return;
+    setBusy(true);
+    setError('');
+    const datos = {
+      title: title.trim(),
+      side,
+      muscles: muscles.join(','),
+      severity,
+      advice: advice.trim() || null,
+      notes: notes.trim() || null,
+      since: since || null,
+    };
+    try {
+      if (condicionante) await gymApi.editarCondicionante(condicionante.id, datos);
+      else await gymApi.crearCondicionante(datos);
+      onGuardado();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo guardar');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal title={condicionante ? 'Condicionante' : 'Nuevo condicionante'} onClose={onClose}>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="field">
+          <label htmlFor="gc-t">Qué es</label>
+          <input
+            id="gc-t"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            autoFocus
+            placeholder="Lesión SLAP en el hombro"
+          />
+        </div>
+
+        <div className="form-grid">
+          <div>
+            <label htmlFor="gc-l">Lado</label>
+            <select id="gc-l" value={side} onChange={(e) => setSide(e.target.value as Condicionante['side'])}>
+              {LADOS.map(([id, label]) => (
+                <option key={id} value={id}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="gc-s">Cómo condiciona</label>
+            <select
+              id="gc-s"
+              value={severity}
+              onChange={(e) => setSeverity(e.target.value as Condicionante['severity'])}
+            >
+              <option value="cuidado">Con cuidado</option>
+              <option value="evitar">Evitar</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="gc-d">Desde</label>
+            <input id="gc-d" type="date" value={since} onChange={(e) => setSince(e.target.value)} />
+          </div>
+        </div>
+
+        <div className="field">
+          <label>Zonas afectadas</label>
+          {/* por bloque entero y no por parte: una lesión no distingue tanto */}
+          <div className="gy-mus-picker">
+            {MUSCULOS.map((m) => (
+              <button
+                type="button"
+                key={m.id}
+                className={`gy-mus-op${muscles.includes(m.id) ? ' puesto' : ''}`}
+                onClick={() => setMuscles((p) => (p.includes(m.id) ? p.filter((x) => x !== m.id) : [...p, m.id]))}
+              >
+                {nombreMusculo(m.id)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="field">
+          <label htmlFor="gc-a">Qué hago con esto</label>
+          <input
+            id="gc-a"
+            value={advice}
+            onChange={(e) => setAdvice(e.target.value)}
+            placeholder="Nada por encima de la cabeza con carga. Agarre neutro."
+          />
+        </div>
+
+        <div className="field">
+          <label htmlFor="gc-n">Notas</label>
+          <textarea id="gc-n" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+        </div>
+
+        {error && <div className="error-msg">{error}</div>}
+        <div className="modal-actions">
+          {condicionante && (
+            <button
+              type="button"
+              className="btn ghost danger"
+              onClick={async () => {
+                if (!confirm(`¿Borrar «${condicionante.title}»?`)) return;
+                await gymApi.borrarCondicionante(condicionante.id);
+                onGuardado();
+              }}
+            >
+              Borrar
+            </button>
+          )}
+          {condicionante && (
+            <button
+              type="button"
+              className="btn ghost"
+              onClick={async () => {
+                await gymApi.editarCondicionante(condicionante.id, {
+                  status: condicionante.status === 'activo' ? 'superado' : 'activo',
+                });
+                onGuardado();
+              }}
+            >
+              {condicionante.status === 'activo' ? 'Ya superado' : 'Reabrir'}
             </button>
           )}
           <button className="btn" disabled={busy || !title.trim()}>

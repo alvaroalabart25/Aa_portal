@@ -105,6 +105,9 @@ const COLUMNAS = [
   ['gym_exercises', 'muscles', "ADD COLUMN muscles varchar(240) NOT NULL DEFAULT '' AFTER day_id"],
   ['gym_exercises', 'kind', "ADD COLUMN kind enum('repes','tiempo') NOT NULL DEFAULT 'repes' AFTER name"],
   ['gym_sets', 'seconds', 'ADD COLUMN seconds int NULL AFTER reps'],
+  // Partes dentro del bloque: «pecho» no dice si trabajas el superior o solo el
+  // medio. `muscles` se calcula a partir de aquí, no se escribe a mano.
+  ['gym_exercises', 'parts', "ADD COLUMN parts varchar(320) NOT NULL DEFAULT '' AFTER muscles"],
 ];
 for (const [tabla, columna, ddl] of COLUMNAS) {
   const [hay] = await conn.query(
@@ -162,6 +165,35 @@ if (hayMetas.length) {
     KEY idx_gym_goals_user (user_id, status, sort_order)
   )`);
   console.log('  ✔ gym_goals creada');
+}
+
+// Condicionantes del cuerpo: lesiones y limitaciones que cambian cómo entrenas.
+// Van aparte de los objetivos porque no son algo a conseguir, son algo con lo
+// que se convive, y tienen que poder avisar en la pantalla de entrenar.
+const [hayCond] = await conn.query(
+  `SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'gym_conditions'`,
+  [process.env.DB_NAME],
+);
+if (hayCond.length) {
+  console.log('  · gym_conditions ya existía');
+} else {
+  await conn.query(`CREATE TABLE gym_conditions (
+    id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id bigint NOT NULL,
+    title varchar(160) NOT NULL,
+    side enum('izquierdo','derecho','ambos','na') NOT NULL DEFAULT 'na',
+    muscles varchar(240) NOT NULL DEFAULT '',
+    severity enum('cuidado','evitar') NOT NULL DEFAULT 'cuidado',
+    advice text NULL,
+    notes text NULL,
+    since date NULL,
+    status enum('activo','superado') NOT NULL DEFAULT 'activo',
+    sort_order int NOT NULL DEFAULT 0,
+    created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_gym_cond_user (user_id, status)
+  )`);
+  console.log('  ✔ gym_conditions creada');
 }
 
 // Cuatro días de salida, para no empezar delante de una pantalla vacía. Los

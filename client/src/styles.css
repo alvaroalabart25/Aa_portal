@@ -1322,6 +1322,14 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .gy-nombre-input { font-family: var(--font-title); font-size: 19px; font-weight: 600; padding: 2px 6px; }
 
 /* Cobertura: qué bloques trabajas, y por dentro qué partes te faltan */
+.gy-cob-toggle {
+  display: flex; align-items: baseline; gap: 9px; width: 100%; text-align: left; flex-wrap: wrap;
+  border: none; background: none; padding: 0; cursor: pointer; color: inherit;
+}
+.gy-cob-toggle:hover h2 { text-decoration: underline dotted; }
+.gy-cob-chev { color: var(--ink-muted); font-size: 12px; }
+/* el titular cabe cerrado: casi siempre es lo único que hay que saber */
+.gy-cob-resumen { flex: 1; min-width: 0; font-size: 12.5px; color: var(--ink-muted); }
 .gy-cob { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
 .gy-bl { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
 .gy-bl-head {
@@ -1424,6 +1432,7 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .gy-terminar { display: block; width: 100%; margin-top: 24px; padding: 14px; font-size: 15px; }
 
 @media (max-width: 720px) {
+  .gy-cob-resumen { flex: 1 0 100%; margin-left: 21px; }
   /* el aviso y su salida, uno debajo del otro: en 375 px no caben en línea */
   .gy-abierta { flex-direction: column; align-items: stretch; margin-top: 14px; }
   .gy-toca { padding: 14px; }

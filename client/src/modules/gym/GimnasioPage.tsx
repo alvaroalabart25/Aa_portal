@@ -143,12 +143,12 @@ function Entrenar({ rutina }: { rutina: Rutina }) {
           <button
             className="gy-descartar"
             onClick={async () => {
-              if (!confirm('¿Tiro este entrenamiento? Se borra lo que hubieras apuntado en él.')) return;
+              if (!confirm('¿Descarto el entrenamiento? Se borra lo que hubieras apuntado en él.')) return;
               await gymApi.tirar(abierta.id);
               setAbierta(null);
             }}
           >
-            Tirarlo
+            Descartarlo
           </button>
         </div>
       )}
@@ -355,17 +355,35 @@ function Cobertura({ rutina }: { rutina: Rutina }) {
     }).filter((b) => b.partes.length > 0);
   }, [partes, series]);
 
+  const [desplegado, setDesplegado] = useState(false);
+
   if (partes.length === 0) return null;
+
+  const sinTocar = bloques.filter((b) => b.total === 0).map((b) => b.bloque.label);
+  const conHuecos = bloques.filter((b) => b.total > 0 && b.vacias.length > 0).map((b) => b.bloque.label);
 
   return (
     <section className="section mc-bloque">
-      <div className="mc-head">
+      {/* Trece bloques desplegados son media pantalla de scroll antes de llegar a
+          la rutina. Cerrado deja el titular, que es lo único que hay que saber
+          casi siempre: qué falta. */}
+      <button className="gy-cob-toggle" onClick={() => setDesplegado((v) => !v)} aria-expanded={desplegado}>
+        <span className="gy-cob-chev">{desplegado ? '▾' : '▸'}</span>
         <h2>Cobertura</h2>
-        <span className="muted" style={{ fontSize: 12.5 }}>
-          series por vuelta completa
+        <span className="gy-cob-resumen">
+          {sinTocar.length === 0 && conHuecos.length === 0
+            ? 'todos los bloques completos'
+            : [
+                sinTocar.length > 0 ? `sin tocar: ${sinTocar.join(', ').toLowerCase()}` : null,
+                conHuecos.length > 0 ? `con huecos: ${conHuecos.join(', ').toLowerCase()}` : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
         </span>
-      </div>
+      </button>
 
+      {desplegado && (
+      <>
       <div className="gy-cob">
         {bloques.map(({ bloque, partes: suyas, total, vacias }) => {
           const estado = total === 0 ? 'cero' : vacias.length === 0 ? 'bien' : 'parcial';
@@ -415,6 +433,8 @@ function Cobertura({ rutina }: { rutina: Rutina }) {
         correcto. El número de series es orientativo: suele hablarse de unas 10 por bloque a la semana, pero eso lo
         decides tú, no el portal.
       </p>
+      </>
+      )}
     </section>
   );
 }

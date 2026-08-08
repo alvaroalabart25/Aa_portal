@@ -45,7 +45,7 @@ export default function SesionPage() {
 
   async function terminar() {
     if (hechas === 0) {
-      if (!confirm('No has marcado ninguna serie. ¿Tiro esta sesión a la basura?')) return;
+      if (!confirm('No has marcado ninguna serie, así que no hay nada que guardar. ¿Descarto el entrenamiento?')) return;
       await gymApi.tirar(sesionId);
       navigate('/gimnasio');
       return;
@@ -117,8 +117,14 @@ export default function SesionPage() {
 
       {!cerrada && (
         <>
+          {/* dos cosas distintas y con nombres distintos: terminar GUARDA lo
+              hecho, descartar lo BORRA. «Tirar» valía para las dos. */}
           <button className="btn gy-terminar" disabled={cerrando} onClick={terminar}>
-            {cerrando ? 'Guardando…' : hechas === 0 ? 'Tirar la sesión' : 'Terminar entrenamiento'}
+            {cerrando
+              ? 'Guardando…'
+              : hechas === 0
+                ? 'Descartar · al final no lo hago'
+                : `Terminar y guardar · ${hechas} ${hechas === 1 ? 'serie' : 'series'}`}
           </button>
           {/* tirarla siempre a mano: entrar por error con series ya apuntadas
               también pasa, y no puede obligarte a cerrar un entrenamiento falso */}
@@ -126,12 +132,12 @@ export default function SesionPage() {
             <button
               className="gy-descartar gy-descartar-pie"
               onClick={async () => {
-                if (!confirm(`¿Tiro este entrenamiento? Se borran las ${hechas} series apuntadas.`)) return;
+                if (!confirm(`¿Descarto el entrenamiento? Se borran las ${hechas} series que llevas apuntadas.`)) return;
                 await gymApi.tirar(sesionId);
                 navigate('/gimnasio');
               }}
             >
-              Tirar el entrenamiento entero
+              Descartar sin guardar · se borran las {hechas} series
             </button>
           )}
         </>

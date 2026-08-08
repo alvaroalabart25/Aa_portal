@@ -8,6 +8,11 @@ import { projectInput, projectUpdate } from './validation';
 
 export const projectsRouter = Router();
 
+/** Hoy en Madrid: la base de datos vive en Oregón y CURDATE() iría un día por detrás. */
+function hoyMadrid(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid', dateStyle: 'short' }).format(new Date());
+}
+
 const taskCounts = {
   totalTasks: sql<number>`(
     select count(*) from ${tasks} t
@@ -18,6 +23,29 @@ const taskCounts = {
     where t.project_id = ${projects.id} and t.status = 'completed' and t.archived_at is null
   )`,
 };
+
+/**
+ * Señales de si el proyecto se mueve o está parado. Van como subconsultas
+ * correlacionadas en la misma consulta: una lista de proyectos no puede
+ * costar una consulta por proyecto (la base de datos está en Oregón).
+ */
+const taskSignals = (hoy: string) => ({
+  overdueTasks: sql<number>`(
+    select count(*) from ${tasks} t
+    where t.project_id = ${projects.id} and t.status not in ('completed','cancelled')
+      and t.archived_at is null and t.due_date < ${hoy}
+  )`,
+  runningTasks: sql<number>`(
+    select count(*) from ${tasks} t
+    where t.project_id = ${projects.id} and t.status = 'in_progress' and t.archived_at is null
+  )`,
+  // Lo último que se tocó en él. Sin esto no hay forma de ver qué llevas
+  // semanas sin abrir, que es lo que de verdad se atasca.
+  lastActivity: sql<string | null>`(
+    select max(t.updated_at) from ${tasks} t
+    where t.project_id = ${projects.id} and t.archived_at is null
+  )`,
+});
 
 // GET /api/projects?spaceId=&status= — por defecto solo activos (los completados/cancelados se ocultan).
 // Se excluyen también los proyectos cuyo espacio esté archivado.
@@ -40,6 +68,7 @@ projectsRouter.get('/', ah(async (req: AuthedRequest, res) => {
       spaceName: spaces.name,
       spaceColor: spaces.color,
       ...taskCounts,
+      ...taskSignals(hoyMadrid()),
     })
     .from(projects)
     .innerJoin(spaces, eq(projects.spaceId, spaces.id))

@@ -16,6 +16,7 @@ import { pushModule, pushRunner } from './modules/push';
 import { trackModule, trackSetup } from './modules/track';
 import { dreamImagesRouter, dreamsModule } from './modules/dreams';
 import { focusModule } from './modules/focus';
+import { gymModule } from './modules/gym';
 import { logSecurityEvent } from './lib/security';
 
 const app = express();
@@ -134,6 +135,7 @@ app.use('/api/health-log', requireAuth, healthModule);
 app.use('/api/diary', requireAuth, diaryModule);
 app.use('/api/dreams', requireAuth, dreamsModule);
 app.use('/api/focus', requireAuth, focusModule);
+app.use('/api/gym', requireAuth, gymModule);
 app.use('/api/push', requireAuth, pushModule);
 
 // Errores no controlados -> 500 JSON

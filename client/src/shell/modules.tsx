@@ -161,7 +161,17 @@ export const MODULES: PortalModule[] = [
           </svg>
         ),
       },
-      // (futuro) { id: 'gimnasio', title: 'Gimnasio', path: '/gimnasio', ... },
+      {
+        id: 'gimnasio',
+        title: 'Gimnasio',
+        path: '/gimnasio',
+        // mancuerna
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" {...stroke}>
+            <path d="M4 9v6M7 7v10M17 7v10M20 9v6M7 12h10" />
+          </svg>
+        ),
+      },
     ],
   },
   {

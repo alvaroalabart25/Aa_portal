@@ -17,6 +17,8 @@ import DiarioPage from './modules/health/DiarioPage';
 import SuenosPage from './modules/dreams/SuenosPage';
 import SuenoDetallePage from './modules/dreams/SuenoDetallePage';
 import MacroFichaPage from './modules/focus/MacroFichaPage';
+import GimnasioPage from './modules/gym/GimnasioPage';
+import SesionPage from './modules/gym/SesionPage';
 import Configuracion from './pages/Configuracion';
 import Recuperar from './pages/Recuperar';
 
@@ -41,6 +43,8 @@ export default function App() {
             <Route path="/tareas" element={<TasksPage />} />
             {/* Eventos vive dentro de Agenda: la dirección de antes sigue valiendo */}
             <Route path="/eventos" element={<Navigate to="/agenda?tab=eventos" replace />} />
+            <Route path="/gimnasio" element={<GimnasioPage />} />
+            <Route path="/gimnasio/sesion/:id" element={<SesionPage />} />
             <Route path="/tareas/:id" element={<TaskPage />} />
             <Route path="/autonomo" element={<Navigate to="/autonomo/facturas" replace />} />
             <Route path="/autonomo/facturas" element={<FacturasPage />} />

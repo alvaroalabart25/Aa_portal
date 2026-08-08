@@ -23,6 +23,10 @@ export interface Project {
   spaceColor?: string;
   totalTasks?: number;
   doneTasks?: number;
+  /** señales de si se mueve o está parado (solo en el listado) */
+  overdueTasks?: number;
+  runningTasks?: number;
+  lastActivity?: string | null;
 }
 
 export interface Task {

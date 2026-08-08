@@ -668,3 +668,142 @@ export type DreamCategory = typeof dreamCategories.$inferSelect;
 export type DreamStep = typeof dreamSteps.$inferSelect;
 export type DreamLink = typeof dreamLinks.$inferSelect;
 export type WishlistItem = typeof wishlistItems.$inferSelect;
+
+// ============================================================
+// Gimnasio: la rutina y lo que de verdad levantas
+// ============================================================
+
+/**
+ * Un día de la rutina (empuje, tirón, pierna…). Son pocos y fijos: se editan,
+ * no se crean y se borran cada semana.
+ *
+ * No tienen día de la semana a propósito: la rotación siempre es la misma pero
+ * los días no, así que lo que toca se deduce del orden y de la última vez que
+ * se hizo cada uno, no del calendario.
+ */
+export const gymDays = mysqlTable('gym_days', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  name: varchar('name', { length: 120 }).notNull(),
+  notes: text('notes'),
+  sortOrder: int('sort_order').notNull().default(0),
+  archivedAt: datetime('archived_at'),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`)
+    .$onUpdateFn(() => new Date()),
+});
+
+/** Un ejercicio dentro de un día, con su objetivo. Lo que TOCA hacer. */
+export const gymExercises = mysqlTable('gym_exercises', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  dayId: bigint('day_id', { mode: 'number' })
+    .notNull()
+    .references(() => gymDays.id),
+  // Lista cerrada separada por comas: «cuadriceps,gluteo». Cerrada a propósito,
+  // porque con texto libre se puede pintar la etiqueta pero no contar qué
+  // bloque muscular se está quedando sin trabajar.
+  muscles: varchar('muscles', { length: 240 }).notNull().default(''),
+  name: varchar('name', { length: 160 }).notNull(),
+  // Una plancha no se mide en repeticiones, se mide en segundos
+  kind: mysqlEnum('kind', ['repes', 'tiempo']).notNull().default('repes'),
+  targetSets: int('target_sets').notNull().default(4),
+  // texto y no número: «8-10» y «al fallo» son objetivos igual de válidos
+  targetReps: varchar('target_reps', { length: 20 }).notNull().default('8-10'),
+  targetWeight: decimal('target_weight', { precision: 6, scale: 2 }),
+  restSeconds: int('rest_seconds'),
+  notes: text('notes'), // técnica: «codos pegados», «banco a 30°»
+  sortOrder: int('sort_order').notNull().default(0),
+  archivedAt: datetime('archived_at'),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`)
+    .$onUpdateFn(() => new Date()),
+});
+
+/** Una ida al gimnasio. Abierta mientras `endedAt` sea null. */
+export const gymSessions = mysqlTable('gym_sessions', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  dayId: bigint('day_id', { mode: 'number' })
+    .notNull()
+    .references(() => gymDays.id),
+  sessionDate: date('session_date', { mode: 'string' }).notNull(),
+  startedAt: datetime('started_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  endedAt: datetime('ended_at'),
+  notes: text('notes'),
+});
+
+/**
+ * Una serie hecha, con el peso y las repes DE VERDAD.
+ *
+ * Guardar cada serie y no un resumen por ejercicio es lo que permite ver que la
+ * cuarta serie se cae siempre: un solo número por ejercicio lo escondería.
+ * El ejercicio se guarda también por nombre porque la rutina cambia y el
+ * histórico no puede quedarse sin saber qué se levantó.
+ */
+export const gymSets = mysqlTable('gym_sets', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  sessionId: bigint('session_id', { mode: 'number' })
+    .notNull()
+    .references(() => gymSessions.id),
+  exerciseId: bigint('exercise_id', { mode: 'number' })
+    .notNull()
+    .references(() => gymExercises.id),
+  exerciseName: varchar('exercise_name', { length: 160 }).notNull(),
+  setNumber: int('set_number').notNull(),
+  reps: int('reps'),
+  seconds: int('seconds'),
+  weight: decimal('weight', { precision: 6, scale: 2 }),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export type GymDay = typeof gymDays.$inferSelect;
+export type GymExercise = typeof gymExercises.$inferSelect;
+export type GymSession = typeof gymSessions.$inferSelect;
+export type GymSet = typeof gymSets.$inferSelect;
+
+/**
+ * Objetivo del gimnasio: la fase en la que estás («hipertrofia») y las metas
+ * medibles («llegar a 80 kg», «sentadilla a 50»).
+ *
+ * El peso corporal NO se guarda aquí: ya vive en health_entries (Salud ·
+ * Diario). Esta meta solo apunta a dónde quieres llegar; el dato de hoy se lee
+ * de allí. Dos sitios para apuntar el mismo kilo acaban en dos verdades.
+ */
+export const gymGoals = mysqlTable('gym_goals', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  kind: mysqlEnum('kind', ['fase', 'peso', 'ejercicio', 'libre']).notNull().default('libre'),
+  title: varchar('title', { length: 160 }).notNull(),
+  exerciseId: bigint('exercise_id', { mode: 'number' }),
+  startValue: decimal('start_value', { precision: 7, scale: 2 }),
+  targetValue: decimal('target_value', { precision: 7, scale: 2 }),
+  unit: varchar('unit', { length: 10 }),
+  deadline: date('deadline', { mode: 'string' }),
+  status: mysqlEnum('status', ['activo', 'logrado', 'aparcado']).notNull().default('activo'),
+  achievedAt: date('achieved_at', { mode: 'string' }),
+  notes: text('notes'),
+  sortOrder: int('sort_order').notNull().default(0),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`)
+    .$onUpdateFn(() => new Date()),
+});
+
+export type GymGoal = typeof gymGoals.$inferSelect;

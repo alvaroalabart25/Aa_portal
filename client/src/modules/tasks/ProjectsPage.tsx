@@ -8,18 +8,33 @@ import type { Project } from './types';
 
 const ESTADO_PROYECTO: Record<string, string> = { completed: 'Completado', cancelled: 'Cancelado' };
 
+/** Días enteros desde una fecha con hora de la base de datos. */
+function diasDesde(iso: string): number {
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+}
+
+// Dos semanas sin tocar un proyecto vivo ya no es una pausa, es un olvido
+const DIAS_PARADO = 14;
+
 /**
  * Proyecto en tarjeta, el mismo lenguaje que los objetivos del mes: un aro con
- * el avance y el nombre. El aro dice si el proyecto se mueve o está parado, que
- * es lo que se viene a mirar desde aquí.
+ * el avance, el nombre y las señales de si se mueve.
+ *
+ * Las señales son lo que esta pantalla no sabía decir: cuántas tareas llevas
+ * vencidas, cuáles tienes entre manos y, sobre todo, qué llevas semanas sin
+ * abrir. Un porcentaje solo no distingue un proyecto tranquilo de uno muerto.
  */
 function TarjetaProyecto({ p, onAbrir }: { p: Project; onAbrir: () => void }) {
   const total = p.totalTasks ?? 0;
   const hechas = p.doneTasks ?? 0;
   const pct = total > 0 ? Math.round((hechas / total) * 100) : 0;
+  const vencidas = p.overdueTasks ?? 0;
+  const enMarcha = p.runningTasks ?? 0;
+  const abiertas = total - hechas;
+  const parado = p.lastActivity && abiertas > 0 ? diasDesde(p.lastActivity) : 0;
 
   return (
-    <button className={`mk${p.status !== 'active' ? ' hecho' : ''}`} onClick={onAbrir}>
+    <button className={`mk pr-card${p.status !== 'active' ? ' hecho' : ''}`} onClick={onAbrir}>
       <span className="mk-aro" style={{ ['--pct' as string]: `${pct}%` }} aria-hidden="true">
         <span className="mk-aro-n">{total > 0 ? `${pct}%` : '—'}</span>
       </span>
@@ -29,6 +44,17 @@ function TarjetaProyecto({ p, onAbrir }: { p: Project; onAbrir: () => void }) {
           {ESTADO_PROYECTO[p.status] ? `${ESTADO_PROYECTO[p.status]} · ` : ''}
           {total > 0 ? `${hechas} de ${total} ${total === 1 ? 'tarea' : 'tareas'}` : 'sin tareas todavía'}
         </span>
+        {(vencidas > 0 || enMarcha > 0 || parado >= DIAS_PARADO) && (
+          <span className="pr-senales">
+            {vencidas > 0 && (
+              <span className="pr-senal vencidas">
+                {vencidas} {vencidas === 1 ? 'vencida' : 'vencidas'}
+              </span>
+            )}
+            {enMarcha > 0 && <span className="pr-senal marcha">{enMarcha} en marcha</span>}
+            {parado >= DIAS_PARADO && <span className="pr-senal parado">sin tocar hace {parado} días</span>}
+          </span>
+        )}
       </span>
     </button>
   );
@@ -42,7 +68,9 @@ export default function ProjectsPage() {
   const [showClosed, setShowClosed] = useState(false);
   const [choosing, setChoosing] = useState(false);
   const [adding, setAdding] = useState<'space' | 'project' | null>(null);
-  const [open, setOpen] = useState<Set<number>>(new Set());
+  // Abiertos de salida: llegar a una lista de espacios cerrados no cuenta nada.
+  // El que quiera plegar uno, lo pliega.
+  const [cerrados, setCerrados] = useState<Set<number>>(new Set());
   const navigate = useNavigate();
 
   const load = useCallback(
@@ -70,7 +98,7 @@ export default function ProjectsPage() {
   }, [projects]);
 
   function toggle(spaceId: number) {
-    setOpen((prev) => {
+    setCerrados((prev) => {
       const next = new Set(prev);
       if (next.has(spaceId)) next.delete(spaceId);
       else next.add(spaceId);
@@ -99,19 +127,37 @@ export default function ProjectsPage() {
       </div>
 
       {groups.map((g) => {
-        const isOpen = open.has(g.spaceId);
+        const abierto = !cerrados.has(g.spaceId);
+        // el avance del espacio entero: la suma de lo suyo
+        const total = g.items.reduce((n, p) => n + (p.totalTasks ?? 0), 0);
+        const hechas = g.items.reduce((n, p) => n + (p.doneTasks ?? 0), 0);
+        const vencidas = g.items.reduce((n, p) => n + (p.overdueTasks ?? 0), 0);
+        const pct = total > 0 ? Math.round((hechas / total) * 100) : 0;
         return (
-          <section key={g.spaceId} className="section" style={{ marginTop: 26 }}>
-            <button className="space-acc" onClick={() => toggle(g.spaceId)} aria-expanded={isOpen}>
-              <span className="chev">{isOpen ? '▾' : '▸'}</span>
+          <section key={g.spaceId} className="section pr-espacio">
+            <button className="space-acc" onClick={() => toggle(g.spaceId)} aria-expanded={abierto}>
+              <span className="chev">{abierto ? '▾' : '▸'}</span>
               <span className="dot" style={{ background: g.spaceColor, width: 10, height: 10 }} />
-              {g.spaceName}
-              <span className="muted" style={{ fontWeight: 400, fontSize: 14 }}>
-                · {g.items.length}
+              <span className="pr-espacio-t">{g.spaceName}</span>
+              {/* en el móvil todo esto baja a su propia línea, debajo del nombre */}
+              <span className="pr-espacio-meta">
+                <span className="pr-espacio-n">
+                  {g.items.length} {g.items.length === 1 ? 'proyecto' : 'proyectos'}
+                  {total > 0 && ` · ${pct}%`}
+                </span>
+                {vencidas > 0 && (
+                  <span className="pr-senal vencidas">
+                    {vencidas} {vencidas === 1 ? 'vencida' : 'vencidas'}
+                  </span>
+                )}
+                {/* la barra dice de un vistazo cómo va el espacio entero */}
+                <span className="pr-barra" aria-hidden="true">
+                  <span style={{ width: `${pct}%`, background: g.spaceColor }} />
+                </span>
               </span>
             </button>
 
-            {isOpen && (
+            {abierto && (
               <div className="mk-grid">
                 {g.items.map((p) => (
                   <TarjetaProyecto key={p.id} p={p} onAbrir={() => navigate(`/proyectos/${p.id}`)} />

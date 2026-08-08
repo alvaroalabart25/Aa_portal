@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { EjercicioModal } from './modals';
 import ModoFoco from './ModoFoco';
 import {
   gymApi,
@@ -31,6 +32,7 @@ export default function SesionPage() {
   const [cerrando, setCerrando] = useState(false);
   const [error, setError] = useState('');
   const [foco, setFoco] = useState(false);
+  const [editando, setEditando] = useState<EjercicioEnSesion | null>(null);
 
   const cargar = useCallback(async () => setDatos(await gymApi.sesion(sesionId)), [sesionId]);
   useEffect(() => {
@@ -133,6 +135,7 @@ export default function SesionPage() {
           onCambio={cargar}
           bloqueado={cerrada}
           condiciones={condiciones}
+          onEditar={() => setEditando(e)}
         />
       ))}
 
@@ -164,6 +167,18 @@ export default function SesionPage() {
         </>
       )}
       {cerrada && <p className="muted mc-vacio">Sesión cerrada. Lo que ves es lo que quedó registrado.</p>}
+
+      {editando && (
+        <EjercicioModal
+          dayId={editando.dayId}
+          ejercicio={editando}
+          onClose={() => setEditando(null)}
+          onGuardado={() => {
+            setEditando(null);
+            cargar();
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -174,12 +189,14 @@ function BloqueEjercicio({
   onCambio,
   bloqueado,
   condiciones,
+  onEditar,
 }: {
   ejercicio: EjercicioEnSesion;
   sesionId: number;
   onCambio: () => void;
   bloqueado: boolean;
   condiciones: Condicionante[];
+  onEditar: () => void;
 }) {
   const series = Array.from({ length: ejercicio.targetSets }, (_, i) => i + 1);
   const completo = ejercicio.done.length >= ejercicio.targetSets;
@@ -194,11 +211,13 @@ function BloqueEjercicio({
       <div className="gy-bloque-head">
         <div>
           <h2 className="gy-bloque-n">{ejercicio.name}</h2>
-          <p className="gy-bloque-obj">
+          {/* el objetivo se toca aquí mismo: si el número está mal, volvería a
+              salir cada día hasta que alguien se acordara de ir a Rutina */}
+          <button className="gy-bloque-obj" onClick={onEditar} title="Cambiar el objetivo del ejercicio">
             {ejercicio.targetSets} × {ejercicio.targetReps}
             {ejercicio.targetWeight ? ` · objetivo ${kg(ejercicio.targetWeight)}` : ''}
             {ejercicio.restSeconds ? ` · ${ejercicio.restSeconds}s de descanso` : ''}
-          </p>
+          </button>
           {listaMusculos(ejercicio.muscles).length > 0 && (
             <p className="gy-ej-m">{listaMusculos(ejercicio.muscles).map(nombreMusculo).join(' · ')}</p>
           )}

@@ -1424,7 +1424,12 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .gy-bloque.hecho { opacity: 0.68; }
 .gy-bloque-head { display: flex; align-items: flex-start; gap: 10px; }
 .gy-bloque-n { font-size: 16px; line-height: 1.3; }
-.gy-bloque-obj { font-size: 12.5px; color: var(--ink-soft); margin: 3px 0 0; }
+.gy-bloque-obj {
+  display: block; text-align: left; font-size: 12.5px; color: var(--ink-soft);
+  margin: 3px 0 0; padding: 0; border: none; background: none; cursor: pointer;
+  text-decoration: underline dotted; text-underline-offset: 3px; text-decoration-color: var(--line);
+}
+.gy-bloque-obj:hover { color: var(--ink); text-decoration-color: var(--ink-muted); }
 .gy-bloque-nota { font-size: 12.5px; color: var(--ink-muted); margin: 8px 0 0; line-height: 1.5; }
 .gy-tic { flex: 0 0 auto; font-size: 16px; }
 
@@ -1522,6 +1527,12 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .foco-campos input:focus { border-color: #fff; outline: none; }
 
 .foco-antes { font-size: 13px; color: #8f8f8f; margin: 0; }
+/* corregir el objetivo sin salir de la pantalla negra */
+.foco-fijar {
+  background: none; border: 1px solid #333; color: #c9c9c9; border-radius: 99px;
+  padding: 7px 14px; font-size: 12.5px;
+}
+.foco-fijar:hover { border-color: #fff; color: #fff; }
 .foco-btn {
   border: 1px solid #fff; background: #fff; color: #0a0a0a; border-radius: 99px;
   padding: 13px 26px; font-size: 15px; font-weight: 600; font-family: var(--font-title);

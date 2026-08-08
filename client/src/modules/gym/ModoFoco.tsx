@@ -54,6 +54,7 @@ export default function ModoFoco({
 
   const [peso, setPeso] = useState('');
   const [medida, setMedida] = useState('');
+  const [fijando, setFijando] = useState(false);
 
   // Al cambiar de serie, los campos ya vienen puestos. Por orden: lo que ya
   // marcaste en esta serie, lo de la misma serie la vez anterior, lo que
@@ -181,6 +182,28 @@ export default function ModoFoco({
               ? `La última vez: ${antes.weight ? `${numTxt(antes.weight)} × ` : ''}${porTiempo ? `${antes.seconds}s` : antes.reps}`
               : `Objetivo: ${ejercicio.targetSets} × ${ejercicio.targetReps}`}
           </p>
+
+          {/* El kg de arriba es lo que levantas HOY y se guarda al marcar la
+              serie. El objetivo del ejercicio es otra cosa y hasta ahora solo se
+              podía tocar en Rutina: si el número que traía era una barbaridad,
+              volvía a salir cada día. Desde aquí se corrige de un toque. */}
+          {peso.trim() !== '' && numTxt(ejercicio.targetWeight) !== peso.trim() && (
+            <button
+              className="foco-fijar"
+              disabled={fijando}
+              onClick={async () => {
+                setFijando(true);
+                try {
+                  await gymApi.editarEjercicio(ejercicio.id, { targetWeight: Number(peso.replace(',', '.')) });
+                  await onCambio();
+                } finally {
+                  setFijando(false);
+                }
+              }}
+            >
+              {fijando ? 'Guardando…' : `Dejar ${peso} kg como objetivo del ejercicio`}
+            </button>
+          )}
 
           <button className="foco-btn grande" disabled={guardando} onClick={marcar}>
             {guardando ? 'Guardando…' : hecha ? 'Rehacer esta serie' : 'Serie hecha'}

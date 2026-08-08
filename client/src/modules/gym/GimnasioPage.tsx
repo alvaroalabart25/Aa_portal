@@ -108,7 +108,10 @@ function Entrenar({ rutina }: { rutina: Rutina }) {
     gymApi.historial(8).then(setHistorial).catch(() => {});
   }, []);
 
-  const toca = useMemo(() => siguienteDia(rutina.days), [rutina.days]);
+  // Con una sesión abierta no se enseña «te toca»: estarías leyendo que te toca
+  // Espalda mientras tienes Pecho a medias justo encima. Primero se cierra o se
+  // tira lo que hay.
+  const toca = useMemo(() => (abierta ? null : siguienteDia(rutina.days)), [rutina.days, abierta]);
   const resto = rutina.days.filter((d) => d.id !== toca?.id);
 
   async function empezar(dayId: number) {
@@ -128,12 +131,26 @@ function Entrenar({ rutina }: { rutina: Rutina }) {
   return (
     <div>
       {abierta && (
-        <button className="gy-continuar" onClick={() => navigate(`/gimnasio/sesion/${abierta.id}`)}>
-          <span className="gy-continuar-t">Tienes un entrenamiento a medias</span>
-          <span className="gy-continuar-s">
-            {rutina.days.find((d) => d.id === abierta.dayId)?.name ?? 'Sesión'} · seguir →
-          </span>
-        </button>
+        <div className="gy-abierta">
+          <button className="gy-continuar" onClick={() => navigate(`/gimnasio/sesion/${abierta.id}`)}>
+            <span className="gy-continuar-t">Tienes un entrenamiento a medias</span>
+            <span className="gy-continuar-s">
+              {rutina.days.find((d) => d.id === abierta.dayId)?.name ?? 'Sesión'} · seguir →
+            </span>
+          </button>
+          {/* la salida, aquí mismo: si no, la sesión abierta bloquea la pantalla
+              y hay que entrar en ella para poder tirarla */}
+          <button
+            className="gy-descartar"
+            onClick={async () => {
+              if (!confirm('¿Tiro este entrenamiento? Se borra lo que hubieras apuntado en él.')) return;
+              await gymApi.tirar(abierta.id);
+              setAbierta(null);
+            }}
+          >
+            Tirarlo
+          </button>
+        </div>
       )}
 
       {toca && (
@@ -160,7 +177,7 @@ function Entrenar({ rutina }: { rutina: Rutina }) {
       )}
 
       <section className="section mc-bloque">
-        <h2>Los otros días</h2>
+        <h2>{toca ? 'Los otros días' : 'Los días de la rutina'}</h2>
         <div className="mk-grid">
           {resto.map((d) => (
             <div key={d.id} className="mk">

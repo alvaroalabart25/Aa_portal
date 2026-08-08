@@ -224,7 +224,20 @@ gymModule.get('/sesion/abierta', ah(async (req: AuthedRequest, res) => {
     .where(and(eq(gymSessions.userId, req.userId!), isNull(gymSessions.endedAt)))
     .orderBy(desc(gymSessions.startedAt))
     .limit(1);
-  res.json(row ?? null);
+  if (!row) return res.json(null);
+
+  // Una sesión de otro día sin una sola serie no es un entrenamiento a medias:
+  // es un botón mal pulsado. Se tira sola, para no dejar la pantalla bloqueada
+  // hasta que alguien se acuerde. Con series apuntadas NO se toca: eso es
+  // trabajo hecho y solo él puede decidir qué hacer con ello.
+  if (row.sessionDate < hoyMadrid()) {
+    const [{ n }] = await db.select({ n: sql<number>`count(*)` }).from(gymSets).where(eq(gymSets.sessionId, row.id));
+    if (Number(n) === 0) {
+      await db.delete(gymSessions).where(eq(gymSessions.id, row.id));
+      return res.json(null);
+    }
+  }
+  res.json(row);
 }));
 
 gymModule.post('/sesiones', ah(async (req: AuthedRequest, res) => {

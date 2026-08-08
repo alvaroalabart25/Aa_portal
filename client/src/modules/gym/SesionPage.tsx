@@ -116,9 +116,25 @@ export default function SesionPage() {
       ))}
 
       {!cerrada && (
-        <button className="btn gy-terminar" disabled={cerrando} onClick={terminar}>
-          {cerrando ? 'Guardando…' : hechas === 0 ? 'Tirar la sesión' : 'Terminar entrenamiento'}
-        </button>
+        <>
+          <button className="btn gy-terminar" disabled={cerrando} onClick={terminar}>
+            {cerrando ? 'Guardando…' : hechas === 0 ? 'Tirar la sesión' : 'Terminar entrenamiento'}
+          </button>
+          {/* tirarla siempre a mano: entrar por error con series ya apuntadas
+              también pasa, y no puede obligarte a cerrar un entrenamiento falso */}
+          {hechas > 0 && (
+            <button
+              className="gy-descartar gy-descartar-pie"
+              onClick={async () => {
+                if (!confirm(`¿Tiro este entrenamiento? Se borran las ${hechas} series apuntadas.`)) return;
+                await gymApi.tirar(sesionId);
+                navigate('/gimnasio');
+              }}
+            >
+              Tirar el entrenamiento entero
+            </button>
+          )}
+        </>
       )}
       {cerrada && <p className="muted mc-vacio">Sesión cerrada. Lo que ves es lo que quedó registrado.</p>}
     </div>

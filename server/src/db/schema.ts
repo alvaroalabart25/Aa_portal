@@ -35,6 +35,15 @@ const longblob = customType<{ data: Buffer; driverData: Buffer }>({
 export const users = mysqlTable('users', {
   id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
   username: varchar('username', { length: 64 }).notNull().unique(),
+  // 'admin' administra el portal (dar de alta y ver el uso). NO da acceso a los
+  // datos de nadie: no hay una sola consulta que lea contenido ajeno.
+  role: varchar('role', { length: 16 }).notNull().default('user'),
+  displayName: varchar('display_name', { length: 80 }),
+  // Módulos activos, separados por comas (ids de client/src/shell/modules.tsx).
+  // NULL = cuenta recién creada que aún no ha elegido.
+  modules: varchar('modules', { length: 255 }),
+  lastSeenAt: datetime('last_seen_at'), // solo cuándo, nunca qué
+  disabledAt: datetime('disabled_at'), // cortar el acceso sin borrar sus datos
   email: varchar('email', { length: 190 }), // destino de la recuperación de contraseña
   passwordHash: varchar('password_hash', { length: 255 }).notNull(),
   trackSecret: varchar('track_secret', { length: 64 }), // token del control remoto (Atajos iOS)
@@ -656,7 +665,30 @@ export const wishlistItems = mysqlTable('wishlist_items', {
     .$onUpdateFn(() => new Date()),
 });
 
+/**
+ * Invitaciones: la única puerta de entrada al portal.
+ *
+ * No hay registro abierto. El administrador crea una invitación, pasa el
+ * enlace, y ese enlace caduca y se gasta una sola vez. De la clave se guarda
+ * solo el hash: quien leyera esta tabla no podría usar las que estén pendientes.
+ */
+export const invites = mysqlTable('invites', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  tokenHash: varchar('token_hash', { length: 64 }).notNull().unique(),
+  note: varchar('note', { length: 120 }), // para quién es, lo escribe quien invita
+  modules: varchar('modules', { length: 255 }), // módulos sugeridos al entrar
+  createdBy: bigint('created_by', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  expiresAt: datetime('expires_at').notNull(),
+  usedAt: datetime('used_at'),
+  usedBy: bigint('used_by', { mode: 'number' }),
+  revokedAt: datetime('revoked_at'),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export type User = typeof users.$inferSelect;
+export type Invite = typeof invites.$inferSelect;
 export type Space = typeof spaces.$inferSelect;
 export type Project = typeof projects.$inferSelect;
 export type Task = typeof tasks.$inferSelect;

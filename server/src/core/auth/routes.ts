@@ -5,10 +5,11 @@ import jwt from 'jsonwebtoken';
 import { desc, eq } from 'drizzle-orm';
 import { db } from '../../db';
 import { and, isNull, gt } from 'drizzle-orm';
-import { passwordResets, securityEvents, totpRecoveryCodes, users } from '../../db/schema';
+import { invites, passwordResets, securityEvents, totpRecoveryCodes, users } from '../../db/schema';
+import { aTexto, limpiarModulos, MODULOS_POR_DEFECTO } from '../modulos';
 import { enviarCorreo } from '../../lib/mail';
 import { passkeysRouter, usarFirmador } from './passkeys';
-import { bumpTokenVersion, requireAuth, type AuthedRequest } from './middleware';
+import { bumpTokenVersion, requireAdmin, requireAuth, type AuthedRequest } from './middleware';
 import { clientIp, esOrigenNuevo, logSecurityEvent } from '../../lib/security';
 import { z } from 'zod';
 import crypto from 'crypto';
@@ -39,6 +40,11 @@ authRouter.post('/login', ah(async (req, res) => {
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     await logSecurityEvent('login_fallido', req, `usuario probado: ${username.slice(0, 40)}`);
     return res.status(401).json({ error: 'Credenciales incorrectas' });
+  }
+
+  // Cuenta desactivada: se dice claro. Sus datos siguen ahí, la puerta no.
+  if (user.disabledAt) {
+    return res.status(403).json({ error: 'Esta cuenta está desactivada' });
   }
 
   // Segundo factor: si está activado, la contraseña sola no basta
@@ -179,7 +185,10 @@ authRouter.post('/reset-password', ah(async (req, res) => {
 // La bitácora vive en su propia pantalla, así que puede pedir más de una
 // pantallazo. Tope duro de 300: es un registro para mirar cuando algo huele
 // mal, no un archivo histórico que haya que paginar.
-authRouter.get('/security-events', requireAuth, ah(async (req: AuthedRequest, res) => {
+// Solo el administrador: la bitácora es del portal entero (IPs, navegadores,
+// intentos fallidos de cualquiera), no de una cuenta. Con varias personas
+// dentro, dejarla abierta sería enseñar los movimientos de las demás.
+authRouter.get('/security-events', requireAuth, requireAdmin, ah(async (req: AuthedRequest, res) => {
   const pedido = Number(req.query.limit);
   const limite = Number.isFinite(pedido) ? Math.min(Math.max(Math.trunc(pedido), 1), 300) : 60;
   const filas = await db
@@ -379,4 +388,136 @@ authRouter.post('/revoke-all', requireAuth, ah(async (req: AuthedRequest, res) =
   bumpTokenVersion(user.id, nextVersion);
   await logSecurityEvent('sesiones_revocadas', req, 'se han invalidado las sesiones de todos los dispositivos');
   res.json({ token: signToken(user.id, nextVersion) });
+}));
+
+// ---------- Perfil propio ----------
+// Lo que el portal necesita saber de ti para pintarse: cómo te llamas, si
+// administras y qué módulos tienes puestos.
+authRouter.get('/me', requireAuth, ah(async (req: AuthedRequest, res) => {
+  const [user] = await db
+    .select({
+      id: users.id,
+      username: users.username,
+      displayName: users.displayName,
+      role: users.role,
+      modules: users.modules,
+    })
+    .from(users)
+    .where(eq(users.id, req.userId!));
+  if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+  res.json({
+    id: user.id,
+    username: user.username,
+    displayName: user.displayName,
+    role: user.role,
+    // Una cuenta antigua sin elegir se queda con los de por defecto, no vacía:
+    // un menú en blanco parece un portal roto.
+    modules: limpiarModulos(user.modules) ?? MODULOS_POR_DEFECTO,
+  });
+}));
+
+authRouter.patch('/me', requireAuth, ah(async (req: AuthedRequest, res) => {
+  const parsed = z
+    .object({
+      displayName: z.string().trim().max(80).optional(),
+      modules: z.array(z.string()).optional(),
+    })
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Datos incorrectos' });
+
+  const cambios: { displayName?: string | null; modules?: string } = {};
+  if (parsed.data.displayName !== undefined) cambios.displayName = parsed.data.displayName || null;
+  if (parsed.data.modules !== undefined) {
+    const limpios = limpiarModulos(parsed.data.modules);
+    // Dejarlo todo apagado no es una preferencia, es quedarse sin portal.
+    if (!limpios) return res.status(400).json({ error: 'Deja al menos un módulo activo' });
+    cambios.modules = aTexto(limpios);
+  }
+  if (!Object.keys(cambios).length) return res.status(400).json({ error: 'Nada que cambiar' });
+
+  await db.update(users).set(cambios).where(eq(users.id, req.userId!));
+  res.json({ ok: true });
+}));
+
+// ---------- Alta por invitación ----------
+// No hay registro abierto: se entra con un enlace que caduca y se gasta una vez.
+// Se comprueba por la huella del token, igual que la recuperación de contraseña.
+
+/** Busca la invitación de un token y dice por qué no vale, si no vale. */
+async function invitacionDe(token: string) {
+  if (typeof token !== 'string' || token.length < 20) return { error: 'Esta invitación no es válida' as const };
+  const [inv] = await db.select().from(invites).where(eq(invites.tokenHash, huella(token)));
+  if (!inv) return { error: 'Esta invitación no es válida' as const };
+  if (inv.revokedAt) return { error: 'Esta invitación se ha anulado' as const };
+  if (inv.usedAt) return { error: 'Esta invitación ya se ha usado' as const };
+  if (new Date(inv.expiresAt) < new Date()) return { error: 'Esta invitación ha caducado' as const };
+  return { inv };
+}
+
+// GET /api/auth/invitacion/:token -> ¿sirve este enlace?
+// Público a propósito: la pantalla de alta tiene que poder decir «caducada» en
+// vez de dejar rellenar un formulario que va a fallar al final.
+authRouter.get('/invitacion/:token', ah(async (req, res) => {
+  const r = await invitacionDe(req.params.token);
+  if ('error' in r) {
+    await logSecurityEvent('invitacion_invalida', req, `invitación rechazada: ${r.error}`);
+    return res.status(404).json({ error: r.error });
+  }
+  res.json({
+    ok: true,
+    // Ni quién invitó ni para quién era: eso es una nota interna del portal.
+    modules: limpiarModulos(r.inv.modules) ?? MODULOS_POR_DEFECTO,
+    expiresAt: r.inv.expiresAt,
+  });
+}));
+
+// POST /api/auth/registro { token, username, password, displayName?, modules? }
+authRouter.post('/registro', ah(async (req, res) => {
+  const parsed = z
+    .object({
+      token: z.string().min(20).max(200),
+      // El usuario es con lo que se entra: sin espacios ni mayúsculas para que
+      // nadie se quede fuera por escribirlo distinto al teclear en el móvil.
+      username: z
+        .string()
+        .trim()
+        .toLowerCase()
+        .min(3, 'El usuario necesita al menos 3 caracteres')
+        .max(64)
+        .regex(/^[a-z0-9._@-]+$/, 'Usa solo letras, números, punto, guion, guion bajo o @'),
+      password: z.string().min(12, 'La contraseña debe tener al menos 12 caracteres').max(200),
+      displayName: z.string().trim().max(80).optional(),
+      modules: z.array(z.string()).optional(),
+    })
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
+
+  const r = await invitacionDe(parsed.data.token);
+  if ('error' in r) {
+    await logSecurityEvent('invitacion_invalida', req, `alta rechazada: ${r.error}`);
+    return res.status(404).json({ error: r.error });
+  }
+
+  const [ocupado] = await db.select({ id: users.id }).from(users).where(eq(users.username, parsed.data.username));
+  if (ocupado) return res.status(409).json({ error: 'Ese usuario ya está cogido, prueba con otro' });
+
+  const modulos = limpiarModulos(parsed.data.modules) ?? limpiarModulos(r.inv.modules) ?? MODULOS_POR_DEFECTO;
+  await db.insert(users).values({
+    username: parsed.data.username,
+    // El correo se rellena con el usuario si parece un correo: si no, la
+    // recuperación de contraseña no tendría a dónde escribir.
+    email: parsed.data.username.includes('@') ? parsed.data.username : null,
+    displayName: parsed.data.displayName || null,
+    role: 'user',
+    modules: aTexto(modulos),
+    passwordHash: await bcrypt.hash(parsed.data.password, 12),
+  });
+  const [creado] = await db.select().from(users).where(eq(users.username, parsed.data.username));
+
+  // La invitación se gasta aquí, no antes: si algo falla al crear la cuenta, el
+  // enlace tiene que seguir sirviendo.
+  await db.update(invites).set({ usedAt: new Date(), usedBy: creado.id }).where(eq(invites.id, r.inv.id));
+
+  await logSecurityEvent('cuenta_creada', req, `cuenta nueva: ${creado.username}`);
+  res.status(201).json({ token: signToken(creado.id, creado.tokenVersion), username: creado.username });
 }));

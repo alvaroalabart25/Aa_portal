@@ -7,25 +7,59 @@ import { logSecurityEvent } from '../../lib/security';
 
 export interface AuthedRequest extends Request {
   userId?: number;
+  userRole?: string;
 }
 
 // Versión de sesión en caché: comprobarla contra la base en cada petición
 // costaría un viaje extra, así que se guarda 30 s. Al revocar se actualiza al
 // instante, de modo que "cerrar en todos los dispositivos" es inmediato.
 const CACHE_MS = 30_000;
-const cache = new Map<number, { version: number; at: number }>();
+interface Estado {
+  version: number;
+  role: string;
+  activo: boolean;
+  at: number;
+}
+const cache = new Map<number, Estado>();
 
 export function bumpTokenVersion(userId: number, version: number) {
-  cache.set(userId, { version, at: Date.now() });
+  const previo = cache.get(userId);
+  cache.set(userId, { role: previo?.role ?? 'user', activo: previo?.activo ?? true, version, at: Date.now() });
 }
 
-async function currentTokenVersion(userId: number): Promise<number | null> {
+/** Al desactivar o reactivar una cuenta, que surta efecto sin esperar 30 s. */
+export function olvidarUsuario(userId: number) {
+  cache.delete(userId);
+}
+
+async function estadoDeCuenta(userId: number): Promise<Estado | null> {
   const hit = cache.get(userId);
-  if (hit && Date.now() - hit.at < CACHE_MS) return hit.version;
-  const [user] = await db.select({ v: users.tokenVersion }).from(users).where(eq(users.id, userId));
+  if (hit && Date.now() - hit.at < CACHE_MS) return hit;
+  const [user] = await db
+    .select({ v: users.tokenVersion, role: users.role, disabled: users.disabledAt })
+    .from(users)
+    .where(eq(users.id, userId));
   if (!user) return null;
-  cache.set(userId, { version: user.v, at: Date.now() });
-  return user.v;
+  const estado: Estado = { version: user.v, role: user.role, activo: !user.disabled, at: Date.now() };
+  cache.set(userId, estado);
+  return estado;
+}
+
+// Última visita: sirve para saber si una cuenta se usa, no para seguir a nadie.
+// Se guarda la fecha y nada más —ni la ruta, ni qué miró— y como mucho una vez
+// cada 15 min por persona, para no meter una escritura en cada petición.
+const VISITA_MS = 15 * 60 * 1000;
+const ultimaVisita = new Map<number, number>();
+
+function anotarVisita(userId: number) {
+  const ahora = Date.now();
+  if (ahora - (ultimaVisita.get(userId) ?? 0) < VISITA_MS) return;
+  ultimaVisita.set(userId, ahora);
+  void db
+    .update(users)
+    .set({ lastSeenAt: new Date() })
+    .where(eq(users.id, userId))
+    .catch(() => {}); // que no tumbe la petición: es un dato de intendencia
 }
 
 export async function requireAuth(req: AuthedRequest, res: Response, next: NextFunction) {
@@ -51,12 +85,35 @@ export async function requireAuth(req: AuthedRequest, res: Response, next: NextF
   }
 
   // Un token emitido antes de la última revocación ya no sirve
-  const version = await currentTokenVersion(userId);
-  if (version === null || (payload.tv ?? 0) !== version) {
+  const estado = await estadoDeCuenta(userId);
+  if (estado === null || (payload.tv ?? 0) !== estado.version) {
     void logSecurityEvent('sesion_revocada_uso', req, 'se ha usado un token de una sesión ya invalidada');
     return res.status(401).json({ error: 'Sesión revocada, vuelve a entrar' });
   }
 
+  // Cuenta desactivada: el token sigue siendo válido, pero la puerta no.
+  if (!estado.activo) {
+    void logSecurityEvent('cuenta_desactivada_uso', req, 'petición de una cuenta desactivada');
+    return res.status(403).json({ error: 'Esta cuenta está desactivada' });
+  }
+
   req.userId = userId;
+  req.userRole = estado.role;
+  anotarVisita(userId);
+  next();
+}
+
+/**
+ * Solo el administrador del portal.
+ *
+ * Administrar es dar de alta y ver CUÁNTO se usa cada cuenta. No es ver los
+ * datos de nadie: ninguna ruta detrás de esto lee contenido ajeno, y esa es la
+ * regla, no una casualidad de la implementación de hoy.
+ */
+export function requireAdmin(req: AuthedRequest, res: Response, next: NextFunction) {
+  if (req.userRole !== 'admin') {
+    void logSecurityEvent('acceso_admin_denegado', req, `${req.method} ${req.path} sin ser administrador`);
+    return res.status(403).json({ error: 'No autorizado' });
+  }
   next();
 }

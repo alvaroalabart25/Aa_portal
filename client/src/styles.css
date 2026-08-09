@@ -61,6 +61,11 @@ button { font-family: var(--font-body); cursor: pointer; color: inherit; }
 .btn.ghost:hover { background: var(--paper-soft); }
 .btn.sm { padding: 4px 10px; font-size: 13px; }
 .btn.danger { color: var(--danger); border-color: var(--line); background: transparent; }
+/* Un botón apagado tiene que PARECER apagado: si no, se pulsa, no pasa nada y
+   parece que el portal está roto. Y el cursor lo dice antes del toque. */
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn:disabled:hover { background: var(--ink); }
+.btn.ghost:disabled:hover { background: transparent; }
 
 input, select, textarea {
   font-family: var(--font-body); font-size: 14px; color: var(--ink);
@@ -423,9 +428,14 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .seg {
   display: inline-flex; gap: 2px; padding: 3px;
   border: 1px solid var(--line); border-radius: 99px;
+  /* Con cinco pestañas (Configuración de quien administra) no cabe en 375 px.
+     Que se desplace ELLA: si no, ensancha la página entera y todo el portal se
+     va de lado, con la barra inferior fuera de la pantalla. */
+  max-width: 100%; overflow-x: auto; scrollbar-width: none;
 }
+.seg::-webkit-scrollbar { display: none; }
 .seg button {
-  border: none; background: none; padding: 5px 14px;
+  border: none; background: none; padding: 5px 14px; flex: none; white-space: nowrap;
   border-radius: 99px; font-size: 13px; font-weight: 500; color: var(--ink-soft);
 }
 .seg button:hover { background: var(--paper-soft); }
@@ -1654,3 +1664,79 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 /* el cuarto día no es parte del objetivo: se enseña aparte y solo cuando existe */
 .gs-extra { margin-left: 5px; font-size: 12px; color: var(--ink); }
 .gs-msg { font-size: 13px; line-height: 1.6; color: var(--ink-soft); margin: 10px 0 0; max-width: 560px; }
+
+/* ---------- Alta por invitación y elección de módulos ---------- */
+.inv-card { max-width: 420px; }
+.inv-intro { font-size: 13px; line-height: 1.65; color: var(--ink-soft); margin: -2px 0 4px; }
+.inv-pista { font-size: 12px; line-height: 1.55; color: var(--ink-muted); margin: 6px 0 0; }
+
+.inv-modulos { display: flex; flex-direction: column; gap: 8px; }
+/* Toda la fila es el interruptor: en el móvil una casilla de 16 px se falla. */
+.inv-mod {
+  display: flex; align-items: flex-start; gap: 11px; width: 100%; text-align: left;
+  padding: 12px 13px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--paper); color: var(--ink); cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.inv-mod:hover { background: var(--paper-soft); }
+.inv-mod.on { border-color: var(--ink); background: var(--paper); }
+.inv-mod-ico { flex: none; margin-top: 1px; color: var(--ink-muted); }
+.inv-mod.on .inv-mod-ico { color: var(--ink); }
+.inv-mod-txt { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+.inv-mod-txt b { font-size: 14px; font-weight: 600; }
+.inv-mod-txt span { font-size: 12px; line-height: 1.5; color: var(--ink-muted); }
+.inv-mod-check {
+  flex: none; width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--line);
+  display: grid; place-items: center; font-size: 11px; margin-top: 1px;
+}
+.inv-mod.on .inv-mod-check { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+
+/* ---------- Quién usa el portal ---------- */
+/* El aviso de privacidad va arriba y visible a propósito: es la regla de esta
+   pantalla, no una nota al pie. */
+.us-privacidad {
+  font-size: 12.5px; line-height: 1.6; color: var(--ink-soft);
+  background: var(--paper-soft); border-radius: 10px; padding: 11px 13px; margin: 12px 0 0;
+}
+.us-crear { margin-top: 14px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; }
+.us-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.us-chip {
+  font-size: 12px; padding: 5px 10px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--paper); color: var(--ink-muted);
+}
+.us-chip.on { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+
+.us-enlace { margin-top: 14px; padding: 14px; border: 1px solid var(--ink); border-radius: 10px; }
+.us-enlace p { font-size: 12.5px; line-height: 1.6; margin: 0 0 10px; }
+.us-enlace code {
+  display: block; font-size: 11.5px; line-height: 1.5; word-break: break-all;
+  background: var(--paper-soft); padding: 10px; border-radius: 8px; margin-bottom: 10px;
+}
+
+.us-lista { margin-top: 14px; display: flex; flex-direction: column; }
+.us-fila { border-top: 1px solid var(--line); }
+.us-fila:last-child { border-bottom: 1px solid var(--line); }
+.us-fila.off { opacity: 0.55; }
+.us-cab {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  width: 100%; text-align: left; padding: 12px 2px; background: none; border: none;
+  color: var(--ink); font: inherit; cursor: pointer;
+}
+.us-nombre { display: flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 600; }
+.us-uso { font-size: 12px; color: var(--ink-muted); }
+.us-tag {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+  padding: 2px 6px; border-radius: 999px; background: var(--ink); color: var(--paper);
+}
+.us-tag.suave { background: var(--paper-soft); color: var(--ink-muted); }
+.us-tag.off { background: transparent; border: 1px solid var(--line); color: var(--ink-muted); }
+.us-detalle { padding: 2px 2px 16px; }
+.us-dato { display: flex; justify-content: space-between; gap: 12px; font-size: 12.5px; margin: 0 0 7px; }
+.us-dato span { color: var(--ink-muted); }
+.us-dato b { font-weight: 500; text-align: right; }
+.us-filas { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.us-filas span {
+  font-size: 11.5px; color: var(--ink-muted); background: var(--paper-soft);
+  padding: 4px 9px; border-radius: 999px;
+}
+.us-filas b { color: var(--ink); font-weight: 600; margin-left: 3px; }

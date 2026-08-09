@@ -4,7 +4,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { authRouter } from './core/auth/routes';
-import { requireAuth } from './core/auth/middleware';
+import { requireAdmin, requireAuth } from './core/auth/middleware';
+import { adminModule } from './core/admin/routes';
 import { tasksModule } from './modules/tasks';
 import { autonomoModule } from './modules/autonomo';
 import { eventsModule } from './modules/events';
@@ -88,6 +89,16 @@ const recuperarLimiter = rateLimit({
     res.status(429).json({ error: 'Demasiadas peticiones. Prueba dentro de un rato.' });
   },
 });
+const altaLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 20,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  handler: (req, res) => {
+    void logSecurityEvent('limite_trafico', req, 'demasiados intentos con invitaciones');
+    res.status(429).json({ error: 'Demasiados intentos. Prueba dentro de un rato.' });
+  },
+});
 const trackLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 60,
@@ -113,6 +124,10 @@ app.get('/api/health', (_req, res) => res.json({ ok: true }));
 app.use('/api/auth/login', loginLimiter);
 app.use('/api/auth/forgot-password', recuperarLimiter);
 app.use('/api/auth/reset-password', recuperarLimiter);
+// Alta por invitación: el token es de 32 bytes al azar y no se adivina a
+// fuerza bruta, pero el límite evita que se use como ariete contra la base.
+app.use('/api/auth/registro', altaLimiter);
+app.use('/api/auth/invitacion', altaLimiter);
 app.use('/api/auth', authRouter);
 
 // Disparador de notificaciones y control remoto (Atajos iOS): van con secreto
@@ -137,6 +152,8 @@ app.use('/api/dreams', requireAuth, dreamsModule);
 app.use('/api/focus', requireAuth, focusModule);
 app.use('/api/gym', requireAuth, gymModule);
 app.use('/api/push', requireAuth, pushModule);
+// Administración del portal: altas y uso. NO da acceso a datos de nadie.
+app.use('/api/admin', requireAuth, requireAdmin, adminModule);
 
 // Errores no controlados -> 500 JSON
 app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {

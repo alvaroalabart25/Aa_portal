@@ -19,20 +19,48 @@ import GimnasioPage from './modules/gym/GimnasioPage';
 import SesionPage from './modules/gym/SesionPage';
 import Configuracion from './pages/Configuracion';
 import Recuperar from './pages/Recuperar';
+import Invitacion from './pages/Invitacion';
+import { PerfilProvider, usePerfil } from './lib/perfil';
 
 function RequireAuth() {
   return isLoggedIn() ? <Outlet /> : <Navigate to="/login" replace />;
 }
 
+/**
+ * La portada de cada cuenta.
+ *
+ * Antes «/» iba siempre a Agenda porque solo había un portal. Ahora Agenda
+ * puede estar apagada, así que se entra por el primer módulo que esa cuenta
+ * tenga puesto. Con el perfil aún cargando no se redirige a ciegas: mandar a
+ * Agenda y rebotar a otro sitio medio segundo después se ve como un fallo.
+ */
+const PORTADA: Record<string, string> = {
+  agenda: '/agenda',
+  org: '/proyectos',
+  salud: '/diario',
+  suenos: '/suenos',
+  autonomo: '/autonomo/facturas',
+  roadmap: '/roadmap',
+};
+
+function Portada() {
+  const { perfil, cargando } = usePerfil();
+  if (cargando) return null;
+  const primero = perfil?.modules.find((m) => PORTADA[m]);
+  return <Navigate to={primero ? PORTADA[primero] : '/agenda'} replace />;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
+      <PerfilProvider>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/recuperar" element={<Recuperar />} />
+        <Route path="/invitacion/:token" element={<Invitacion />} />
         <Route element={<RequireAuth />}>
           <Route element={<Layout />}>
-            <Route path="/" element={<Navigate to="/agenda" replace />} />
+            <Route path="/" element={<Portada />} />
             <Route path="/agenda" element={<AgendaPage />} />
             {/* Espacios y Proyectos eran dos pantallas que contaban lo mismo de
                 dos formas. Ahora es una: las direcciones viejas siguen valiendo. */}
@@ -63,6 +91,7 @@ export default function App() {
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </PerfilProvider>
     </BrowserRouter>
   );
 }

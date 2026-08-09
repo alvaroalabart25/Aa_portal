@@ -211,3 +211,25 @@ export const MODULES: PortalModule[] = [
   },
   // (futuro) { id: 'wiki', title: 'Wiki', ... },
 ];
+
+/**
+ * El Road Map se pinta abajo del todo y aparte (no es un sitio al que se entre
+ * cada día), pero se enciende y se apaga como cualquier otro módulo. Por eso
+ * necesita ficha propia aquí: las pantallas donde se eligen módulos no pueden
+ * adivinar lo que solo existe dentro de Layout.
+ */
+export const MODULO_ROADMAP: PortalModule = {
+  id: 'roadmap',
+  title: 'Road Map',
+  path: '/roadmap',
+  icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" {...stroke}>
+      <path d="M9 4l-5 2v14l5-2 6 2 5-2V4l-5 2-6-2z" />
+      <path d="M9 4v14M15 6v14" />
+    </svg>
+  ),
+};
+
+/** Todo lo que una cuenta puede encender o apagar, en el orden del menú.
+ *  Los ids TIENEN que coincidir con `server/src/core/modulos.ts`. */
+export const MODULOS_ACTIVABLES: PortalModule[] = [...MODULES, MODULO_ROADMAP];

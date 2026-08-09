@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { clearToken } from '../lib/auth';
 import { entrarConPasskey, marcarActividad, tocaBloquear } from '../lib/passkeys';
 import { MODULES, ORDEN_MOVIL, type PortalLink, type PortalModule } from './modules';
+import { usePerfil } from '../lib/perfil';
 
 /**
  * ¿Está activo este enlace? Si apunta a una pestaña concreta (los subapartados
@@ -82,16 +83,24 @@ const HIDDEN_ON_MOBILE = new Set(['spaces']);
 function BottomBar() {
   const [group, setGroup] = useState<string | null>(null);
   const location = useLocation();
-  const agenda = MODULES.find((m) => m.id === 'agenda')!;
-  const groups = MODULES.filter((m) => m.children);
+  const { perfil } = usePerfil();
+  // Cada cuenta enciende lo que usa: el menú se pinta con lo suyo, no con
+  // todo lo que existe. Mientras carga el perfil se pintan todos, que es lo
+  // que ya había, en vez de un menú vacío que parpadea.
+  const suyos = MODULES.filter((m) => !perfil || perfil.modules.includes(m.id));
+  const conRoadmap = !perfil || perfil.modules.includes('roadmap');
+  const agenda = suyos.find((m) => m.id === 'agenda');
+  const groups = suyos.filter((m) => m.children);
   // en el móvil el orden es el suyo, no el del menú lateral
-  const enOrden = [...MODULES].sort((a, b) => {
+  const enOrden = [...suyos].sort((a, b) => {
     const pa = ORDEN_MOVIL.indexOf(a.id);
     const pb = ORDEN_MOVIL.indexOf(b.id);
     return (pa === -1 ? 99 : pa) - (pb === -1 ? 99 : pb);
   });
 
-  const agendaLink = (
+  // Dentro de Organización se repite el acceso a Agenda… salvo que la cuenta
+  // no la tenga puesta, claro.
+  const agendaLink = agenda ? (
     <NavLink
       key="agenda"
       to={agenda.path!}
@@ -101,7 +110,7 @@ function BottomBar() {
       {agenda.icon}
       <span>{agenda.title}</span>
     </NavLink>
-  );
+  ) : null;
 
   // Cuando todo cabe (los submenús son cortos) se reparte el ancho entre los
   // que hay; solo el primer nivel, con seis apartados, necesita desplazarse.
@@ -130,13 +139,15 @@ function BottomBar() {
             </NavLink>
           ),
         )}
-        <NavLink to="/roadmap" onClick={() => setGroup(null)} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 4l-5 2v14l5-2 6 2 5-2V4l-5 2-6-2z" />
-            <path d="M9 4v14M15 6v14" />
-          </svg>
-          <span>Road Map</span>
-        </NavLink>
+        {conRoadmap && (
+          <NavLink to="/roadmap" onClick={() => setGroup(null)} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 4l-5 2v14l5-2 6 2 5-2V4l-5 2-6-2z" />
+              <path d="M9 4v14M15 6v14" />
+            </svg>
+            <span>Road Map</span>
+          </NavLink>
+        )}
         <NavLink to="/configuracion" onClick={() => setGroup(null)} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3" />
@@ -251,6 +262,7 @@ function Bloqueo({ onAbrir }: { onAbrir: () => void }) {
 
 export default function Layout() {
   const [bloqueado, setBloqueado] = useState(() => tocaBloquear());
+  const { perfil } = usePerfil();
 
   // Se marca actividad mientras usas el portal, y al volver de segundo plano
   // se comprueba si toca pedir la cara otra vez.
@@ -280,17 +292,19 @@ export default function Layout() {
     <div className="shell">
       <aside className="sidebar">
         <div className="brand">Aa</div>
-        {MODULES.map((m) => (
+        {MODULES.filter((m) => !perfil || perfil.modules.includes(m.id)).map((m) => (
           <SidebarItem key={m.id} mod={m} />
         ))}
         <div className="spacer" />
-        <NavLink to="/roadmap" className={({ isActive }) => `nav-item subtle${isActive ? ' active' : ''}`}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 4l-5 2v14l5-2 6 2 5-2V4l-5 2-6-2z" />
-            <path d="M9 4v14M15 6v14" />
-          </svg>
-          <span>Road Map</span>
-        </NavLink>
+        {(!perfil || perfil.modules.includes('roadmap')) && (
+          <NavLink to="/roadmap" className={({ isActive }) => `nav-item subtle${isActive ? ' active' : ''}`}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 4l-5 2v14l5-2 6 2 5-2V4l-5 2-6-2z" />
+              <path d="M9 4v14M15 6v14" />
+            </svg>
+            <span>Road Map</span>
+          </NavLink>
+        )}
         <NavLink to="/configuracion" className={({ isActive }) => `nav-item subtle${isActive ? ' active' : ''}`}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3" />

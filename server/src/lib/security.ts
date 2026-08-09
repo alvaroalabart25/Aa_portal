@@ -31,7 +31,12 @@ export type EventKind =
   | 'recuperacion_solicitada'
   | 'contrasena_restablecida'
   | 'codigo_recuperacion_usado'
-  | 'codigos_recuperacion_nuevos';
+  | 'codigos_recuperacion_nuevos'
+  | 'cuenta_desactivada_uso'
+  | 'acceso_admin_denegado'
+  | 'invitacion_creada'
+  | 'invitacion_invalida'
+  | 'cuenta_creada';
 
 interface Regla {
   severidad: 'alta' | 'media' | 'baja';
@@ -64,6 +69,11 @@ const REGLAS: Record<EventKind, Regla> = {
   contrasena_restablecida: { severidad: 'alta', umbral: 1, ventanaMin: 1, enfriamientoMin: 0, asunto: 'Tu contraseña se ha restablecido por correo' },
   codigo_recuperacion_usado: { severidad: 'alta', umbral: 1, ventanaMin: 1, enfriamientoMin: 0, asunto: 'Se ha entrado con un código de recuperación' },
   codigos_recuperacion_nuevos: { severidad: 'alta', umbral: 1, ventanaMin: 1, enfriamientoMin: 0, asunto: 'Códigos de recuperación nuevos' },
+  cuenta_desactivada_uso: { severidad: 'media', umbral: 3, ventanaMin: 60, enfriamientoMin: 120, asunto: 'Una cuenta desactivada sigue intentando entrar' },
+  acceso_admin_denegado: { severidad: 'alta', umbral: 1, ventanaMin: 5, enfriamientoMin: 60, asunto: 'Alguien ha llamado a la administración sin serlo' },
+  invitacion_creada: { severidad: 'alta', umbral: 1, ventanaMin: 1, enfriamientoMin: 0, asunto: 'Se ha creado una invitación al portal' },
+  invitacion_invalida: { severidad: 'media', umbral: 5, ventanaMin: 30, enfriamientoMin: 60, asunto: 'Invitaciones inválidas probadas' },
+  cuenta_creada: { severidad: 'alta', umbral: 1, ventanaMin: 1, enfriamientoMin: 0, asunto: 'Cuenta nueva en el portal' },
 };
 
 const ultimoAviso = new Map<EventKind, number>();

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { setToken } from '../lib/auth';
+import { usePerfil } from '../lib/perfil';
 import { entrarConPasskey, marcarActividad, passkeysSoportadas } from '../lib/passkeys';
 
 export default function Login() {
@@ -14,6 +15,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { recargar } = usePerfil();
   const conFaceId = passkeysSoportadas();
 
   // Pide el enlace de recuperación. La respuesta es siempre la misma exista o
@@ -41,7 +43,9 @@ export default function Login() {
     try {
       await entrarConPasskey();
       marcarActividad();
-      navigate('/agenda');
+      await recargar();
+      // A «/» y no a Agenda: cada cuenta entra por el primer módulo que tenga.
+      navigate('/', { replace: true });
     } catch (e) {
       const err = e as Error;
       setError(err.name === 'NotAllowedError' ? '' : err.message || 'No se pudo entrar con Face ID');
@@ -63,7 +67,8 @@ export default function Login() {
       });
       setToken(res.token);
       marcarActividad();
-      navigate('/agenda');
+      await recargar();
+      navigate('/', { replace: true });
     } catch (err) {
       const e = err as Error & { need2fa?: boolean };
       if (e.need2fa) {

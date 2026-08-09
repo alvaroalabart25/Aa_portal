@@ -37,6 +37,10 @@ export default function BloqueGimnasio() {
   const hechos = idos.size;
   const faltan = Math.max(0, datos.target - hechos);
   const diasQueQuedan = dias.filter((d) => d > datos.today).length;
+  // El cuarto día es un premio, no un objetivo: solo existe cuando los tres
+  // están hechos. Si esta semana no dan los días para llegar a tres, ni se
+  // menciona: sería ofrecer un extra a quien no ha llegado a lo básico.
+  const cuartoAbierto = hechos >= datos.target;
 
   return (
     <section className="section mc-bloque">
@@ -61,6 +65,7 @@ export default function BloqueGimnasio() {
         })}
         <span className="gs-cuenta">
           {hechos}/{datos.target}
+          {cuartoAbierto && <b className="gs-extra">+1</b>}
         </span>
       </div>
 
@@ -77,28 +82,52 @@ function recomendacion(d: SemanaGym, hechos: number, faltan: number, quedan: num
   const fueHoy = d.week.some((s) => s.sessionDate === d.today);
   const desde = d.last ? diasEntre(d.last.sessionDate, d.today) : null;
 
+  // El cuarto día solo se ofrece con los tres hechos. Y si ya no caben tres
+  // esta semana, no se nombra siquiera.
+  const cuartoAbierto = hechos >= d.target;
+
   if (fueHoy) {
-    return faltan > 0
-      ? `Hecho por hoy. Esta semana te ${faltan === 1 ? 'queda 1 día' : `quedan ${faltan} días`} y tienes ${quedan} para meterlos.`
-      : 'Hecho por hoy, y la semana ya está cumplida. Lo que venga es de regalo.';
+    if (faltan > 0) {
+      return `Hecho por hoy. Esta semana te ${faltan === 1 ? 'queda 1 día' : `quedan ${faltan} días`} y tienes ${quedan} para meterlos.`;
+    }
+    return quedan > 0
+      ? `Semana cumplida: ${hechos} de ${d.target}. El cuarto día queda abierto, pero es opcional.`
+      : 'Semana cumplida y cerrada. Descansa, que también cuenta.';
   }
 
-  if (faltan === 0) return `Semana cumplida: ${hechos} de ${d.target}. Si vas, que sea porque te apetece.`;
+  if (cuartoAbierto) {
+    return quedan > 0
+      ? `Ya tienes los ${d.target} de la semana. El cuarto está desbloqueado: ve si te apetece, no si toca.`
+      : `Semana cumplida: ${hechos} de ${d.target}. Mañana empieza otra.`;
+  }
+
+  // Días en los que TODAVÍA puedes ir, hoy incluido. Contar solo los que
+  // vienen después dejaba mensajes como «y 0 para repartirlos» un domingo.
+  const oportunidades = quedan + 1;
+  const loQueFalta = faltan === 1 ? '1 día' : `${faltan} días`;
+  const ultimoDia = oportunidades === 1;
 
   // Cargaste mucho ayer: el descanso también entrena
   if (desde === 1 && d.last && d.avgVolume && d.last.volume && d.last.volume > d.avgVolume * 1.25) {
-    return `Ayer moviste ${d.last.volume.toLocaleString('es-ES')} kg, bastante más que tu media (${d.avgVolume.toLocaleString('es-ES')}). Hoy el descanso también entrena.`;
+    return `Ayer moviste ${d.last.volume.toLocaleString('es-ES')} kg, bastante más que tu media (${d.avgVolume.toLocaleString('es-ES')}). Hoy el descanso también entrena${ultimoDia ? ', aunque hoy cierra la semana' : ''}.`;
   }
   if (desde === 1 && d.last?.energy === 1) {
     return 'Ayer acabaste sin fuerza. Si hoy sigues igual, mejor mañana.';
   }
-  if (desde === 1) return `Entrenaste ayer. Puedes ir, pero te ${faltan === 1 ? 'queda 1 día' : `quedan ${faltan}`} y ${quedan} para repartirlos.`;
+  if (desde === 1) {
+    return ultimoDia
+      ? `Entrenaste ayer y hoy cierra la semana: es hoy o te quedas en ${hechos} de ${d.target}.`
+      : `Entrenaste ayer. Te ${loQueFalta === '1 día' ? 'queda 1 día' : `quedan ${loQueFalta}`} y ${oportunidades} para meterlos.`;
+  }
 
   if (desde != null && desde >= 4) return `Llevas ${desde} días sin pisar el gimnasio. Hoy tocaría, aunque sea flojo.`;
   if (desde != null && desde >= 2) return `${desde} días de descanso. Buen momento para ir.`;
 
-  if (faltan > quedan + 1) return `Te ${faltan === 1 ? 'queda 1 día' : `quedan ${faltan} días`} y solo ${quedan + 1} para hacerlos. O vas hoy, o la semana se queda corta.`;
-  return `Esta semana te ${faltan === 1 ? 'queda 1 día' : `quedan ${faltan} días`}. Hoy es buen día.`;
+  if (faltan > oportunidades) {
+    return `Te ${loQueFalta === '1 día' ? 'queda 1 día' : `quedan ${loQueFalta}`} y solo ${oportunidades} para hacerlos. Esta semana se queda corta; no pasa nada, la que viene empieza a cero.`;
+  }
+  if (ultimoDia) return `Último día de la semana y te ${loQueFalta === '1 día' ? 'queda 1' : `quedan ${loQueFalta}`}. Hoy o nada.`;
+  return `Esta semana te ${loQueFalta === '1 día' ? 'queda 1 día' : `quedan ${loQueFalta}`}. Hoy es buen día.`;
 }
 
 function diasEntre(a: string, b: string): number {

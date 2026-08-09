@@ -1651,4 +1651,6 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .gs-dia.hoy .gs-punto { box-shadow: 0 0 0 2px var(--paper), 0 0 0 3px var(--ink); }
 .gs-dia.hoy { color: var(--ink); font-weight: 600; }
 .gs-cuenta { margin-left: auto; font-family: var(--font-title); font-weight: 600; font-size: 15px; color: var(--ink-muted); }
+/* el cuarto día no es parte del objetivo: se enseña aparte y solo cuando existe */
+.gs-extra { margin-left: 5px; font-size: 12px; color: var(--ink); }
 .gs-msg { font-size: 13px; line-height: 1.6; color: var(--ink-soft); margin: 10px 0 0; max-width: 560px; }

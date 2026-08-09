@@ -16,6 +16,7 @@ import {
   type Sesion,
   type SesionHistorial,
   type SesionOlvidada,
+  type SemanaGym,
 } from './api';
 import { CondicionanteModal, EjercicioModal, MetaModal } from './modals';
 import { notaDelDia } from './score';
@@ -104,13 +105,20 @@ function Entrenar({ rutina }: { rutina: Rutina }) {
   const [abierta, setAbierta] = useState<Sesion | null>(null);
   const [olvidada, setOlvidada] = useState<SesionOlvidada | null>(null);
   const [historial, setHistorial] = useState<SesionHistorial[]>([]);
+  const [semana, setSemana] = useState<SemanaGym | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     gymApi.sesionAbierta().then(setAbierta).catch(() => {});
     gymApi.sesionOlvidada().then(setOlvidada).catch(() => {});
     gymApi.historial(8).then(setHistorial).catch(() => {});
+    gymApi.semana().then(setSemana).catch(() => {});
   }, []);
+
+  // El cuarto día de la semana es opcional y solo existe con los tres hechos:
+  // si aún no están, esto no cambia nada y se propone el siguiente sin más.
+  const idos = semana ? new Set(semana.week.map((x) => x.sessionDate)).size : 0;
+  const cuartoOpcional = semana != null && idos >= semana.target;
 
   // Lo de hoy, si ya está hecho. Entonces no se propone nada más: la rotación
   // se reanuda mañana, que es como se entrena de verdad.
@@ -193,9 +201,9 @@ function Entrenar({ rutina }: { rutina: Rutina }) {
       {toca && (
         <section className="section mc-bloque">
           <div className="mc-head">
-            <h2>Te toca</h2>
+            <h2>{cuartoOpcional ? 'El cuarto, si te apetece' : 'Te toca'}</h2>
             <span className="muted" style={{ fontSize: 12.5 }}>
-              última vez {hace(toca.lastDone)}
+              {cuartoOpcional ? `${idos} de ${semana!.target} esta semana` : `última vez ${hace(toca.lastDone)}`}
             </span>
           </div>
           <div className="gy-toca">

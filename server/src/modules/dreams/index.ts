@@ -744,3 +744,27 @@ dreamsModule.post('/:id(\\d+)/to-wishlist', ah(async (req: AuthedRequest, res) =
   await db.update(dreams).set({ parentId: null }).where(and(eq(dreams.userId, req.userId!), eq(dreams.parentId, id)));
   res.status(201).json({ wishlistId: result.insertId });
 }));
+
+/**
+ * Subir una micrometa a macrometa.
+ *
+ * Va en su propia ruta y no como un campo más del PATCH porque no es un cambio
+ * de etiqueta: una macro no cuelga de nadie, así que promover implica soltarla
+ * de su padre. Dejarlo en el PATCH sería poder mandar `kind: 'macro'` y
+ * quedarse con un `parent_id` que ya no debería existir.
+ *
+ * Lo que la meta lleva encima (pasos, enlaces, imágenes, coste, categoría) se
+ * queda: es la misma meta vista más grande, no una nueva.
+ */
+dreamsModule.post('/:id(\\d+)/to-macro', ah(async (req: AuthedRequest, res) => {
+  const id = Number(req.params.id);
+  const [sueno] = await db
+    .select()
+    .from(dreams)
+    .where(and(eq(dreams.id, id), eq(dreams.userId, req.userId!), isNull(dreams.archivedAt)));
+  if (!sueno) return res.status(404).json({ error: 'Meta no encontrada' });
+  if (sueno.kind === 'macro') return res.status(400).json({ error: 'Esta meta ya es una macrometa' });
+
+  await db.update(dreams).set({ kind: 'macro', parentId: null }).where(eq(dreams.id, id));
+  res.json({ id, kind: 'macro' });
+}));

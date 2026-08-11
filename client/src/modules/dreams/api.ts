@@ -69,6 +69,7 @@ export const dreamsApi = {
 
   deseoASueno: (id: number) => post<{ dreamId: number }>(`/dreams/wishlist/${id}/to-dream`, {}),
   suenoADeseo: (id: number) => post<{ wishlistId: number }>(`/dreams/${id}/to-wishlist`, {}),
+  suenoAMacro: (id: number) => post<{ id: number; kind: 'macro' }>(`/dreams/${id}/to-macro`, {}),
 };
 
 /**

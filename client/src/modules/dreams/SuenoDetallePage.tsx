@@ -156,6 +156,26 @@ export default function SuenoDetallePage() {
       <section className="section">
         <h2>Esta meta</h2>
         <div className="dr-dt-actions">
+          {/* Solo en las micro: una macro ya está arriba del todo. Va la
+              primera porque subir es lo que se hace con una meta que crece, y
+              lo de abajo (deseo, quitar) son salidas. */}
+          {d.kind === 'micro' && (
+            <button
+              className="btn ghost sm"
+              onClick={async () => {
+                // Si cuelga de una macro hay que decirlo: promoverla la suelta,
+                // y eso se nota al volver al tablero.
+                const aviso = d.parentId
+                  ? `¿Subir «${d.title}» a macrometa? Dejará de colgar de su macrometa y pasará a ser una propia. Se queda todo lo que tiene dentro.`
+                  : `¿Subir «${d.title}» a macrometa? Se queda todo lo que tiene dentro: pasos, enlaces, fotos y coste.`;
+                if (!confirm(aviso)) return;
+                await dreamsApi.suenoAMacro(d.id);
+                await cargar();
+              }}
+            >
+              Subir a macrometa
+            </button>
+          )}
           <button
             className="btn ghost sm"
             onClick={async () => {

@@ -44,6 +44,9 @@ export default function UsuariosTab() {
   const [abierto, setAbierto] = useState<number | null>(null);
 
   const [creando, setCreando] = useState(false);
+  // enlace de recuperación recién creado, por usuario: se enseña una sola vez
+  const [rescate, setRescate] = useState<{ userId: number; url: string } | null>(null);
+  const [rescatando, setRescatando] = useState(false);
   const [nota, setNota] = useState('');
   const [modulos, setModulos] = useState<string[]>(['agenda', 'org', 'salud']);
   const [enlace, setEnlace] = useState('');
@@ -210,8 +213,46 @@ export default function UsuariosTab() {
                       </div>
                     )}
 
+                    {/* La recuperación por correo no funciona (el servidor de
+                        correo no es alcanzable desde Render), así que el camino
+                        es este: generas su enlace y se lo pasas tú. Un uso,
+                        60 min, y no toca nada hasta que la persona lo abre y
+                        pone su contraseña nueva. */}
+                    {rescate?.userId === u.id ? (
+                      <div className="us-enlace" style={{ marginTop: 12 }}>
+                        <p>
+                          <b>Pásale este enlace para que ponga una contraseña nueva.</b> Caduca en 60 minutos y sirve
+                          una vez. Al usarlo se cierran sus sesiones antiguas.
+                        </p>
+                        <code>{rescate.url}</code>
+                        <button
+                          className="btn sm"
+                          onClick={() => void navigator.clipboard.writeText(rescate.url).catch(() => {})}
+                        >
+                          Copiar
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        className="btn ghost sm"
+                        style={{ marginTop: 12 }}
+                        disabled={rescatando}
+                        onClick={async () => {
+                          setRescatando(true);
+                          try {
+                            const r = await post<{ url: string }>(`/admin/usuarios/${u.id}/recuperacion`, {});
+                            setRescate({ userId: u.id, url: r.url });
+                          } finally {
+                            setRescatando(false);
+                          }
+                        }}
+                      >
+                        {rescatando ? 'Creando…' : 'Enlace de recuperación'}
+                      </button>
+                    )}
+
                     {!yo && (
-                      <button className="btn ghost sm" style={{ marginTop: 12 }} onClick={() => void cambiarAcceso(u)}>
+                      <button className="btn ghost sm" style={{ marginTop: 12, marginLeft: 8 }} onClick={() => void cambiarAcceso(u)}>
                         {u.disabledAt ? 'Devolverle el acceso' : 'Quitarle el acceso'}
                       </button>
                     )}

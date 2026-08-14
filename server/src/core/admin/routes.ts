@@ -19,6 +19,7 @@ import { ah } from '../../lib/async';
 import { db } from '../../db';
 import {
   dreams,
+  passwordResets,
   events,
   gymSets,
   healthEntries,
@@ -30,6 +31,7 @@ import {
   users,
 } from '../../db/schema';
 import { olvidarUsuario, type AuthedRequest } from '../auth/middleware';
+import { clientIp } from '../../lib/security';
 import { logSecurityEvent } from '../../lib/security';
 import { aTexto, limpiarModulos, MODULOS_POR_DEFECTO } from '../modulos';
 
@@ -219,4 +221,38 @@ adminModule.delete('/invitaciones/:id(\\d+)', ah(async (req: AuthedRequest, res)
 
   await db.update(invites).set({ revokedAt: new Date() }).where(eq(invites.id, id));
   res.json({ ok: true });
+}));
+
+// POST /api/admin/usuarios/:id/recuperacion -> { url }
+// El enlace de «he olvidado mi contraseña», pero en mano: el correo del portal
+// no sale desde Render (el SMTP no es alcanzable desde allí), así que la
+// recuperación por correo muere en silencio. Esta es la salida: el
+// administrador genera el MISMO enlace de un solo uso y se lo pasa por
+// WhatsApp. No cambia ninguna contraseña por sí solo y no enseña nada: quien
+// lo abre pone la contraseña nueva, y las sesiones viejas se cierran igual.
+adminModule.post('/usuarios/:id(\\d+)/recuperacion', ah(async (req: AuthedRequest, res) => {
+  const id = Number(req.params.id);
+  const [u] = await db.select({ id: users.id, username: users.username }).from(users).where(eq(users.id, id));
+  if (!u) return res.status(404).json({ error: 'No existe esa cuenta' });
+
+  // un solo enlace vivo por cuenta: los anteriores se anulan, como en el flujo normal
+  await db
+    .update(passwordResets)
+    .set({ usedAt: new Date() })
+    .where(and(eq(passwordResets.userId, id), isNull(passwordResets.usedAt)));
+
+  const token = crypto.randomBytes(32).toString('base64url');
+  // 60 min y no 30: este enlace pasa por una persona más antes de usarse
+  const expira = new Date(Date.now() + 60 * 60_000);
+  await db.insert(passwordResets).values({
+    userId: id,
+    tokenHash: crypto.createHash('sha256').update(token).digest('hex'),
+    ip: clientIp(req),
+    expiresAt: expira,
+  });
+
+  await logSecurityEvent('recuperacion_solicitada', req, `enlace de recuperación creado por el administrador para ${u.username}`);
+
+  const base = (process.env.FRONT_URL ?? 'http://localhost:5173').replace(/\/$/, '');
+  res.status(201).json({ url: `${base}/recuperar?token=${token}`, expiresAt: expira });
 }));

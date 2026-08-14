@@ -32,10 +32,15 @@ authRouter.use(passkeysRouter);
 
 // POST /api/auth/login  { username, password } -> { token }
 authRouter.post('/login', ah(async (req, res) => {
-  const { username, password } = req.body ?? {};
-  if (typeof username !== 'string' || typeof password !== 'string') {
+  const { username: crudo, password } = req.body ?? {};
+  if (typeof crudo !== 'string' || typeof password !== 'string') {
     return res.status(400).json({ error: 'Faltan usuario o contraseña' });
   }
+  // En minúsculas SIEMPRE: el alta ya guarda así, pero la columna es
+  // utf8mb4_bin (distingue mayúsculas) y el teclado del iPhone pone mayúscula
+  // la primera letra él solo. Sin esto, «Jose@…» no encuentra a «jose@…» y
+  // sale «credenciales incorrectas» CON la contraseña buena.
+  const username = crudo.trim().toLowerCase();
   const [user] = await db.select().from(users).where(eq(users.username, username));
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     await logSecurityEvent('login_fallido', req, `usuario probado: ${username.slice(0, 40)}`);

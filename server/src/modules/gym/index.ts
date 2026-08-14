@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { ah } from '../../lib/async';
 import { db } from '../../db';
 import { gymConditions, gymDays, gymExercises, gymGoals, gymSessions, gymSets, healthEntries } from '../../db/schema';
 import type { AuthedRequest } from '../../core/auth/middleware';
 import { limpiarPartes, musculosDePartes, PARTES } from './partes';
+import { compartirRouter, emitirCambio, romperVinculosDeDia } from './compartir';
 
 /**
  * Gimnasio: la rutina y lo que de verdad se levanta.
@@ -20,6 +21,10 @@ import { limpiarPartes, musculosDePartes, PARTES } from './partes';
  * forma de sacar después cuánto duró ni cómo evolucionó.
  */
 export const gymModule = Router();
+
+// Compartir la rutina con otra cuenta vive en su propio fichero: es la única
+// parte del portal donde dos cuentas se tocan, y conviene poder leerla entera.
+gymModule.use(compartirRouter);
 
 /** Los bloques. Los ejercicios se etiquetan por PARTE (ver partes.ts) y el
  *  bloque sale de ahí; esta lista la usan los condicionantes, que sí van por
@@ -87,7 +92,10 @@ gymModule.get('/rutina', ah(async (req: AuthedRequest, res) => {
     today: hoyMadrid(),
     days: dias.map((d) => ({
       ...d,
-      exercises: ejercicios.filter((e) => e.dayId === d.id),
+      // El plan y lo improvisado van separados: un ejercicio que metiste sobre
+      // la marcha entrenando NO es parte de la rutina hasta que lo aceptas.
+      exercises: ejercicios.filter((e) => e.dayId === d.id && !e.proposedAt),
+      proposed: ejercicios.filter((e) => e.dayId === d.id && e.proposedAt),
     })),
   });
 }));
@@ -124,6 +132,9 @@ gymModule.delete('/dias/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
     .set({ archivedAt: new Date() })
     .where(and(eq(gymDays.id, Number(req.params.id)), eq(gymDays.userId, req.userId!)));
   if (r.affectedRows === 0) return res.status(404).json({ error: 'Día no encontrado' });
+  // Su ejemplo: al borrar «Full body» esa sesión se desconecta y deja de llegar
+  // nada de ella. Los demás vínculos siguen vivos.
+  await romperVinculosDeDia(Number(req.params.id));
   res.json({ archived: true });
 }));
 
@@ -165,6 +176,14 @@ gymModule.post('/ejercicios', ah(async (req: AuthedRequest, res) => {
     sortOrder: Number(n),
   });
   const [row] = await db.select().from(gymExercises).where(eq(gymExercises.id, r.insertId));
+  await emitirCambio({
+    userId: req.userId!,
+    dayId: row.dayId,
+    kind: 'alta',
+    name: row.name,
+    exerciseKind: row.kind,
+    parts: row.parts,
+  });
   res.status(201).json(row);
 }));
 
@@ -185,15 +204,31 @@ gymModule.patch('/ejercicios/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
     .where(and(eq(gymExercises.id, Number(req.params.id)), eq(gymExercises.userId, req.userId!)));
   if (r.affectedRows === 0) return res.status(404).json({ error: 'Ejercicio no encontrado' });
   const [row] = await db.select().from(gymExercises).where(eq(gymExercises.id, Number(req.params.id)));
+  // Editar un ejercicio NO avisa a nadie: el objetivo (series × repeticiones),
+  // el peso y las notas son de cada uno. Solo viajan las altas y las bajas.
   res.json(row);
 }));
 
 gymModule.delete('/ejercicios/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
+  const [antes] = await db
+    .select()
+    .from(gymExercises)
+    .where(and(eq(gymExercises.id, Number(req.params.id)), eq(gymExercises.userId, req.userId!)));
   const [r] = await db
     .update(gymExercises)
     .set({ archivedAt: new Date() })
     .where(and(eq(gymExercises.id, Number(req.params.id)), eq(gymExercises.userId, req.userId!)));
   if (r.affectedRows === 0) return res.status(404).json({ error: 'Ejercicio no encontrado' });
+  if (antes && !antes.proposedAt) {
+    await emitirCambio({
+      userId: req.userId!,
+      dayId: antes.dayId,
+      kind: 'baja',
+      name: antes.name,
+      exerciseKind: antes.kind,
+      parts: antes.parts,
+    });
+  }
   res.json({ archived: true });
 }));
 
@@ -276,10 +311,19 @@ gymModule.get('/sesiones/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
   if (!sesion) return res.status(404).json({ error: 'Sesión no encontrada' });
 
   const [dia] = await db.select().from(gymDays).where(eq(gymDays.id, sesion.dayId));
+  // El plan del día MÁS lo improvisado en esta sesión. Lo improvisado en otra
+  // sesión anterior no aparece: se propuso en su día y se resolvió allí.
   const ejercicios = await db
     .select()
     .from(gymExercises)
-    .where(and(eq(gymExercises.dayId, sesion.dayId), isNull(gymExercises.archivedAt)))
+    .where(
+      and(
+        eq(gymExercises.dayId, sesion.dayId),
+        eq(gymExercises.userId, req.userId!),
+        isNull(gymExercises.archivedAt),
+        or(isNull(gymExercises.proposedAt), eq(gymExercises.proposedFrom, id)),
+      ),
+    )
     .orderBy(asc(gymExercises.sortOrder), asc(gymExercises.id));
 
   const hechas = await db
@@ -809,4 +853,99 @@ gymModule.get('/semana', ah(async (req: AuthedRequest, res) => {
       : null,
     avgVolume: media,
   });
+}));
+
+// ---------- Improvisar entrenando ----------
+/**
+ * Meter un ejercicio a mano en mitad del entrenamiento.
+ *
+ * Se escribe a mano a propósito (decisión suya): elegirlo de una lista sería
+ * más «limpio» pero en el gimnasio, con el móvil en una mano, escribir cuatro
+ * palabras es más rápido que navegar.
+ *
+ * NO entra en la rutina. Nace marcado como propuesto: sirve para apuntarle
+ * series ahora y, al acabar, se ofrece en la pantalla Rutina. Que un
+ * entrenamiento raro te reescriba el plan sin preguntar sería justo lo
+ * contrario de tener un plan.
+ */
+gymModule.post('/sesiones/:id(\\d+)/improvisar', ah(async (req: AuthedRequest, res) => {
+  const id = Number(req.params.id);
+  const parsed = z
+    .object({
+      name: z.string().trim().min(1).max(160),
+      parts: z.string().max(320).default(''),
+      kind: z.enum(['repes', 'tiempo']).default('repes'),
+      targetSets: z.number().int().min(1).max(20).default(3),
+      targetReps: z.string().trim().max(20).default('10'),
+    })
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
+
+  const [sesion] = await db
+    .select()
+    .from(gymSessions)
+    .where(and(eq(gymSessions.id, id), eq(gymSessions.userId, req.userId!)));
+  if (!sesion) return res.status(404).json({ error: 'Sesión no encontrada' });
+  if (sesion.endedAt) return res.status(400).json({ error: 'Esa sesión ya está cerrada' });
+
+  const [{ n }] = await db
+    .select({ n: sql<number>`count(*)` })
+    .from(gymExercises)
+    .where(and(eq(gymExercises.dayId, sesion.dayId), isNull(gymExercises.archivedAt)));
+
+  const partes = limpiarPartes(parsed.data.parts);
+  const [r] = await db.insert(gymExercises).values({
+    userId: req.userId!,
+    dayId: sesion.dayId,
+    name: parsed.data.name,
+    kind: parsed.data.kind,
+    parts: partes,
+    muscles: musculosDePartes(partes),
+    targetSets: parsed.data.targetSets,
+    targetReps: parsed.data.targetReps,
+    sortOrder: Number(n),
+    proposedAt: new Date(),
+    proposedFrom: id,
+  });
+  const [row] = await db.select().from(gymExercises).where(eq(gymExercises.id, r.insertId));
+  res.status(201).json(row);
+}));
+
+/** Aceptar un ejercicio improvisado: pasa a ser parte del plan y, si ese día
+ *  está compartido, sale como sugerencia hacia el otro lado. */
+gymModule.post('/propuestas/:id(\\d+)/aceptar', ah(async (req: AuthedRequest, res) => {
+  const id = Number(req.params.id);
+  const [ej] = await db
+    .select()
+    .from(gymExercises)
+    .where(and(eq(gymExercises.id, id), eq(gymExercises.userId, req.userId!), isNull(gymExercises.archivedAt)));
+  if (!ej || !ej.proposedAt) return res.status(404).json({ error: 'Esa propuesta ya no está' });
+
+  await db.update(gymExercises).set({ proposedAt: null, proposedFrom: null }).where(eq(gymExercises.id, id));
+  await emitirCambio({
+    userId: req.userId!,
+    dayId: ej.dayId,
+    kind: 'alta',
+    name: ej.name,
+    exerciseKind: ej.kind,
+    parts: ej.parts,
+  });
+  res.json({ ok: true });
+}));
+
+/** Descartarla: el ejercicio se archiva, pero las series que hiciste con él
+ *  siguen en el histórico (gym_sets guarda también el nombre). */
+gymModule.post('/propuestas/:id(\\d+)/descartar', ah(async (req: AuthedRequest, res) => {
+  const [r] = await db
+    .update(gymExercises)
+    .set({ archivedAt: new Date() })
+    .where(
+      and(
+        eq(gymExercises.id, Number(req.params.id)),
+        eq(gymExercises.userId, req.userId!),
+        sql`${gymExercises.proposedAt} is not null`,
+      ),
+    );
+  if (r.affectedRows === 0) return res.status(404).json({ error: 'Esa propuesta ya no está' });
+  res.json({ ok: true });
 }));

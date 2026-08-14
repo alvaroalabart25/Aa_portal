@@ -755,6 +755,11 @@ export const gymExercises = mysqlTable('gym_exercises', {
   restSeconds: int('rest_seconds'),
   notes: text('notes'), // técnica: «codos pegados», «banco a 30°»
   sortOrder: int('sort_order').notNull().default(0),
+  // Improvisado durante un entrenamiento: existe para poder apuntarle series,
+  // pero NO forma parte del plan. Al acabar se propone en la pantalla Rutina y
+  // solo al aceptarlo se vuelve un ejercicio de verdad (proposedAt a null).
+  proposedAt: datetime('proposed_at'),
+  proposedFrom: bigint('proposed_from', { mode: 'number' }), // la sesión donde salió
   archivedAt: datetime('archived_at'),
   createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime('updated_at')
@@ -886,3 +891,80 @@ export const gymConditions = mysqlTable('gym_conditions', {
 });
 
 export type GymCondition = typeof gymConditions.$inferSelect;
+
+// ============================================================
+// Gimnasio compartido: dos cuentas que se pasan la rutina
+// ============================================================
+//
+// LO QUE SE VINCULA SON LOS DÍAS, NO LAS RUTINAS. Compartir la rutina entera
+// solo crea varios vínculos de golpe. Si uno borra su «Full body», ese vínculo
+// muere y de esa sesión no llega nada más; los demás siguen vivos. Por eso el
+// vínculo va por id de día y no por nombre: renombrar no rompe nada.
+
+/** La llave que se pasa por fuera del portal. Solo se guarda su huella. */
+export const gymShareCodes = mysqlTable('gym_share_codes', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  codeHash: varchar('code_hash', { length: 64 }).notNull().unique(),
+  createdBy: bigint('created_by', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  expiresAt: datetime('expires_at').notNull(),
+  usedAt: datetime('used_at'),
+  usedBy: bigint('used_by', { mode: 'number' }),
+  revokedAt: datetime('revoked_at'),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+/** Dos cuentas emparejadas. `userA` < `userB` siempre: así (3,7) y (7,3) no
+ *  pueden coexistir. Una cuenta puede tener varias parejas. */
+export const gymPairs = mysqlTable('gym_pairs', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userA: bigint('user_a', { mode: 'number' }).notNull(),
+  userB: bigint('user_b', { mode: 'number' }).notNull(),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  revokedAt: datetime('revoked_at'),
+});
+
+/** Un día tuyo atado a un día suyo. Es la unidad de lo compartido. */
+export const gymDayLinks = mysqlTable('gym_day_links', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  pairId: bigint('pair_id', { mode: 'number' }).notNull(),
+  dayA: bigint('day_a', { mode: 'number' }).notNull(),
+  dayB: bigint('day_b', { mode: 'number' }).notNull(),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  brokenAt: datetime('broken_at'),
+  brokenReason: varchar('broken_reason', { length: 40 }),
+});
+
+/**
+ * Un cambio concreto propagado al otro lado.
+ *
+ * Existe para que el aviso pueda decir «ha añadido Curl martillo» y no «ha
+ * cambiado su rutina». `sustituida` es la regla de que NO se acumulan: si el
+ * otro vuelve a tocar el mismo ejercicio, la sugerencia vieja se sustituye por
+ * la nueva. Rechazar algo no significa que vuelva a aparecer el histórico.
+ *
+ * Nunca lleva kilos ni notas: los kilos de otro no sirven, y en las notas está
+ * lo que cada uno tenga apuntado de su cuerpo.
+ */
+export const gymChanges = mysqlTable('gym_changes', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  linkId: bigint('link_id', { mode: 'number' }).notNull(),
+  fromUser: bigint('from_user', { mode: 'number' }).notNull(),
+  toUser: bigint('to_user', { mode: 'number' }).notNull(),
+  kind: mysqlEnum('kind', ['alta', 'baja', 'objetivo']).notNull(),
+  exerciseName: varchar('exercise_name', { length: 160 }).notNull(),
+  exerciseKind: mysqlEnum('exercise_kind', ['repes', 'tiempo']).notNull().default('repes'),
+  parts: varchar('parts', { length: 320 }).notNull().default(''),
+  targetSets: int('target_sets'),
+  targetReps: varchar('target_reps', { length: 20 }),
+  prevSets: int('prev_sets'),
+  prevReps: varchar('prev_reps', { length: 20 }),
+  status: mysqlEnum('status', ['pendiente', 'aceptada', 'rechazada', 'sustituida']).notNull().default('pendiente'),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  resolvedAt: datetime('resolved_at'),
+});
+
+export type GymPair = typeof gymPairs.$inferSelect;
+export type GymDayLink = typeof gymDayLinks.$inferSelect;
+export type GymChange = typeof gymChanges.$inferSelect;

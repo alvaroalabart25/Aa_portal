@@ -34,6 +34,9 @@ export default function SesionPage() {
   const [foco, setFoco] = useState(false);
   const [editando, setEditando] = useState<EjercicioEnSesion | null>(null);
   const [celebrando, setCelebrando] = useState(false);
+  const [improvisando, setImprovisando] = useState(false);
+  const [nuevoNombre, setNuevoNombre] = useState('');
+  const [guardandoNuevo, setGuardandoNuevo] = useState(false);
 
   const cargar = useCallback(async () => setDatos(await gymApi.sesion(sesionId)), [sesionId]);
   useEffect(() => {
@@ -47,6 +50,20 @@ export default function SesionPage() {
   const total = datos.exercises.reduce((n, e) => n + e.targetSets, 0);
   const hechas = datos.exercises.reduce((n, e) => n + e.done.length, 0);
   const cerrada = datos.session.endedAt != null;
+
+  async function anadirSobreLaMarcha() {
+    setGuardandoNuevo(true);
+    try {
+      await gymApi.improvisar(sesionId, { name: nuevoNombre.trim() });
+      setNuevoNombre('');
+      setImprovisando(false);
+      await cargar();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setGuardandoNuevo(false);
+    }
+  }
 
   async function terminar() {
     if (hechas === 0) {
@@ -160,6 +177,36 @@ export default function SesionPage() {
 
       {!cerrada && (
         <>
+          {/* Meter algo que no estaba en el plan. Se escribe a mano: en el
+              gimnasio, con una mano ocupada, teclear cuatro palabras es más
+              rápido que buscar en una lista. No toca la rutina: al acabar te lo
+              propone en Rutina y allí decides si se queda. */}
+          {improvisando ? (
+            <div className="gy-improvisar">
+              <input
+                autoFocus
+                value={nuevoNombre}
+                onChange={(e) => setNuevoNombre(e.target.value)}
+                placeholder="Nombre del ejercicio"
+                aria-label="Ejercicio que añades sobre la marcha"
+                onKeyDown={(e) => e.key === 'Enter' && nuevoNombre.trim() && anadirSobreLaMarcha()}
+              />
+              <div className="gy-improvisar-btns">
+                <button className="btn sm" disabled={!nuevoNombre.trim() || guardandoNuevo} onClick={anadirSobreLaMarcha}>
+                  {guardandoNuevo ? 'Añadiendo…' : 'Añadir'}
+                </button>
+                <button className="btn ghost sm" onClick={() => { setImprovisando(false); setNuevoNombre(''); }}>
+                  Cancelar
+                </button>
+              </div>
+              <p className="gy-improvisar-p">No entra en la rutina: al terminar te preguntamos si se queda.</p>
+            </div>
+          ) : (
+            <button className="gy-anadir-ej" onClick={() => setImprovisando(true)}>
+              + Añadir un ejercicio que no estaba
+            </button>
+          )}
+
           {/* dos cosas distintas y con nombres distintos: terminar GUARDA lo
               hecho, descartar lo BORRA. «Tirar» valía para las dos. */}
           <button className="btn gy-terminar" onClick={terminar}>

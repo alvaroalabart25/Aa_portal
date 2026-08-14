@@ -19,6 +19,7 @@ import {
   type SemanaGym,
 } from './api';
 import { CondicionanteModal, EjercicioModal, MetaModal } from './modals';
+import { Compartir, Sugerencias } from './Compartir';
 import { notaDelDia } from './score';
 
 type Vista = 'entrenar' | 'rutina' | 'objetivo';
@@ -323,6 +324,8 @@ function LaRutina({ rutina, onCambio }: { rutina: Rutina; onCambio: () => void }
 
   return (
     <div>
+      <Sugerencias onCambio={onCambio} />
+
       <div className="mc-head" style={{ marginBottom: 4 }}>
         <h2 style={{ margin: 0 }}>Tu rutina</h2>
         <button className="btn ghost sm" disabled={creandoDia} onClick={nuevoDia}>
@@ -368,6 +371,45 @@ function LaRutina({ rutina, onCambio }: { rutina: Rutina; onCambio: () => void }
             </div>
           )}
 
+          {/* Lo que improvisaste entrenando: se propone aquí, no se cuela en el
+              plan. Va debajo de los ejercicios porque es una decisión, no una
+              parte de la rutina todavía. */}
+          {(d.proposed ?? []).length > 0 && (
+            <div className="cp-prop">
+              <p className="cp-prop-t">Metiste esto entrenando. ¿Se queda en el plan?</p>
+              {(d.proposed ?? []).map((e) => (
+                <div key={e.id} className="cp-item">
+                  <div className="cp-item-txt">
+                    <span className="cp-item-t">{e.name}</span>
+                    <span className="cp-item-s">
+                      {e.targetSets} × {e.targetReps}
+                    </span>
+                  </div>
+                  <div className="cp-item-btns">
+                    <button
+                      className="btn sm"
+                      onClick={async () => {
+                        await gymApi.aceptarPropuesta(e.id);
+                        onCambio();
+                      }}
+                    >
+                      Se queda
+                    </button>
+                    <button
+                      className="btn ghost sm"
+                      onClick={async () => {
+                        await gymApi.descartarPropuesta(e.id);
+                        onCambio();
+                      }}
+                    >
+                      Fuera
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Discreto y al final: hace falta para deshacer un día creado por
               error, pero no es una acción que se busque a menudo, y arriba
               estaría pegado al «+ Ejercicio» con el pulgar. */}
@@ -387,6 +429,8 @@ function LaRutina({ rutina, onCambio }: { rutina: Rutina; onCambio: () => void }
           </button>
         </section>
       ))}
+
+      <Compartir onCambio={onCambio} />
 
       {editando && (
         <EjercicioModal

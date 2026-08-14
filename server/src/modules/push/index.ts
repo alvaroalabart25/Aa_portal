@@ -69,7 +69,9 @@ export const NOTIFICATION_TYPES: Array<{ type: string; label: string; defaultTim
   { type: 'gym_activa', label: '¿Sigues entrenando? (sesión de gimnasio parada)', defaultTime: '00:00', sinHora: true },
 ];
 
-async function sendToUser(userId: number, payload: { title: string; body: string; url?: string }) {
+// Exportada: el gimnasio compartido avisa al otro lado cuando cambia una
+// sesión vinculada, y no tiene sentido duplicar el envío en dos sitios.
+export async function sendToUser(userId: number, payload: { title: string; body: string; url?: string }) {
   const subs = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
   let sent = 0;
   for (const s of subs) {

@@ -84,6 +84,8 @@ export interface DiaRutina {
   lastDone: string | null;
   sessions: number;
   exercises: Ejercicio[];
+  /** Improvisados entrenando: todavía NO son parte del plan. */
+  proposed?: Ejercicio[];
 }
 
 export interface Rutina {
@@ -198,6 +200,28 @@ export interface SemanaGym {
   avgVolume: number | null;
 }
 
+/** Con quién comparto y qué sesiones. */
+export interface Compartido {
+  pairId: number;
+  con: string;
+  desde: string;
+  sesiones: { linkId: number; dayId: number; name: string }[];
+}
+
+/** Un cambio del otro lado esperando a que decidas. Solo altas y bajas: el
+ *  objetivo, el peso y las notas son de cada uno y no viajan. */
+export interface Sugerencia {
+  id: number;
+  kind: 'alta' | 'baja';
+  name: string;
+  exerciseKind: 'repes' | 'tiempo';
+  parts: string;
+  de: string;
+  dayId: number;
+  dayName: string;
+  createdAt: string;
+}
+
 export const gymApi = {
   semana: () => get<SemanaGym>('/gym/semana'),
   rutina: () => get<Rutina>('/gym/rutina'),
@@ -215,6 +239,23 @@ export const gymApi = {
   editarEjercicio: (id: number, data: Record<string, unknown>) => patch<Ejercicio>(`/gym/ejercicios/${id}`, data),
   borrarEjercicio: (id: number) => del<{ archived: boolean }>(`/gym/ejercicios/${id}`),
   reordenar: (que: 'dias' | 'ejercicios', ids: number[]) => post<{ ok: true }>('/gym/orden', { que, ids }),
+
+  // Compartir con otra cuenta. La key se enseña UNA vez: solo se guarda su huella.
+  compartido: () => get<Compartido[]>('/gym/compartir'),
+  crearKey: () => post<{ code: string; expiresAt: string }>('/gym/compartir/key', {}),
+  canjearKey: (code: string) =>
+    post<{ pairId: number; dias: number; ejercicios: number; con: string }>('/gym/compartir/canjear', { code }),
+  dejarDeCompartir: (pairId: number) => del<{ ok: true }>(`/gym/compartir/${pairId}`),
+
+  sugerencias: () => get<Sugerencia[]>('/gym/sugerencias'),
+  aceptarSugerencia: (id: number) => post<{ ok: true; aviso: string | null }>(`/gym/sugerencias/${id}/aceptar`, {}),
+  rechazarSugerencia: (id: number) => post<{ ok: true }>(`/gym/sugerencias/${id}/rechazar`, {}),
+
+  // Improvisar entrenando: se apunta ahora, se decide al acabar.
+  improvisar: (sessionId: number, data: { name: string; parts?: string; kind?: 'repes' | 'tiempo'; targetSets?: number; targetReps?: string }) =>
+    post<Ejercicio>(`/gym/sesiones/${sessionId}/improvisar`, data),
+  aceptarPropuesta: (id: number) => post<{ ok: true }>(`/gym/propuestas/${id}/aceptar`, {}),
+  descartarPropuesta: (id: number) => post<{ ok: true }>(`/gym/propuestas/${id}/descartar`, {}),
 
   sesionAbierta: () => get<Sesion | null>('/gym/sesion/abierta'),
   sesionOlvidada: () => get<SesionOlvidada | null>('/gym/sesion/olvidada'),

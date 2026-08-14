@@ -282,13 +282,54 @@ function duracion(h: SesionHistorial): string | null {
 function LaRutina({ rutina, onCambio }: { rutina: Rutina; onCambio: () => void }) {
   const [editando, setEditando] = useState<{ dayId: number; ejercicio?: Ejercicio } | null>(null);
   const [partes, setPartes] = useState<Parte[]>([]);
+  const [creandoDia, setCreandoDia] = useState(false);
 
   useEffect(() => {
     gymApi.partes().then(setPartes).catch(() => {});
   }, []);
 
+  async function nuevoDia() {
+    if (creandoDia) return;
+    setCreandoDia(true);
+    try {
+      // Se crea con un nombre provisional y se renombra tocándolo: pedir el
+      // nombre en una ventana antes de que exista nada es un trámite de más
+      // para algo que se cambia con un toque.
+      await gymApi.crearDia({ name: `Día ${rutina.days.length + 1}` });
+      onCambio();
+    } finally {
+      setCreandoDia(false);
+    }
+  }
+
+  // Una cuenta nueva llega aquí sin nada. Sin esto la pantalla se quedaba en
+  // blanco y no había por dónde empezar: la pestaña Entrenar mandaba aquí y
+  // aquí no se podía hacer nada.
+  if (rutina.days.length === 0) {
+    return (
+      <section className="section">
+        <h2>Todavía no tienes rutina</h2>
+        <p className="muted" style={{ fontSize: 13, lineHeight: 1.6, maxWidth: 520 }}>
+          Una rutina son <b>días</b> y, dentro de cada día, sus <b>ejercicios</b>. Los días no llevan día de la semana:
+          se hacen en orden, y el portal te dirá cuál toca según cuándo hiciste el anterior. Empieza por uno; el nombre
+          lo cambias tocándolo.
+        </p>
+        <button className="btn" style={{ marginTop: 14 }} disabled={creandoDia} onClick={nuevoDia}>
+          {creandoDia ? 'Creando…' : 'Crear el primer día'}
+        </button>
+      </section>
+    );
+  }
+
   return (
     <div>
+      <div className="mc-head" style={{ marginBottom: 4 }}>
+        <h2 style={{ margin: 0 }}>Tu rutina</h2>
+        <button className="btn ghost sm" disabled={creandoDia} onClick={nuevoDia}>
+          {creandoDia ? 'Creando…' : '+ Día'}
+        </button>
+      </div>
+
       <Cobertura rutina={rutina} />
 
       {rutina.days.map((d) => (
@@ -326,6 +367,24 @@ function LaRutina({ rutina, onCambio }: { rutina: Rutina; onCambio: () => void }
               ))}
             </div>
           )}
+
+          {/* Discreto y al final: hace falta para deshacer un día creado por
+              error, pero no es una acción que se busque a menudo, y arriba
+              estaría pegado al «+ Ejercicio» con el pulgar. */}
+          <button
+            className="gy-quitar-dia"
+            onClick={async () => {
+              const aviso =
+                d.exercises.length > 0
+                  ? `¿Quitar «${d.name}» de la rutina? Se va con sus ${d.exercises.length} ejercicios. Lo que ya hayas entrenado se conserva en el histórico.`
+                  : `¿Quitar «${d.name}» de la rutina?`;
+              if (!confirm(aviso)) return;
+              await gymApi.borrarDia(d.id);
+              onCambio();
+            }}
+          >
+            Quitar el día
+          </button>
         </section>
       ))}
 

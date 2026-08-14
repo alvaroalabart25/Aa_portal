@@ -1325,8 +1325,13 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 }
 .gy-cob-toggle:hover h2 { text-decoration: underline dotted; }
 .gy-cob-chev { color: var(--ink-muted); font-size: 12px; }
-/* el titular cabe cerrado: casi siempre es lo único que hay que saber */
-.gy-cob-resumen { flex: 1; min-width: 0; font-size: 12.5px; color: var(--ink-muted); }
+/* el titular cabe cerrado: casi siempre es lo único que hay que saber.
+   `overflow-wrap` porque con la rutina vacía el titular lista TODOS los
+   bloques sin tocar y esa línea se salía de la pantalla en el móvil. */
+.gy-cob-resumen {
+  flex: 1; min-width: 0; font-size: 12.5px; color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}
 .gy-cob { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
 .gy-bl { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
 .gy-bl-head {
@@ -1456,7 +1461,10 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .gy-terminar { display: block; width: 100%; margin-top: 24px; padding: 14px; font-size: 15px; }
 
 @media (max-width: 720px) {
-  .gy-cob-resumen { flex: 1 0 100%; margin-left: 21px; }
+  /* Su propia línea, sangrada bajo el título. El ancho descuenta la sangría:
+     con `100%` a secas, el margen se sumaba y la línea se salía de la
+     pantalla (se veía con la rutina vacía, que es cuando el texto es largo). */
+  .gy-cob-resumen { flex: 1 0 calc(100% - 21px); margin-left: 21px; }
   /* el aviso y su salida, uno debajo del otro: en 375 px no caben en línea */
   .gy-abierta { flex-direction: column; align-items: stretch; margin-top: 14px; }
   .gy-toca { padding: 14px; }
@@ -1740,3 +1748,10 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
   padding: 4px 9px; border-radius: 999px;
 }
 .us-filas b { color: var(--ink); font-weight: 600; margin-left: 3px; }
+
+/* Quitar un día de la rutina: existe, pero no compite con «+ Ejercicio». */
+.gy-quitar-dia {
+  background: none; border: none; padding: 10px 0 0;
+  font-size: 12px; color: var(--ink-muted); text-decoration: underline;
+}
+.gy-quitar-dia:hover { color: var(--danger); }

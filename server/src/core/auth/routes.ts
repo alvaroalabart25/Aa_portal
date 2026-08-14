@@ -518,6 +518,8 @@ authRouter.post('/registro', ah(async (req, res) => {
   // enlace tiene que seguir sirviendo.
   await db.update(invites).set({ usedAt: new Date(), usedBy: creado.id }).where(eq(invites.id, r.inv.id));
 
-  await logSecurityEvent('cuenta_creada', req, `cuenta nueva: ${creado.username}`);
+  // Igual que al invitar: el correo de aviso no puede retrasar la respuesta.
+  // Quien acaba de crear su cuenta tiene que entrar, no esperar a un SMTP.
+  void logSecurityEvent('cuenta_creada', req, `cuenta nueva: ${creado.username}`);
   res.status(201).json({ token: signToken(creado.id, creado.tokenVersion), username: creado.username });
 }));

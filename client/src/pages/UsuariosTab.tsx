@@ -47,6 +47,7 @@ export default function UsuariosTab() {
   const [nota, setNota] = useState('');
   const [modulos, setModulos] = useState<string[]>(['agenda', 'org', 'salud']);
   const [enlace, setEnlace] = useState('');
+  const [generando, setGenerando] = useState(false);
   const [copiado, setCopiado] = useState(false);
   const [error, setError] = useState('');
 
@@ -62,9 +63,14 @@ export default function UsuariosTab() {
   }, []);
 
   async function crearInvitacion() {
+    if (generando) return; // el candado de verdad; `disabled` es solo lo que se ve
     setError('');
+    setGenerando(true);
     try {
       const r = await post<{ url: string }>('/admin/invitaciones', { note: nota, modules: modulos });
+      // Si la respuesta viniera sin dirección, callarse dejaría la pantalla
+      // igual que si no hubieras pulsado. Mejor decirlo.
+      if (!r?.url) throw new Error('La invitación se creó pero el servidor no devolvió el enlace');
       setEnlace(r.url);
       setCopiado(false);
       setNota('');
@@ -72,6 +78,8 @@ export default function UsuariosTab() {
       await cargar();
     } catch (e) {
       setError((e as Error).message || 'No se ha podido crear');
+    } finally {
+      setGenerando(false);
     }
   }
 
@@ -134,8 +142,13 @@ export default function UsuariosTab() {
               })}
             </div>
             {error && <div className="error-msg" style={{ marginTop: 10 }}>{error}</div>}
-            <button className="btn sm" style={{ marginTop: 12 }} disabled={!modulos.length} onClick={crearInvitacion}>
-              Crear el enlace
+            <button
+              className="btn sm"
+              style={{ marginTop: 12 }}
+              disabled={!modulos.length || generando}
+              onClick={crearInvitacion}
+            >
+              {generando ? 'Creando el enlace…' : 'Crear el enlace'}
             </button>
           </div>
         )}

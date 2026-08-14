@@ -196,7 +196,11 @@ adminModule.post('/invitaciones', ah(async (req: AuthedRequest, res) => {
     expiresAt: expira,
   });
 
-  await logSecurityEvent('invitacion_creada', req, `invitación creada${parsed.data.note ? `: ${parsed.data.note}` : ''}`);
+  // Sin `await`: el aviso manda un correo, y la respuesta NO puede esperar a
+  // que el servidor de correo conteste. Esperándolo, crear una invitación se
+  // quedaba colgada minutos: la fila se guardaba y el enlace no llegaba nunca
+  // a la pantalla. El registro se hace igual, solo que por detrás.
+  void logSecurityEvent('invitacion_creada', req, `invitación creada${parsed.data.note ? `: ${parsed.data.note}` : ''}`);
 
   // La dirección se arma con el origen del portal, no con el de la API.
   const base = (process.env.CORS_ORIGIN ?? '').split(',')[0].trim() || 'http://localhost:5173';

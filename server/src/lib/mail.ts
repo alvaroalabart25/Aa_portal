@@ -15,11 +15,18 @@ export async function enviarCorreo(opts: {
 }): Promise<void> {
   if (!correoConfigurado()) throw new Error('El envío de correo no está configurado');
   const port = Number(process.env.SMTP_PORT ?? 465);
+  // Plazos explícitos. Sin ellos nodemailer espera 2 min a conectar y 10 a que
+  // el servidor conteste, y una petición HTTP que dependa de un correo se
+  // queda colgada todo ese rato. Preferimos fallar rápido: un aviso perdido es
+  // molesto, una pantalla congelada parece que el portal está roto.
   const transport = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port,
     secure: port === 465,
     auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
   });
   await transport.sendMail({
     from: `"${opts.fromName ?? 'Aa Portal'}" <${process.env.SMTP_USER}>`,

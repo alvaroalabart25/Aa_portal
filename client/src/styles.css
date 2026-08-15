@@ -1161,6 +1161,8 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
   border: 1px solid var(--line); background: rgba(255, 255, 255, 0.9);
   color: var(--ink-muted); font-size: 13px; line-height: 1;
   display: grid; place-items: center;
+  /* sin esto, iOS convierte el gesto en scroll y cancela el arrastre */
+  touch-action: none; user-select: none; -webkit-user-select: none;
   cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
 }
 .dr-grip:active { cursor: grabbing; }
@@ -1941,7 +1943,7 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .gy-asa {
   background: none; border: none; padding: 8px 6px; flex: none;
   color: var(--ink-muted); font-size: 15px; letter-spacing: 1px;
-  cursor: grab; touch-action: none; user-select: none;
+  cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
 }
 .gy-asa:active { cursor: grabbing; color: var(--ink); }
 .gy-fila-ord { display: flex; align-items: center; gap: 4px; }

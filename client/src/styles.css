@@ -1916,3 +1916,21 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .de-campos label { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; color: var(--ink-muted); }
 .de-campos input { width: 100%; }
 .de-ss { margin-top: 6px; }
+
+/* ---------- Pantalla de arranque ---------- */
+/* Encima de todo mientras el portal pregunta quién eres. Con la API despierta
+   es un parpadeo; dormida, es donde se cuenta la verdad de la espera. */
+.arranque {
+  position: fixed; inset: 0; z-index: 200; background: var(--paper);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.arranque-brand { font-family: var(--font-title); font-weight: 700; font-size: 44px; }
+.arranque-msg {
+  font-size: 13px; line-height: 1.7; color: var(--ink-muted);
+  text-align: center; margin: 14px 0 0; padding: 0 24px;
+}
+/* el gif: pequeño y abajo a un lado, decorativo */
+.arranque-gif {
+  position: absolute; right: 18px; bottom: 18px;
+  width: 92px; border-radius: 10px;
+}

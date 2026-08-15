@@ -22,6 +22,7 @@ import Configuracion from './pages/Configuracion';
 import Recuperar from './pages/Recuperar';
 import Invitacion from './pages/Invitacion';
 import { PerfilProvider, usePerfil } from './lib/perfil';
+import Arranque from './components/Arranque';
 
 function RequireAuth() {
   return isLoggedIn() ? <Outlet /> : <Navigate to="/login" replace />;
@@ -55,6 +56,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <PerfilProvider>
+      <Arranque />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/recuperar" element={<Recuperar />} />

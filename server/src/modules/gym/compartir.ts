@@ -26,6 +26,7 @@ import { type AuthedRequest } from '../../core/auth/middleware';
 import { sendToUser } from '../push';
 import { limpiarPartes, musculosDePartes } from './partes';
 import { asegurarIdentidad } from './catalogo';
+import { soltarSuperserie, vincularSuperserie } from './superseries';
 
 export const compartirRouter = Router();
 
@@ -93,13 +94,15 @@ export interface CambioEmitido {
    * dice nada, porque su cuerpo no es el mío. Lo que sí importa es que ha
    * metido o quitado un ejercicio.
    */
-  kind: 'alta' | 'baja';
+  kind: 'alta' | 'baja' | 'ss_alta' | 'ss_baja';
   name: string;
   exerciseKind?: 'repes' | 'tiempo';
   parts?: string;
   /** La identidad de catálogo: si es un ejercicio común, el otro lado casa
    *  exacto; si es privado, el nombre sigue valiendo de puente. */
   catalogId?: number | null;
+  /** Superseries: los nombres e identidades de TODOS los implicados. */
+  extra?: { names: string[]; catalogIds: (number | null)[] };
   /** Al aceptar una sugerencia no se devuelve el eco a quien la mandó. */
   exceptoLink?: number;
 }
@@ -142,6 +145,22 @@ export async function emitirCambio(c: CambioEmitido): Promise<void> {
     if (kind === 'baja' && !suyo) continue; // no lo tiene: no hay nada que sugerir
     if (kind === 'alta' && suyo) continue; // ya lo tiene: el objetivo es cosa suya
 
+    // Superseries: se mira si el receptor ya está (o ya no está) en ese estado.
+    if (kind === 'ss_alta' || kind === 'ss_baja') {
+      const nombres = (c.extra?.names ?? []).map((n) => n.toLowerCase());
+      const suyos = await db
+        .select({ id: gymExercises.id, name: gymExercises.name, supersetId: gymExercises.supersetId })
+        .from(gymExercises)
+        .where(and(eq(gymExercises.dayId, v.otroDia), isNull(gymExercises.archivedAt), isNull(gymExercises.proposedAt)));
+      const implicados = suyos.filter((x) => nombres.includes(x.name.toLowerCase()));
+      const yaJuntos =
+        implicados.length === nombres.length &&
+        implicados.length > 1 &&
+        implicados.every((x) => x.supersetId != null && x.supersetId === implicados[0].supersetId);
+      if (kind === 'ss_alta' && yaJuntos) continue; // ya la tiene montada
+      if (kind === 'ss_baja' && !yaJuntos) continue; // no la tenía: nada que deshacer
+    }
+
     await db
       .update(gymChanges)
       .set({ status: 'sustituida', resolvedAt: new Date() })
@@ -163,10 +182,18 @@ export async function emitirCambio(c: CambioEmitido): Promise<void> {
       exerciseKind: c.exerciseKind ?? 'repes',
       parts: c.parts ?? '',
       catalogId: c.catalogId ?? null,
+      extra: c.extra ? JSON.stringify(c.extra).slice(0, 600) : null,
     });
 
     // El aviso dice QUÉ ha cambiado. «Ha cambiado su rutina» no sirve de nada.
-    const verbo = kind === 'alta' ? 'ha añadido' : 'ha quitado';
+    const verbo =
+      kind === 'alta'
+        ? 'ha añadido'
+        : kind === 'baja'
+          ? 'ha quitado'
+          : kind === 'ss_alta'
+            ? 'ha creado una superserie:'
+            : 'ha quitado la superserie';
     void sendToUser(v.otroUsuario, {
       title: `${quien} ${verbo} ${c.name}`,
       body: `En ${dia?.name ?? 'una sesión'} que compartís. Míralo en Rutina y decide si lo coges.`,
@@ -387,6 +414,7 @@ compartirRouter.get('/sugerencias', ah(async (req: AuthedRequest, res) => {
       .where(and(inArray(gymDays.id, [link.dayA, link.dayB]), eq(gymDays.userId, req.userId!), isNull(gymDays.archivedAt)));
     if (!mio) continue; // el día es mío y ya no está: el vínculo se romperá solo
     salida.push({
+      extra: c.extra,
       enTuListado:
         (c.catalogId != null && idsVisibles.has(c.catalogId)) || nombresVisibles.has(c.exerciseName.trim().toLowerCase()),
       id: c.id,
@@ -423,6 +451,57 @@ compartirRouter.post('/sugerencias/:id(\\d+)/aceptar', ah(async (req: AuthedRequ
     .from(gymDays)
     .where(and(inArray(gymDays.id, [link.dayA, link.dayB]), eq(gymDays.userId, req.userId!), isNull(gymDays.archivedAt)));
   if (!mio) return res.status(400).json({ error: 'Ese día ya no está en tu rutina' });
+
+  // Superseries: montar (creando lo que falte) o deshacer, y listo.
+  if (c.kind === 'ss_alta' || c.kind === 'ss_baja') {
+    const info = (() => {
+      try {
+        return JSON.parse(c.extra ?? '{}') as { names?: string[]; catalogIds?: (number | null)[] };
+      } catch {
+        return {};
+      }
+    })();
+    const nombres = info.names ?? [];
+    if (nombres.length < 2) return res.status(400).json({ error: 'Esa sugerencia viene incompleta' });
+
+    const mios = await db
+      .select()
+      .from(gymExercises)
+      .where(and(eq(gymExercises.dayId, mio.id), isNull(gymExercises.archivedAt), isNull(gymExercises.proposedAt)));
+
+    if (c.kind === 'ss_alta') {
+      const ids: number[] = [];
+      for (let i = 0; i < nombres.length; i += 1) {
+        const ya = mios.find((x) => x.name.toLowerCase() === nombres[i].toLowerCase());
+        if (ya) {
+          ids.push(ya.id);
+          continue;
+        }
+        // no lo tenía: entra en el día con su identidad y el objetivo por defecto
+        const ident = await asegurarIdentidad(req.userId!, { catalogId: info.catalogIds?.[i], name: nombres[i] });
+        const [r] = await db.insert(gymExercises).values({
+          userId: req.userId!,
+          dayId: mio.id,
+          name: ident.name,
+          kind: ident.kind,
+          catalogId: ident.id,
+          parts: ident.parts,
+          muscles: musculosDePartes(ident.parts),
+          targetSets: 4,
+          targetReps: '8-10',
+          sortOrder: mios.length + i,
+        });
+        ids.push(r.insertId);
+      }
+      for (let i = 1; i < ids.length; i += 1) await vincularSuperserie(req.userId!, ids[0], ids[i]);
+    } else {
+      const implicado = mios.find((x) => nombres.some((n) => n.toLowerCase() === x.name.toLowerCase()) && x.supersetId != null);
+      if (implicado) await soltarSuperserie(req.userId!, implicado.id);
+    }
+
+    await db.update(gymChanges).set({ status: 'aceptada', resolvedAt: new Date() }).where(eq(gymChanges.id, id));
+    return res.json({ ok: true, aviso: null });
+  }
 
   const [existente] = await db
     .select()

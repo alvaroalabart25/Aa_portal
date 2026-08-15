@@ -8,6 +8,7 @@ import type { AuthedRequest } from '../../core/auth/middleware';
 import { limpiarPartes, musculosDePartes, PARTES } from './partes';
 import { compartirRouter, emitirCambio, romperVinculosDeDia } from './compartir';
 import { asegurarIdentidad, catalogoRouter } from './catalogo';
+import { soltarSuperserie, vincularSuperserie } from './superseries';
 
 /**
  * Gimnasio: la rutina y lo que de verdad se levanta.
@@ -1014,52 +1015,96 @@ gymModule.patch('/ejercicios/:id(\\d+)/superserie', ah(async (req: AuthedRequest
   if (!ej) return res.status(404).json({ error: 'Ejercicio no encontrado' });
 
   if (parsed.data.withId === null) {
-    // soltar: si el grupo se queda con un solo miembro, ese también se limpia
-    if (ej.supersetId) {
-      await db.update(gymExercises).set({ supersetId: null }).where(eq(gymExercises.id, id));
-      const resto = await db
-        .select({ id: gymExercises.id })
-        .from(gymExercises)
-        .where(and(eq(gymExercises.supersetId, ej.supersetId), isNull(gymExercises.archivedAt)));
-      if (resto.length === 1) {
-        await db.update(gymExercises).set({ supersetId: null }).where(eq(gymExercises.id, resto[0].id));
-      }
+    const grupo = await soltarSuperserie(req.userId!, id);
+    if (grupo) {
+      // «ha quitado la superserie X + Y»: al otro lado le llega como sugerencia
+      await emitirCambio({
+        userId: req.userId!,
+        dayId: ej.dayId,
+        kind: 'ss_baja',
+        name: grupo.map((g) => g.name).join(' + '),
+        extra: { names: grupo.map((g) => g.name), catalogIds: grupo.map((g) => g.catalogId) },
+      });
     }
     return res.json({ ok: true });
   }
 
-  const [otro] = await db
-    .select()
-    .from(gymExercises)
-    .where(
-      and(
-        eq(gymExercises.id, parsed.data.withId),
-        eq(gymExercises.userId, req.userId!),
-        eq(gymExercises.dayId, ej.dayId),
-        isNull(gymExercises.archivedAt),
-        isNull(gymExercises.proposedAt),
-      ),
-    );
-  if (!otro) return res.status(400).json({ error: 'Ese ejercicio no está en la misma sesión' });
-  if (otro.id === ej.id) return res.status(400).json({ error: 'Un ejercicio no se superpone consigo mismo' });
+  const grupo = await vincularSuperserie(req.userId!, id, parsed.data.withId);
+  if (grupo == null) return res.status(400).json({ error: 'Ese ejercicio no está en la misma sesión' });
 
-  // el grupo hereda el id que ya exista; si no, nace con el del primero
-  const grupo = otro.supersetId ?? ej.supersetId ?? ej.id;
-  await db.update(gymExercises).set({ supersetId: grupo }).where(inArray(gymExercises.id, [ej.id, otro.id]));
-
-  // recolocar: los miembros del grupo, adyacentes, en el sitio del primero
-  const todos = await db
-    .select({ id: gymExercises.id, sortOrder: gymExercises.sortOrder, supersetId: gymExercises.supersetId })
+  const miembros = await db
+    .select({ name: gymExercises.name, catalogId: gymExercises.catalogId })
     .from(gymExercises)
-    .where(and(eq(gymExercises.dayId, ej.dayId), isNull(gymExercises.archivedAt), isNull(gymExercises.proposedAt)))
-    .orderBy(asc(gymExercises.sortOrder), asc(gymExercises.id));
-  const delGrupo = todos.filter((e) => e.supersetId === grupo);
-  const resto = todos.filter((e) => e.supersetId !== grupo);
-  const primera = todos.findIndex((e) => e.supersetId === grupo);
-  const orden = [...resto.slice(0, primera), ...delGrupo, ...resto.slice(primera)];
-  for (let i = 0; i < orden.length; i += 1) {
-    if (orden[i].sortOrder !== i) await db.update(gymExercises).set({ sortOrder: i }).where(eq(gymExercises.id, orden[i].id));
-  }
+    .where(and(eq(gymExercises.supersetId, grupo), isNull(gymExercises.archivedAt)));
+  await emitirCambio({
+    userId: req.userId!,
+    dayId: ej.dayId,
+    kind: 'ss_alta',
+    name: miembros.map((m) => m.name).join(' + '),
+    extra: { names: miembros.map((m) => m.name), catalogIds: miembros.map((m) => m.catalogId) },
+  });
 
   res.json({ ok: true, supersetId: grupo });
+}));
+
+/**
+ * Sustituir un ejercicio por otro, en su mismo sitio.
+ *
+ * No es un atajo cosmético: el nuevo hereda la posición y la superserie del
+ * viejo, y al otro lado viaja como lo que es (un quitado más un añadido).
+ * El historial del viejo no se toca: las series ya hechas son suyas.
+ */
+gymModule.post('/ejercicios/:id(\\d+)/sustituir', ah(async (req: AuthedRequest, res) => {
+  const parsed = z
+    .object({ catalogId: z.number().int().positive().nullish(), name: z.string().trim().min(1).max(160) })
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Datos incorrectos' });
+
+  const id = Number(req.params.id);
+  const [viejo] = await db
+    .select()
+    .from(gymExercises)
+    .where(and(eq(gymExercises.id, id), eq(gymExercises.userId, req.userId!), isNull(gymExercises.archivedAt)));
+  if (!viejo) return res.status(404).json({ error: 'Ejercicio no encontrado' });
+
+  const ident = await asegurarIdentidad(req.userId!, { catalogId: parsed.data.catalogId, name: parsed.data.name });
+  if (ident.id === viejo.catalogId) return res.status(400).json({ error: 'Es el mismo ejercicio' });
+
+  await db.update(gymExercises).set({ archivedAt: new Date() }).where(eq(gymExercises.id, id));
+  const [r] = await db.insert(gymExercises).values({
+    userId: req.userId!,
+    dayId: viejo.dayId,
+    name: ident.name,
+    kind: ident.kind,
+    catalogId: ident.id,
+    parts: ident.parts,
+    muscles: musculosDePartes(ident.parts),
+    targetSets: viejo.targetSets, // el hueco en la sesión es el mismo
+    targetReps: viejo.targetReps,
+    sortOrder: viejo.sortOrder,
+    supersetId: viejo.supersetId,
+  });
+
+  if (!viejo.proposedAt) {
+    await emitirCambio({
+      userId: req.userId!,
+      dayId: viejo.dayId,
+      kind: 'baja',
+      name: viejo.name,
+      exerciseKind: viejo.kind,
+      parts: viejo.parts,
+      catalogId: viejo.catalogId,
+    });
+    await emitirCambio({
+      userId: req.userId!,
+      dayId: viejo.dayId,
+      kind: 'alta',
+      name: ident.name,
+      parts: ident.parts,
+      catalogId: ident.id,
+    });
+  }
+
+  const [row] = await db.select().from(gymExercises).where(eq(gymExercises.id, r.insertId));
+  res.status(201).json(row);
 }));

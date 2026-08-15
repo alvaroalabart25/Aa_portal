@@ -62,7 +62,7 @@ export function Sugerencias({ onCambio }: { onCambio: () => void }) {
           <div key={s.id} className="cp-item">
             <div className="cp-item-txt">
               <span className="cp-item-t">
-                <b>{s.de}</b> {verbo(s.kind)} <b>{s.name}</b>
+                <b>{s.de}</b> {verbo(s.kind)} <b>{nombreDeSugerencia(s)}</b>
               </span>
               <span className="cp-item-s">
                 {s.dayName}
@@ -105,7 +105,22 @@ export function Sugerencias({ onCambio }: { onCambio: () => void }) {
 }
 
 function verbo(k: Sugerencia['kind']): string {
+  if (k === 'ss_alta') return 'ha creado una superserie:';
+  if (k === 'ss_baja') return 'ha quitado la superserie';
   return k === 'alta' ? 'ha añadido' : 'ha quitado';
+}
+
+/** En las superseries el nombre visible sale del extra (son varios). */
+function nombreDeSugerencia(s: Sugerencia): string {
+  if (s.kind === 'ss_alta' || s.kind === 'ss_baja') {
+    try {
+      const info = JSON.parse(s.extra ?? '{}') as { names?: string[] };
+      if (info.names?.length) return info.names.join(' + ');
+    } catch {
+      /* el nombre plano vale de reserva */
+    }
+  }
+  return s.name;
 }
 
 /**

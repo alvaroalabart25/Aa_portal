@@ -961,7 +961,7 @@ export const gymChanges = mysqlTable('gym_changes', {
   linkId: bigint('link_id', { mode: 'number' }).notNull(),
   fromUser: bigint('from_user', { mode: 'number' }).notNull(),
   toUser: bigint('to_user', { mode: 'number' }).notNull(),
-  kind: mysqlEnum('kind', ['alta', 'baja', 'objetivo']).notNull(),
+  kind: mysqlEnum('kind', ['alta', 'baja', 'objetivo', 'ss_alta', 'ss_baja']).notNull(),
   exerciseName: varchar('exercise_name', { length: 160 }).notNull(),
   exerciseKind: mysqlEnum('exercise_kind', ['repes', 'tiempo']).notNull().default('repes'),
   parts: varchar('parts', { length: 320 }).notNull().default(''),
@@ -970,6 +970,9 @@ export const gymChanges = mysqlTable('gym_changes', {
   prevSets: int('prev_sets'),
   prevReps: varchar('prev_reps', { length: 20 }),
   catalogId: bigint('catalog_id', { mode: 'number' }), // para casar exacto, no por nombre
+  // Para las superseries: JSON con los nombres e identidades de los DOS (o más)
+  // ejercicios implicados. El campo de nombre solo lleva uno.
+  extra: varchar('extra', { length: 600 }),
   status: mysqlEnum('status', ['pendiente', 'aceptada', 'rechazada', 'sustituida']).notNull().default('pendiente'),
   createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
   resolvedAt: datetime('resolved_at'),

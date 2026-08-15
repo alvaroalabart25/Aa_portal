@@ -246,10 +246,12 @@ export interface Sugerencia {
   id: number;
   /** false = el ejercicio no está en tu listado: la decisión es doble */
   enTuListado: boolean;
-  kind: 'alta' | 'baja';
+  kind: 'alta' | 'baja' | 'ss_alta' | 'ss_baja';
   name: string;
   exerciseKind: 'repes' | 'tiempo';
   parts: string;
+  /** superseries: JSON con los nombres implicados */
+  extra?: string | null;
   de: string;
   dayId: number;
   dayName: string;
@@ -275,6 +277,8 @@ export const gymApi = {
   reordenar: (que: 'dias' | 'ejercicios', ids: number[]) => post<{ ok: true }>('/gym/orden', { que, ids }),
   superserie: (id: number, withId: number | null) =>
     patch<{ ok: true; supersetId?: number }>(`/gym/ejercicios/${id}/superserie`, { withId }),
+  sustituir: (id: number, data: { catalogId?: number; name: string }) =>
+    post<Ejercicio>(`/gym/ejercicios/${id}/sustituir`, data),
 
   // Compartir con otra cuenta. La key se enseña UNA vez: solo se guarda su huella.
   compartido: () => get<Compartido[]>('/gym/compartir'),

@@ -29,6 +29,7 @@ export default function DetalleEjercicio({
   const [explica, setExplica] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [eligiendoSS, setEligiendoSS] = useState(false);
+  const [sustituyendo, setSustituyendo] = useState(false);
 
   // el cómo-se-hace vive en el catálogo; se trae solo si existe
   useEffect(() => {
@@ -145,6 +146,9 @@ export default function DetalleEjercicio({
         <button className="btn sm" disabled={!cambiado || guardando} onClick={guardar}>
           {guardando ? 'Guardando…' : 'Guardar'}
         </button>
+        <button className="btn ghost sm" onClick={() => setSustituyendo(true)}>
+          Sustituir por otro
+        </button>
         <button
           className="btn danger sm"
           onClick={async () => {
@@ -157,6 +161,20 @@ export default function DetalleEjercicio({
           Quitar de la sesión
         </button>
       </div>
+
+      {sustituyendo && (
+        <ElegirEjercicio
+          titulo={`Sustituir ${ejercicio.name} por…`}
+          bloques={dia.muscles ? dia.muscles.split(',').filter(Boolean) : []}
+          onClose={() => setSustituyendo(false)}
+          onPick={async (e) => {
+            // el nuevo hereda el sitio y la superserie; el histórico del viejo no se toca
+            await gymApi.sustituir(ejercicio.id, { catalogId: e.catalogId, name: e.name });
+            onCambio();
+            onClose();
+          }}
+        />
+      )}
 
       {eligiendoSS && (
         <ElegirEjercicio

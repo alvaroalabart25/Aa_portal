@@ -176,6 +176,8 @@ export default function AgendaPage() {
         </div>
       </div>
 
+      <p className="page-sub">El tiempo de un vistazo: el mes en Macro, la semana en Agenda y las fechas señaladas en Eventos.</p>
+
       {view === 'eventos' ? (
         <EventosTab />
       ) : view === 'macro' ? (

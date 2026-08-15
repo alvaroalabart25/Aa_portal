@@ -40,6 +40,8 @@ export default function TasksPage() {
         </div>
       </div>
 
+      <p className="page-sub">Todas tus tareas en una sola lista, vengan del proyecto que vengan.</p>
+
       <EventsRadar scope="space" />
       <div style={{ marginTop: 12 }}>
         <TaskTable tasks={tasks} onChanged={load} />

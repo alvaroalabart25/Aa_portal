@@ -86,6 +86,8 @@ export default function GimnasioPage() {
         </div>
       </div>
 
+      <p className="page-sub">Tu rutina de entrenamiento: qué sesión toca hoy, tus tablas y tu catálogo de ejercicios.</p>
+
       {!rutina ? (
         <p className="muted">Cargando…</p>
       ) : vista === 'entrenar' ? (

@@ -80,6 +80,8 @@ export default function SuenosPage() {
         </div>
       </div>
 
+      <p className="page-sub">Lo que quieres conseguir: las macro dan dirección, las micro se tachan y los deseos esperan su momento.</p>
+
       {tab === 'deseos' ? (
         <ListaDeseos
           categorias={categorias}

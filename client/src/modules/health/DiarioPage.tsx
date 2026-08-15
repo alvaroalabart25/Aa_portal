@@ -652,6 +652,8 @@ export default function DiarioPage() {
         </div>
       </div>
 
+      <p className="page-sub">Lo que de verdad ha pasado hoy: tu peso, tus checks y tus actividades, apuntados en toques.</p>
+
       <EnDesarrollo>
         Pendiente de darle una vuelta: hay que registrar demasiado a mano. La idea es que la mayoría del día se capture
         solo y que lo poco que quede se haga en un toque.

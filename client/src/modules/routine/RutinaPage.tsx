@@ -24,6 +24,8 @@ export default function RutinaPage() {
         </div>
       </div>
 
+      <p className="page-sub">El plan de tu día a día: tus checks y tu plantilla semanal.</p>
+
       <EnDesarrollo>
         Pendiente de darle una vuelta: la plantilla semanal es demasiado trabajo para lo que devuelve. La idea es que
         el plan salga en buena parte de lo que el Diario ya registra, en vez de tener que escribirlo a mano.

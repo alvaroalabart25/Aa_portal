@@ -53,6 +53,8 @@ export default function Configuracion() {
         </div>
       </div>
 
+      <p className="page-sub">Tu cuenta y nada más: seguridad, módulos encendidos y avisos.</p>
+
       {tab === 'notificaciones' ? (
         <NotificacionesPage />
       ) : tab === 'bitacora' ? (

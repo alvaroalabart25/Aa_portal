@@ -23,6 +23,7 @@ export default function ObjetivosPage() {
       <div className="page-head">
         <h1>Objetivo & Analíticas</h1>
       </div>
+      <p className="page-sub">A dónde vas con tu salud: tus metas, el seguimiento del pesaje y la cobertura de tu rutina.</p>
       {!rutina ? <p className="muted">Cargando…</p> : <Objetivo rutina={rutina} />}
     </div>
   );

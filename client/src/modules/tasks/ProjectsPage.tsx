@@ -128,6 +128,8 @@ export default function ProjectsPage() {
         </div>
       </div>
 
+      <p className="page-sub">Tu trabajo por contextos: los espacios agrupan proyectos y cada proyecto lleva sus tareas y su avance.</p>
+
       {groups.map((g) => {
         const abierto = !cerrados.has(g.space.id);
         // el avance del espacio entero: la suma de lo suyo

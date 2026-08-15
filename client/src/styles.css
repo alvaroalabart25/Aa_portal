@@ -2017,3 +2017,10 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .guia-puntos { margin: 0; padding: 0 0 0 18px; display: flex; flex-direction: column; gap: 6px; }
 .guia-puntos li { font-size: 13px; line-height: 1.5; color: var(--ink-soft); }
 .guia-btn { width: 100%; margin-top: 18px; }
+
+/* El texto introductorio fijo bajo el título de cada pantalla: qué hace esta
+   página, en una frase. El popup de la guía cuenta más; esto queda siempre. */
+.page-sub {
+  font-size: 13px; color: var(--ink-soft); line-height: 1.5;
+  max-width: 560px; margin: -16px 0 22px;
+}

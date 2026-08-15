@@ -30,11 +30,13 @@ const GUIAS: Aviso[] = [
     id: 'bienvenida',
     rutas: [], // especial: salta donde estés, la primera vez de todas
     titulo: 'Esto es tu portal',
-    idea: 'Aquí organizas tu día a día: agenda, metas, salud y finanzas, cada cosa en su sitio.',
+    idea:
+      'Tu central de organización personal: la agenda del día, tus metas, tu salud y tus finanzas viven aquí, ' +
+      'cada una en su sitio y conectadas entre sí.',
     puntos: [
-      'Muévete con la barra de abajo. La primera vez que entres en cada pantalla, te contará qué puedes hacer en ella.',
-      'Empieza por la Agenda: es donde se ve qué toca hoy.',
-      'En Configuración › Módulos enciendes solo lo que vayas a usar.',
+      'Navega por las distintas pestañas para entender en qué consiste cada una: la primera vez que entres en una pantalla, un aviso como este te contará qué puedes hacer en ella.',
+      'Muévete con la barra de abajo (o con el menú lateral en pantalla grande).',
+      'En Configuración › Módulos eliges qué apartados quieres tener encendidos.',
     ],
     boton: 'Vamos',
   },
@@ -42,43 +44,51 @@ const GUIAS: Aviso[] = [
     id: 'agenda',
     rutas: ['/agenda'],
     titulo: 'Agenda',
-    idea: 'Qué toca, de un vistazo. Se abre en Macro: el mes entero.',
+    idea:
+      'La Agenda es donde miras el tiempo: qué tienes entre manos este mes, qué toca esta semana y qué fechas ' +
+      'no se te pueden pasar.',
     puntos: [
-      'Macro es para mirar: el mes de un vistazo.',
-      'En la pestaña Agenda vives el día a día: las tareas se crean tocando su día.',
-      'Eventos guarda las fechas señaladas: cumpleaños, citas, plazos.',
+      'Macro: la foto del mes — tus objetivos mensuales y su avance, para mirar sin editar.',
+      'Agenda: el día a día de la semana; toca un día para crearle una tarea.',
+      'Eventos: cumpleaños, citas y plazos, con sus avisos.',
     ],
   },
   {
     id: 'metas',
     rutas: ['/suenos'],
     titulo: 'Metas',
-    idea: 'Lo que quieres conseguir, en tres tamaños.',
+    idea:
+      'Aquí viven las cosas que quieres conseguir, ordenadas por tamaño: las grandes dan dirección y las ' +
+      'pequeñas se pueden tachar.',
     puntos: [
-      'Macro: las grandes, las que dan dirección.',
-      'Micro: concretas y alcanzables; pueden colgar de una macro.',
-      'Lista de deseos: lo que solo te separa el dinero.',
-      'Toca cualquiera para ver su ficha, y súbelas o bájalas de nivel cuando cambien de tamaño.',
+      'Macro: las metas grandes, las que marcan hacia dónde vas.',
+      'Micro: pasos concretos y alcanzables; pueden colgar de una macro o ir sueltas.',
+      'Lista de deseos: cosas que te apetecen y que solo dependen del dinero.',
+      'Toca cualquiera para abrir su ficha; si cambia de tamaño, súbela o bájala de nivel.',
     ],
   },
   {
     id: 'proyectos',
     rutas: ['/proyectos'],
     titulo: 'Proyectos',
-    idea: 'Los espacios agrupan; los proyectos son lo que se trabaja.',
+    idea:
+      'El trabajo con nombre y apellidos: cada proyecto con sus tareas y su avance, agrupados en espacios ' +
+      'para separar contextos (trabajo, personal, un cliente…).',
     puntos: [
-      'Crea un espacio (Trabajo, Personal…) y cuelga proyectos dentro.',
-      'Cada proyecto lleva sus tareas y su avance.',
-      'Las tareas con fecha aparecen solas en la Agenda.',
+      'Crea un espacio por contexto y cuelga dentro sus proyectos.',
+      'Entra en un proyecto para ver y crear sus tareas.',
+      'Las tareas con fecha aparecen solas en la Agenda: aquí se organiza, allí se ve cuándo.',
     ],
   },
   {
     id: 'tareas',
     rutas: ['/tareas'],
     titulo: 'Tareas',
-    idea: 'Todas tus tareas juntas, vengan del proyecto que vengan.',
+    idea:
+      'La vista transversal: todas las tareas de todos tus proyectos en una sola tabla, para repasar y ' +
+      'despachar sin ir proyecto por proyecto.',
     puntos: [
-      'Filtra, completa y edita sin entrar proyecto a proyecto.',
+      'Filtra por estado o proyecto y marca hechas sin cambiar de pantalla.',
       'Las que tienen fecha salen también en la Agenda.',
     ],
   },
@@ -86,31 +96,37 @@ const GUIAS: Aviso[] = [
     id: 'salud-objetivos',
     rutas: ['/salud/objetivos'],
     titulo: 'Objetivo & Analíticas',
-    idea: 'A dónde vas con tu salud, y si los números acompañan.',
+    idea:
+      'El cuadro de mando de tu salud: declaras a dónde quieres llegar y el portal mide contra eso — tu peso ' +
+      'contra tu meta, tu rutina contra la musculatura que quieres cubrir.',
     puntos: [
-      'Declara tu fase y tus metas medibles (peso, marcas de ejercicio).',
-      'Apunta aquí el pesaje: se mide contra tu objetivo.',
-      'La Cobertura te dice qué musculatura se te queda sin trabajar.',
-      'Los condicionantes (lesiones) avisan luego mientras entrenas.',
+      'Declara tu fase (hipertrofia, fuerza, definición…) y tus metas medibles.',
+      'Apunta aquí el pesaje: la gráfica lo compara con tu objetivo.',
+      'La Cobertura te enseña qué músculos trabajas y cuáles se te quedan fuera.',
+      'Apunta tus condicionantes (lesiones): avisarán mientras entrenas.',
     ],
   },
   {
     id: 'gimnasio',
     rutas: ['/gimnasio'],
     titulo: 'Gimnasio',
-    idea: 'Tu rutina: montarla, seguirla y apuntarla.',
+    idea:
+      'Aquí montas tu rutina y la sigues: el portal te dice qué sesión toca, tú apuntas las series, y todo ' +
+      'queda registrado para tu historial y tus PR.',
     puntos: [
-      'Entrenar te dice qué día toca; ahí apuntas las series mientras entrenas.',
-      'En Rutina montas tus sesiones y declaras el objetivo de cada una.',
-      'Ejercicios es el catálogo: cada uno guarda tu PR y tu historial.',
-      'Desde Rutina puedes compartir sesiones con otra cuenta mediante una key.',
+      'Entrenar: te dice qué sesión toca y ahí apuntas series, pesos y descansos.',
+      'Rutina: monta tus sesiones, declara el objetivo de cada una y ajusta lo que haga falta.',
+      'Ejercicios: el catálogo; cada ejercicio guarda tu PR, tu historial y tus notas.',
+      '¿Entrenas con alguien? Comparte sesiones por key y sus cambios os llegarán como sugerencias.',
     ],
   },
   {
     id: 'rutina',
     rutas: ['/rutina'],
     titulo: 'Rutina',
-    idea: 'El plan de tu día a día. Está en obras: se está simplificando.',
+    idea:
+      'El plan de cómo quieres que sea tu día a día. Está en obras: la idea es que se alimente de lo que el ' +
+      'Diario ya registra, en vez de escribirlo todo a mano.',
     puntos: [
       'Mi día: tus checks y la plantilla semanal.',
       'Eventos: el catálogo de actividades, compartido con el Diario.',
@@ -120,21 +136,25 @@ const GUIAS: Aviso[] = [
     id: 'diario',
     rutas: ['/diario'],
     titulo: 'Diario',
-    idea: 'Tu día real, apuntado en toques.',
+    idea:
+      'La otra mitad del plan: la realidad. Aquí queda lo que de verdad haces cada día — el peso, los checks ' +
+      'y tus actividades — con el mínimo esfuerzo posible.',
     puntos: [
-      'El peso y las marcas del día, en un toque; el peso alimenta Objetivo & Analíticas.',
-      'Checks diarios para lo que quieres cumplir.',
-      'La radiografía: tus actividades del día en una línea de tiempo.',
+      'Apunta el peso y las marcas del día en un toque; el peso alimenta tu objetivo en Analíticas.',
+      'Checks diarios: lo que quieres cumplir cada día, para marcarlo y ver la racha.',
+      'La radiografía: tus actividades del día pintadas en una línea de tiempo.',
     ],
   },
   {
     id: 'finanzas',
     rutas: ['prefijo:/autonomo'],
     titulo: 'Finanzas',
-    idea: 'Facturas y cuentas, con Hacienda a la vista.',
+    idea:
+      'La parte de autónomo sin sustos: tus facturas emitidas, tus números por trimestre y los plazos de ' +
+      'Hacienda siempre a la vista.',
     puntos: [
-      'Facturas: emítelas y llévalas por empresa.',
-      'Cuentas: tus números y los resúmenes trimestrales.',
+      'Facturas: créalas, envíalas y llévalas ordenadas por empresa.',
+      'Cuentas: lo cobrado, lo gastado y los resúmenes trimestrales.',
       'Los plazos fiscales avisan con un mes de antelación.',
     ],
   },
@@ -142,11 +162,11 @@ const GUIAS: Aviso[] = [
     id: 'configuracion',
     rutas: ['/configuracion'],
     titulo: 'Configuración',
-    idea: 'Tu cuenta y tu seguridad.',
+    idea: 'Todo lo que es de tu cuenta y no del contenido: cómo entras, qué apartados usas y qué avisos recibes.',
     puntos: [
       'Seguridad: contraseña, segundo factor y códigos de recuperación.',
-      'Módulos: enciende y apaga apartados del portal.',
-      'Notificaciones: activa los avisos en este dispositivo.',
+      'Módulos: enciende y apaga apartados del portal a tu medida.',
+      'Notificaciones: activa los avisos push en este dispositivo.',
     ],
   },
 ];

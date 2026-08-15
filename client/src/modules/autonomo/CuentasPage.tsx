@@ -22,6 +22,8 @@ export default function CuentasPage() {
         </div>
       </div>
 
+      <p className="page-sub">Tus números: lo cobrado, lo gastado y los resúmenes por trimestre.</p>
+
       {/* los plazos de Hacienda sí interesan con un mes de antelación */}
       <EventsRadar scope="autonomo" dias={RADAR_DIAS_FISCAL} />
 

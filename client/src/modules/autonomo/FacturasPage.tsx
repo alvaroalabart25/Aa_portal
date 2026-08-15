@@ -22,6 +22,8 @@ export default function FacturasPage() {
         </div>
       </div>
 
+      <p className="page-sub">Tus facturas emitidas y las empresas a las que facturas, con los plazos de Hacienda a la vista.</p>
+
       {/* los plazos de Hacienda sí interesan con un mes de antelación */}
       <EventsRadar scope="autonomo" dias={RADAR_DIAS_FISCAL} />
 

@@ -59,6 +59,31 @@ export function limpiarPartes(v: string): string {
   return PARTES.filter((p) => pedidas.has(p.id)).map((p) => p.id).join(',');
 }
 
+/**
+ * Los GRUPOS grandes con los que se declara el objetivo de una sesión.
+ *
+ * El objetivo es intención («aquí quiero entrenar pierna y espalda») y se
+ * declara al crear la sesión; las categorías siguen siendo realidad derivada
+ * de los ejercicios. La cobertura compara las dos. Seis opciones, no trece:
+ * a ese nivel se piensa un día de gimnasio.
+ */
+export const GRUPOS = [
+  { id: 'pecho', label: 'Pecho', muscles: ['pecho'] },
+  { id: 'espalda', label: 'Espalda', muscles: ['espalda'] },
+  { id: 'hombros', label: 'Hombros', muscles: ['hombro', 'trapecio'] },
+  { id: 'brazos', label: 'Brazos', muscles: ['biceps', 'triceps', 'antebrazo'] },
+  { id: 'pierna', label: 'Pierna', muscles: ['cuadriceps', 'isquios', 'gluteo', 'aductores', 'gemelo'] },
+  { id: 'core', label: 'Core', muscles: ['core'] },
+] as const;
+
+export type GrupoId = (typeof GRUPOS)[number]['id'];
+
+/** Deja solo grupos que existen, sin repetir y en el orden del catálogo. */
+export function limpiarGrupos(v: string[]): string {
+  const pedidos = new Set(v.map((x) => x.trim().toLowerCase()));
+  return GRUPOS.filter((g) => pedidos.has(g.id)).map((g) => g.id).join(',');
+}
+
 /** El bloque se calcula de las partes: nunca se escribe a mano. */
 export function musculosDePartes(partes: string): string {
   const bloques = new Set<string>();

@@ -719,9 +719,13 @@ export const gymDays = mysqlTable('gym_days', {
     .notNull()
     .references(() => users.id),
   name: varchar('name', { length: 120 }).notNull(),
-  // Los bloques generales de la sesión («espalda,cuadriceps»): el selector de
-  // ejercicios se abre filtrado por ellos. Los pone el usuario.
+  // (sin uso desde que las categorías se derivan de los ejercicios)
   muscles: varchar('muscles', { length: 240 }).notNull().default(''),
+  // El OBJETIVO declarado de la sesión, por grupos grandes (partes.ts GRUPOS):
+  // lo principal se entrena a fondo y la cobertura lo exige entero; lo
+  // secundario acompaña («mi pierna diaria») y solo exige presencia.
+  goalMain: varchar('goal_main', { length: 240 }).notNull().default(''),
+  goalSide: varchar('goal_side', { length: 240 }).notNull().default(''),
   notes: text('notes'),
   sortOrder: int('sort_order').notNull().default(0),
   archivedAt: datetime('archived_at'),

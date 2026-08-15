@@ -39,6 +39,23 @@ export const MUSCULOS: { id: Musculo; label: string; zona: 'Tren superior' | 'Co
 export const nombreMusculo = (id: string) => MUSCULOS.find((m) => m.id === id)?.label ?? id;
 export const listaMusculos = (v: string) => (v ? v.split(',').filter(Boolean) : []);
 
+/**
+ * Los GRUPOS grandes con los que se declara el objetivo de una sesión (espejo
+ * de server/src/modules/gym/partes.ts). El objetivo es intención (lo declaras
+ * tú); las categorías son realidad (derivadas de los ejercicios); la cobertura
+ * compara las dos.
+ */
+export const GRUPOS: { id: string; label: string; muscles: Musculo[] }[] = [
+  { id: 'pecho', label: 'Pecho', muscles: ['pecho'] },
+  { id: 'espalda', label: 'Espalda', muscles: ['espalda'] },
+  { id: 'hombros', label: 'Hombros', muscles: ['hombro', 'trapecio'] },
+  { id: 'brazos', label: 'Brazos', muscles: ['biceps', 'triceps', 'antebrazo'] },
+  { id: 'pierna', label: 'Pierna', muscles: ['cuadriceps', 'isquios', 'gluteo', 'aductores', 'gemelo'] },
+  { id: 'core', label: 'Core', muscles: ['core'] },
+];
+
+export const nombreGrupo = (id: string) => GRUPOS.find((g) => g.id === id)?.label ?? id;
+
 export interface Parte {
   id: string;
   label: string;
@@ -85,8 +102,14 @@ export interface DiaRutina {
   id: number;
   name: string;
   notes: string | null;
-  /** Los bloques generales de la sesión: filtran el selector de ejercicios. */
+  /** (sin uso: las categorías se derivan de los ejercicios) */
   muscles: string;
+  /** El objetivo DECLARADO: lo principal se exige entero… */
+  goalMain: string;
+  /** …y lo secundario («mi pierna diaria») solo pide presencia. Grupos de GRUPOS. */
+  goalSide: string;
+  /** para la etiqueta «Nuevo» de la primera semana */
+  createdAt: string;
   sortOrder: number;
   /** última vez que se terminó, en ISO; null si nunca */
   lastDone: string | null;
@@ -286,8 +309,12 @@ export const gymApi = {
   // el catálogo vive en el servidor: copiarlo aquí acabaría en dos versiones
   partes: () => get<Parte[]>('/gym/partes'),
 
-  crearDia: (data: { name: string; notes?: string | null }) => post<DiaRutina>('/gym/dias', data),
-  editarDia: (id: number, data: Partial<{ name: string; notes: string | null; muscles: string[] }>) =>
+  crearDia: (data: { name: string; notes?: string | null; goalMain?: string[]; goalSide?: string[] }) =>
+    post<DiaRutina>('/gym/dias', data),
+  editarDia: (
+    id: number,
+    data: Partial<{ name: string; notes: string | null; muscles: string[]; goalMain: string[]; goalSide: string[] }>,
+  ) =>
     patch<DiaRutina>(`/gym/dias/${id}`, data),
   borrarDia: (id: number) => del<{ archived: boolean }>(`/gym/dias/${id}`),
 

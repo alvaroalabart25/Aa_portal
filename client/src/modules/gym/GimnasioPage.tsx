@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   gymApi,
+  GRUPOS,
   hace,
   kg,
   listaMusculos,
   MUSCULOS,
+  nombreGrupo,
   nombreMusculo,
   type DiaRutina,
   type Ejercicio,
@@ -24,6 +26,7 @@ import { CatalogoTab, ElegirEjercicio } from './Catalogo';
 import { ListaOrdenable } from './Ordenable';
 import DetalleEjercicio from './DetalleEjercicio';
 import { Pesaje } from './Pesaje';
+import Modal from '../../components/Modal';
 import { notaDelDia } from './score';
 
 type Vista = 'entrenar' | 'rutina' | 'ejercicios';
@@ -298,19 +301,23 @@ function LaRutina({ rutina, onCambio }: { rutina: Rutina; onCambio: () => void }
   const [partes, setPartes] = useState<Parte[]>([]);
   const [creandoDia, setCreandoDia] = useState(false);
   const [nuevaAnadida, setNuevaAnadida] = useState(false);
+  // crear una sesión empieza declarando su objetivo; editar uno abre lo mismo
+  const [declarando, setDeclarando] = useState(false);
+  const [declarandoDia, setDeclarandoDia] = useState<DiaRutina | null>(null);
 
   useEffect(() => {
     gymApi.partes().then(setPartes).catch(() => {});
   }, []);
 
-  async function nuevoDia() {
+  async function crearDia(goalMain: string[], goalSide: string[]) {
     if (creandoDia) return;
     setCreandoDia(true);
     try {
-      // Se crea con un nombre provisional y se renombra tocándolo: pedir el
-      // nombre en una ventana antes de que exista nada es un trámite de más
-      // para algo que se cambia con un toque.
-      await gymApi.crearDia({ name: `Día ${rutina.days.length + 1}` });
+      // El título nace del objetivo declarado («Sesión Espalda y Pierna») y se
+      // cambia tocándolo, como siempre. Sin objetivo, el provisional de antes.
+      const name = tituloDeObjetivo(goalMain, goalSide) ?? `Día ${rutina.days.length + 1}`;
+      await gymApi.crearDia({ name, goalMain, goalSide });
+      setDeclarando(false);
       onCambio();
       setNuevaAnadida(true);
       window.setTimeout(() => setNuevaAnadida(false), 6000);
@@ -331,9 +338,17 @@ function LaRutina({ rutina, onCambio }: { rutina: Rutina; onCambio: () => void }
           se hacen en orden, y el portal te dirá cuál toca según cuándo hiciste el anterior. Empieza por uno; el nombre
           lo cambias tocándolo.
         </p>
-        <button className="btn" style={{ marginTop: 14 }} disabled={creandoDia} onClick={nuevoDia}>
+        <button className="btn" style={{ marginTop: 14 }} disabled={creandoDia} onClick={() => setDeclarando(true)}>
           {creandoDia ? 'Creando…' : 'Crear el primer día'}
         </button>
+        {declarando && (
+          <ObjetivoSesion
+            titulo="¿Qué quieres entrenar en esta sesión?"
+            accion="Crear la sesión"
+            onClose={() => setDeclarando(false)}
+            onGuardar={crearDia}
+          />
+        )}
       </section>
     );
   }
@@ -342,13 +357,14 @@ function LaRutina({ rutina, onCambio }: { rutina: Rutina; onCambio: () => void }
     <div>
       <Sugerencias onCambio={onCambio} />
 
-      <button className="gy-nueva-sesion" disabled={creandoDia} onClick={nuevoDia}>
+      <button className="gy-nueva-sesion" disabled={creandoDia} onClick={() => setDeclarando(true)}>
         {creandoDia ? 'Creando…' : '+ Añadir nueva sesión'}
       </button>
       {nuevaAnadida && <p className="gy-nueva-aviso">¡Sesión añadida! Se encuentra en tus últimas sesiones.</p>}
 
       {rutina.days.map((d) => (
         <section key={d.id} className="section mc-bloque">
+          {esNueva(d.createdAt) && <p className="gy-nuevo">Nuevo</p>}
           <div className="mc-head gy-dia-head">
             <h2>
               <NombreDia dia={d} onCambio={onCambio} />
@@ -357,6 +373,19 @@ function LaRutina({ rutina, onCambio }: { rutina: Rutina; onCambio: () => void }
               + Ejercicio
             </button>
           </div>
+
+          {/* El objetivo DECLARADO de la sesión: intención, no realidad. La
+              cobertura de abajo mide la distancia entre las dos. */}
+          <button className="gy-obj-linea" onClick={() => setDeclarandoDia(d)}>
+            {d.goalMain || d.goalSide
+              ? [
+                  listaMusculos(d.goalMain).map(nombreGrupo).join(', '),
+                  d.goalSide ? `acompaña ${listaMusculos(d.goalSide).map(nombreGrupo).join(', ')}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')
+              : 'Declarar el objetivo de esta sesión →'}
+          </button>
 
           <NotaDia dia={d} partes={partes} />
 
@@ -477,7 +506,131 @@ function LaRutina({ rutina, onCambio }: { rutina: Rutina; onCambio: () => void }
           onCambio={onCambio}
         />
       )}
+
+      {declarando && (
+        <ObjetivoSesion
+          titulo="¿Qué quieres entrenar en esta sesión?"
+          accion="Crear la sesión"
+          onClose={() => setDeclarando(false)}
+          onGuardar={crearDia}
+        />
+      )}
+
+      {declarandoDia && (
+        <ObjetivoSesion
+          titulo={declarandoDia.name}
+          accion="Guardar el objetivo"
+          main0={listaMusculos(declarandoDia.goalMain)}
+          side0={listaMusculos(declarandoDia.goalSide)}
+          onClose={() => setDeclarandoDia(null)}
+          onGuardar={async (goalMain, goalSide) => {
+            await gymApi.editarDia(declarandoDia.id, { goalMain, goalSide });
+            setDeclarandoDia(null);
+            onCambio();
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+/** «Sesión Espalda y Pierna»: el título nace de lo declarado (y se edita tocándolo). */
+function tituloDeObjetivo(main: string[], side: string[]): string | null {
+  const nombres = [...main, ...side].map(nombreGrupo);
+  if (nombres.length === 0) return null;
+  const lista = nombres.length === 1 ? nombres[0] : `${nombres.slice(0, -1).join(', ')} y ${nombres[nombres.length - 1]}`;
+  return `Sesión ${lista}`;
+}
+
+const esNueva = (iso: string) => Date.now() - new Date(iso).getTime() < 7 * 86400000;
+
+/**
+ * Declarar el objetivo de una sesión: qué se entrena a fondo y qué acompaña.
+ *
+ * Es la intención, no la realidad: la cobertura mide contra esto sin adivinar
+ * nada. Lo principal se exige entero (un nivel por debajo: un bloque pide sus
+ * partes, un grupo ancho pide sus bloques); lo secundario solo pide presencia
+ * y su volumen se juzga en la cobertura global, no por sesión.
+ */
+function ObjetivoSesion({
+  titulo,
+  accion,
+  main0 = [],
+  side0 = [],
+  onClose,
+  onGuardar,
+}: {
+  titulo: string;
+  accion: string;
+  main0?: string[];
+  side0?: string[];
+  onClose: () => void;
+  onGuardar: (main: string[], side: string[]) => void | Promise<void>;
+}) {
+  const [main, setMain] = useState<string[]>(main0);
+  const [side, setSide] = useState<string[]>(side0);
+  const [guardando, setGuardando] = useState(false);
+
+  return (
+    <Modal title={titulo} onClose={onClose}>
+      <p className="muted gy-obj-p">
+        <b>A fondo</b> — la cobertura te lo exigirá entero:
+      </p>
+      <div className="us-chips">
+        {GRUPOS.map((g) => {
+          const on = main.includes(g.id);
+          return (
+            <button
+              key={g.id}
+              type="button"
+              className={`us-chip${on ? ' on' : ''}`}
+              onClick={() => {
+                setMain((v) => (on ? v.filter((x) => x !== g.id) : [...v, g.id]));
+                setSide((v) => v.filter((x) => x !== g.id));
+              }}
+            >
+              {g.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <p className="muted gy-obj-p">
+        <b>De acompañamiento</b> — solo se pedirá que tenga trabajo; si acumula lo
+        suficiente se ve en la cobertura general:
+      </p>
+      <div className="us-chips">
+        {GRUPOS.filter((g) => !main.includes(g.id)).map((g) => {
+          const on = side.includes(g.id);
+          return (
+            <button
+              key={g.id}
+              type="button"
+              className={`us-chip${on ? ' on' : ''}`}
+              onClick={() => setSide((v) => (on ? v.filter((x) => x !== g.id) : [...v, g.id]))}
+            >
+              {g.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <button
+        className="btn"
+        style={{ marginTop: 16 }}
+        disabled={guardando}
+        onClick={async () => {
+          setGuardando(true);
+          try {
+            await onGuardar(main, side);
+          } finally {
+            setGuardando(false);
+          }
+        }}
+      >
+        {guardando ? 'Guardando…' : main.length + side.length === 0 ? `${accion} (sin objetivo)` : accion}
+      </button>
+    </Modal>
   );
 }
 
@@ -503,24 +656,33 @@ function NotaDia({ dia, partes }: { dia: DiaRutina; partes: Parte[] }) {
         <span className="gy-nota-de">/ 10</span>
         <span className="gy-nota-t">
           {nota.cubiertas === nota.posibles
-            ? 'cubre todo lo que trabaja'
-            : `cubre ${nota.cubiertas} de ${nota.posibles} partes de lo que trabaja`}
+            ? nota.declarado
+              ? 'cubre su objetivo entero'
+              : 'cubre todo lo que trabaja'
+            : `cubre ${nota.cubiertas} de ${nota.posibles} de ${nota.declarado ? 'su objetivo' : 'lo que trabaja'}`}
         </span>
         <span className="gy-nota-chev">{abierto ? '▾' : '▸'}</span>
       </button>
 
       {abierto && (
         <div className="gy-nota-detalle">
-          {nota.bloques.map((b) => (
-            <div key={b.id} className="gy-crit">
-              <span className="gy-crit-l">{b.label}</span>
+          {nota.filas.map((f) => (
+            <div key={f.id} className="gy-crit">
+              <span className="gy-crit-l">
+                {f.label}
+                {f.secundario && <span className="gy-crit-2"> · acompaña</span>}
+              </span>
               <span className="gy-crit-p">
-                {b.cubiertas}/{b.posibles}
+                {f.cubiertas}/{f.posibles}
               </span>
               <span className="gy-crit-d">
-                {b.faltan.length === 0
-                  ? 'todas sus partes con trabajo'
-                  : b.faltan.map((f) => `falta ${f.label.toLowerCase()} (${f.ideas.join(' o ').toLowerCase()})`).join(' · ')}
+                {f.secundario
+                  ? f.cubiertas > 0
+                    ? 'presente: tiene trabajo de verdad'
+                    : 'sin ningún ejercicio que lo entrene'
+                  : f.faltan.length === 0
+                    ? 'todo con trabajo'
+                    : f.faltan.map((x) => `falta ${x.label.toLowerCase()} (${x.ideas.join(' o ').toLowerCase()})`).join(' · ')}
               </span>
             </div>
           ))}
@@ -613,9 +775,29 @@ export function Cobertura({ rutina }: { rutina: Rutina }) {
 
   const [desplegado, setDesplegado] = useState(false);
 
+  // Los bloques que CUBREN los objetivos declarados de las sesiones. Si algo
+  // está declarado y no aparece nunca, ese es el peor aviso posible: dices que
+  // lo entrenas y no está. Lo no declarado sin trabajo es solo información.
+  const declarados = useMemo(() => {
+    const s = new Set<string>();
+    for (const d of rutina.days) {
+      for (const gid of [...listaMusculos(d.goalMain), ...listaMusculos(d.goalSide)]) {
+        for (const m of GRUPOS.find((g) => g.id === gid)?.muscles ?? []) s.add(m);
+      }
+    }
+    return s;
+  }, [rutina]);
+  const hayObjetivos = declarados.size > 0;
+
   if (partes.length === 0) return null;
 
-  const sinTocar = bloques.filter((b) => b.total === 0 && b.colateral === 0).map((b) => b.bloque.label);
+  const intactos = bloques.filter((b) => b.total === 0 && b.colateral === 0);
+  const declaradoSinTocar = hayObjetivos
+    ? intactos.filter((b) => declarados.has(b.bloque.id)).map((b) => b.bloque.label)
+    : [];
+  const sinTocar = hayObjetivos
+    ? intactos.filter((b) => !declarados.has(b.bloque.id)).map((b) => b.bloque.label)
+    : intactos.map((b) => b.bloque.label);
   const soloRebote = bloques.filter((b) => b.total === 0 && b.colateral > 0).map((b) => b.bloque.label);
   const conHuecos = bloques.filter((b) => b.total > 0 && b.vacias.length > 0).map((b) => b.bloque.label);
   // La proporción: un bloque puede estar «tocado» y aun así casi sin trabajo.
@@ -636,10 +818,19 @@ export function Cobertura({ rutina }: { rutina: Rutina }) {
         <span className="gy-cob-chev">{desplegado ? '▾' : '▸'}</span>
         <h2>Cobertura</h2>
         <span className="gy-cob-resumen">
-          {sinTocar.length === 0 && conHuecos.length === 0 && soloRebote.length === 0 && escasos.length === 0
+          {declaradoSinTocar.length === 0 &&
+          sinTocar.length === 0 &&
+          conHuecos.length === 0 &&
+          soloRebote.length === 0 &&
+          escasos.length === 0
             ? 'todos los bloques completos'
             : [
-                sinTocar.length > 0 ? `sin tocar: ${sinTocar.join(', ').toLowerCase()}` : null,
+                declaradoSinTocar.length > 0
+                  ? `declarado y sin tocar: ${declaradoSinTocar.join(', ').toLowerCase()}`
+                  : null,
+                sinTocar.length > 0
+                  ? `${hayObjetivos ? 'fuera de tus objetivos' : 'sin tocar'}: ${sinTocar.join(', ').toLowerCase()}`
+                  : null,
                 soloRebote.length > 0 ? `solo de rebote: ${soloRebote.join(', ').toLowerCase()}` : null,
                 escasos.length > 0 ? `casi sin trabajo: ${escasos.join(', ').toLowerCase()}` : null,
                 conHuecos.length > 0 ? `con huecos: ${conHuecos.join(', ').toLowerCase()}` : null,
@@ -670,7 +861,11 @@ export function Cobertura({ rutina }: { rutina: Rutina }) {
                     : estado === 'bien'
                       ? 'bloque completo'
                       : estado === 'cero'
-                        ? 'sin tocar'
+                        ? hayObjetivos
+                          ? declarados.has(bloque.id)
+                            ? 'declarado y sin tocar'
+                            : 'fuera de tus objetivos'
+                          : 'sin tocar'
                         : `falta ${vacias.length} de ${suyas.length}`}
                 </span>
                 <span className="gy-bl-chev">{abiertoEste ? '▾' : '▸'}</span>

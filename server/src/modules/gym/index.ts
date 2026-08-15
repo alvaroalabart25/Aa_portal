@@ -5,7 +5,7 @@ import { ah } from '../../lib/async';
 import { db } from '../../db';
 import { gymConditions, gymDays, gymExercises, gymGoals, gymSessions, gymSets, healthEntries } from '../../db/schema';
 import type { AuthedRequest } from '../../core/auth/middleware';
-import { limpiarPartes, musculosDePartes, PARTES } from './partes';
+import { limpiarGrupos, limpiarPartes, musculosDePartes, PARTES } from './partes';
 import { compartirRouter, emitirCambio, romperVinculosDeDia } from './compartir';
 import { asegurarIdentidad, catalogoRouter } from './catalogo';
 import { soltarSuperserie, vincularSuperserie } from './superseries';
@@ -70,6 +70,10 @@ gymModule.get('/rutina', ah(async (req: AuthedRequest, res) => {
       name: gymDays.name,
       notes: gymDays.notes,
       muscles: gymDays.muscles,
+      goalMain: gymDays.goalMain,
+      goalSide: gymDays.goalSide,
+      // para la etiqueta «Nuevo» de la primera semana
+      createdAt: gymDays.createdAt,
       sortOrder: gymDays.sortOrder,
       // ojo: la columna de fuera va escrita a mano, no interpolada — Drizzle la
       // generaría sin cualificar y la capturaría la tabla de dentro
@@ -112,6 +116,10 @@ const diaInput = z.object({
     .array(z.string())
     .transform((v) => v.filter((m) => (MUSCULOS as readonly string[]).includes(m)).join(','))
     .optional(),
+  // El objetivo DECLARADO por grupos grandes: lo principal se exige entero,
+  // lo secundario solo pide presencia. Lista cerrada (partes.ts GRUPOS).
+  goalMain: z.array(z.string()).transform(limpiarGrupos).optional(),
+  goalSide: z.array(z.string()).transform(limpiarGrupos).optional(),
 });
 
 gymModule.post('/dias', ah(async (req: AuthedRequest, res) => {

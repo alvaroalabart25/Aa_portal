@@ -1963,3 +1963,23 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .gy-bloque-resumen { font-size: 12.5px; color: var(--ink-muted); margin: 3px 0 0; }
 .gy-ej-chev { color: var(--ink-muted); font-size: 17px; flex: none; padding: 4px 6px; transition: transform 0.15s; display: inline-block; }
 .gy-ej-chev.abierto { transform: rotate(90deg); }
+
+/* Pesaje (Objetivo & Analíticas): el peso de hoy contra la meta, con su serie */
+.py-actual { display: flex; flex-direction: column; gap: 2px; margin-bottom: 12px; }
+.py-kg { font-family: var(--font-title); font-size: 28px; font-weight: 600; line-height: 1.1; }
+.py-sub { font-size: 12.5px; color: var(--ink-soft); }
+.py-aviso { font-size: 12.5px; margin: 0 0 12px; }
+.py-graf-caja { margin: 4px 0 12px; }
+.py-graf { display: block; width: 100%; max-width: 420px; height: auto; }
+.py-graf-linea { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.py-graf-punto { fill: currentColor; }
+.py-graf-obj { stroke: var(--ink-muted); stroke-width: 1; stroke-dasharray: 4 4; }
+.py-graf-pie { font-size: 11px; margin: 4px 0 0; }
+.py-form { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+.py-form input { width: 110px; }
+.py-lista { display: flex; flex-direction: column; gap: 4px; max-width: 420px; }
+.py-fila { display: flex; align-items: baseline; gap: 10px; font-size: 13px; }
+.py-fila-f { color: var(--ink-muted); font-size: 12px; width: 42px; flex: none; }
+.py-fila-v { font-weight: 500; }
+.py-fila-d { font-size: 12px; color: var(--ink-muted); }
+.py-nota { font-size: 11.5px; margin: 12px 0 0; }

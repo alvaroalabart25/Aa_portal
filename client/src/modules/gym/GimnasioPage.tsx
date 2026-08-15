@@ -23,6 +23,7 @@ import { Compartir, Sugerencias } from './Compartir';
 import { CatalogoTab, ElegirEjercicio } from './Catalogo';
 import { ListaOrdenable } from './Ordenable';
 import DetalleEjercicio from './DetalleEjercicio';
+import { Pesaje } from './Pesaje';
 import { notaDelDia } from './score';
 
 type Vista = 'entrenar' | 'rutina' | 'ejercicios';
@@ -341,8 +342,6 @@ function LaRutina({ rutina, onCambio }: { rutina: Rutina; onCambio: () => void }
     <div>
       <Sugerencias onCambio={onCambio} />
 
-      <Cobertura rutina={rutina} />
-
       <button className="gy-nueva-sesion" disabled={creandoDia} onClick={nuevoDia}>
         {creandoDia ? 'Creando…' : '+ Añadir nueva sesión'}
       </button>
@@ -566,8 +565,12 @@ function NombreDia({ dia, onCambio }: { dia: DiaRutina; onCambio: () => void }) 
  * Se cuenta por VUELTA completa a la rutina, no por semana: como no hay días
  * fijos, una semana pueden ser tres días y otra cuatro, y el número por semana
  * cambiaría sin que tú cambies nada.
+ *
+ * Vivía en la pestaña Rutina; ahora se enseña en Objetivo & Analíticas (por
+ * eso el export), porque responde a un objetivo («¿cubro toda la musculatura
+ * que quiero cubrir?»), no a la edición de la tabla.
  */
-function Cobertura({ rutina }: { rutina: Rutina }) {
+export function Cobertura({ rutina }: { rutina: Rutina }) {
   const [partes, setPartes] = useState<Parte[]>([]);
   const [abierto, setAbierto] = useState<string | null>(null);
 
@@ -733,6 +736,14 @@ export function Objetivo({ rutina }: { rutina: Rutina }) {
           </div>
         )}
       </section>
+
+      {/* El seguimiento del pesaje mide contra la meta de peso activa; escribe
+          en el mismo dato del Diario, no en uno nuevo. */}
+      <Pesaje metas={metas} />
+
+      {/* La cobertura contesta a un objetivo («¿cubres toda la musculatura que
+          quieres cubrir?»), así que vive aquí y no en la edición de la tabla. */}
+      <Cobertura rutina={rutina} />
 
       {/* Los condicionantes no son metas: son con lo que se entrena. Por eso van
           en su propio bloque y no mezclados con lo que quieres conseguir. */}

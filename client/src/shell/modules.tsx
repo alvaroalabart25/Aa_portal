@@ -130,14 +130,30 @@ export const MODULES: PortalModule[] = [
         <path d="M19.5 12.6 12 20l-7.5-7.4a5 5 0 1 1 7.5-6.6 5 5 0 1 1 7.5 6.6z" />
       </svg>
     ),
+    // El orden es el de uso que él pidió: primero a dónde va y cómo avanza
+    // (Objetivo & Analíticas), después donde se entrena (Gimnasio), y al final
+    // Rutina y Diario. El id y la ruta de Objetivos no cambian: solo lo visible.
     children: [
       {
-        id: 'diario',
-        title: 'Diario',
-        path: '/diario',
+        id: 'objetivos-salud',
+        title: 'Objetivo & Analíticas',
+        path: '/salud/objetivos',
+        // diana: a dónde vas
         icon: (
           <svg width="16" height="16" viewBox="0 0 24 24" {...stroke}>
-            <path d="M3 12h4l2-6 4 12 2-6h6" />
+            <circle cx="12" cy="12" r="8" />
+            <circle cx="12" cy="12" r="3.2" />
+          </svg>
+        ),
+      },
+      {
+        id: 'gimnasio',
+        title: 'Gimnasio',
+        path: '/gimnasio',
+        // mancuerna
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" {...stroke}>
+            <path d="M4 9v6M7 7v10M17 7v10M20 9v6M7 12h10" />
           </svg>
         ),
       },
@@ -154,25 +170,12 @@ export const MODULES: PortalModule[] = [
         ),
       },
       {
-        id: 'gimnasio',
-        title: 'Gimnasio',
-        path: '/gimnasio',
-        // mancuerna
+        id: 'diario',
+        title: 'Diario',
+        path: '/diario',
         icon: (
           <svg width="16" height="16" viewBox="0 0 24 24" {...stroke}>
-            <path d="M4 9v6M7 7v10M17 7v10M20 9v6M7 12h10" />
-          </svg>
-        ),
-      },
-      {
-        id: 'objetivos-salud',
-        title: 'Objetivos',
-        path: '/salud/objetivos',
-        // diana: a dónde vas
-        icon: (
-          <svg width="16" height="16" viewBox="0 0 24 24" {...stroke}>
-            <circle cx="12" cy="12" r="8" />
-            <circle cx="12" cy="12" r="3.2" />
+            <path d="M3 12h4l2-6 4 12 2-6h6" />
           </svg>
         ),
       },

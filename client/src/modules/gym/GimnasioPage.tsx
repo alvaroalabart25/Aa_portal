@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   gymApi,
   hace,
+  kg,
   listaMusculos,
   MUSCULOS,
   nombreMusculo,
@@ -866,14 +867,21 @@ function TarjetaMeta({
   );
 }
 
-/** Una fila de ejercicio en la rutina, COLAPSADA: solo el nombre, para ver el
- *  día de un vistazo y reordenar. Los pesos, las repes y el músculo viven en
- *  la ficha, que se abre al tocar. */
+/** Una fila de ejercicio en la rutina: nombre, objetivo y músculo en gris. */
 function FilaEjercicio({ e, onClick }: { e: Ejercicio; onClick: () => void }) {
   return (
-    <button className="gy-ej gy-ej-plegado" onClick={onClick}>
-      <span className="gy-ej-n">{e.name}</span>
-      <span className="gy-ej-chev">›</span>
+    <button className="gy-ej" onClick={onClick}>
+      <span className="gy-ej-txt">
+        <span className="gy-ej-n">{e.name}</span>
+        <span className="gy-ej-obj">
+          {e.targetSets} × {e.targetReps}
+          {e.targetWeight ? ` · ${kg(e.targetWeight)}` : ''}
+          {e.restSeconds ? ` · ${e.restSeconds}s` : ''}
+        </span>
+        {listaMusculos(e.muscles).length > 0 && (
+          <span className="gy-ej-m">{listaMusculos(e.muscles).map(nombreMusculo).join(' · ')}</span>
+        )}
+      </span>
     </button>
   );
 }

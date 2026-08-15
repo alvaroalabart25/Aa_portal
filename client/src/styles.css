@@ -1952,12 +1952,14 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .ss-eti-fila { display: flex; align-items: center; justify-content: space-between; }
 .gy-bloque-lado { display: flex; align-items: center; gap: 6px; flex: none; }
 
-/* La fila colapsada: solo el nombre, el resto vive en la ficha */
-.gy-ej-plegado { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.gy-ej-plegado .gy-ej-n { font-size: 14px; }
-.gy-ej-chev { color: var(--ink-muted); font-size: 15px; flex: none; }
 
 .gy-nueva-aviso {
   font-size: 12.5px; color: var(--ink-soft); text-align: center;
   margin: -6px 0 14px; animation: fadein 200ms ease-out;
 }
+
+/* El bloque de la sesión, colapsable: la cabecera es la vista de pájaro */
+.gy-bloque-toggle { cursor: pointer; }
+.gy-bloque-resumen { font-size: 12.5px; color: var(--ink-muted); margin: 3px 0 0; }
+.gy-ej-chev { color: var(--ink-muted); font-size: 17px; flex: none; padding: 4px 6px; transition: transform 0.15s; display: inline-block; }
+.gy-ej-chev.abierto { transform: rotate(90deg); }

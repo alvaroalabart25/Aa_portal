@@ -252,6 +252,10 @@ function BloqueEjercicio({
 }) {
   const series = Array.from({ length: ejercicio.targetSets }, (_, i) => i + 1);
   const completo = ejercicio.done.length >= ejercicio.targetSets;
+  // Colapsado por defecto: la sesión se lee de un vistazo —qué está hecho y
+  // qué queda— y solo se abre el ejercicio que estás haciendo. Los ya
+  // completos arrancan cerrados con más motivo.
+  const [abierto, setAbierto] = useState(false);
   // El aviso sale aquí, delante del ejercicio, y no en una pantalla aparte que
   // no se abre con el móvil en la mano y sudando
   const avisos = condiciones.filter((c) =>
@@ -260,25 +264,46 @@ function BloqueEjercicio({
 
   return (
     <section className={`gy-bloque${completo ? ' hecho' : ''}`}>
-      <div className="gy-bloque-head">
+      <div
+        className="gy-bloque-head gy-bloque-toggle"
+        role="button"
+        tabIndex={0}
+        onClick={() => setAbierto((v) => !v)}
+        onKeyDown={(e) => e.key === 'Enter' && setAbierto((v) => !v)}
+      >
         <div>
           <h2 className="gy-bloque-n">{ejercicio.name}</h2>
-          {/* el objetivo se toca aquí mismo: si el número está mal, volvería a
-              salir cada día hasta que alguien se acordara de ir a Rutina */}
-          <button className="gy-bloque-obj" onClick={onEditar} title="Cambiar el objetivo del ejercicio">
-            {ejercicio.targetSets} × {ejercicio.targetReps}
-            {ejercicio.targetWeight ? ` · objetivo ${kg(ejercicio.targetWeight)}` : ''}
-            {ejercicio.restSeconds ? ` · ${ejercicio.restSeconds}s de descanso` : ''}
-          </button>
-          {listaMusculos(ejercicio.muscles).length > 0 && (
-            <p className="gy-ej-m">{listaMusculos(ejercicio.muscles).map(nombreMusculo).join(' · ')}</p>
-          )}
+          {/* la vista de pájaro: cuántas series llevas de las que tocan */}
+          <p className="gy-bloque-resumen">
+            {ejercicio.done.length} de {ejercicio.targetSets} series
+            {completo ? ' · hecho' : ''}
+          </p>
         </div>
-        <div className="gy-bloque-lado">
+        <div className="gy-bloque-lado" onClick={(e) => e.stopPropagation()}>
           {completo && <span className="gy-tic">✓</span>}
           {asa}
+          <span
+            className={`gy-ej-chev${abierto ? ' abierto' : ''}`}
+            onClick={() => setAbierto((v) => !v)}
+            aria-hidden
+          >
+            ›
+          </span>
         </div>
       </div>
+
+      {abierto && (
+        <>
+      {/* el objetivo se toca aquí mismo: si el número está mal, volvería a
+          salir cada día hasta que alguien se acordara de ir a Rutina */}
+      <button className="gy-bloque-obj" onClick={onEditar} title="Cambiar el objetivo del ejercicio">
+        {ejercicio.targetSets} × {ejercicio.targetReps}
+        {ejercicio.targetWeight ? ` · objetivo ${kg(ejercicio.targetWeight)}` : ''}
+        {ejercicio.restSeconds ? ` · ${ejercicio.restSeconds}s de descanso` : ''}
+      </button>
+      {listaMusculos(ejercicio.muscles).length > 0 && (
+        <p className="gy-ej-m">{listaMusculos(ejercicio.muscles).map(nombreMusculo).join(' · ')}</p>
+      )}
 
       {avisos.map((c) => (
         <p key={c.id} className={`gy-aviso ${c.severity}`}>
@@ -305,6 +330,8 @@ function BloqueEjercicio({
           />
         ))}
       </div>
+        </>
+      )}
     </section>
   );
 }

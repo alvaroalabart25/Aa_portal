@@ -58,7 +58,7 @@ export default function GimnasioPage() {
       <div className="page-head">
         <h1>Gimnasio</h1>
         <div className="head-acciones">
-          <div className="seg" role="tablist">
+          <div className="seg seg-lleno" role="tablist">
             {VISTAS.map(([v, etiqueta]) => (
               <button
                 key={v}
@@ -332,18 +332,15 @@ function LaRutina({ rutina, onCambio }: { rutina: Rutina; onCambio: () => void }
     <div>
       <Sugerencias onCambio={onCambio} />
 
-      <div className="mc-head" style={{ marginBottom: 4 }}>
-        <h2 style={{ margin: 0 }}>Tu rutina</h2>
-        <button className="btn ghost sm" disabled={creandoDia} onClick={nuevoDia}>
-          {creandoDia ? 'Creando…' : '+ Día'}
-        </button>
-      </div>
-
       <Cobertura rutina={rutina} />
+
+      <button className="gy-nueva-sesion" disabled={creandoDia} onClick={nuevoDia}>
+        {creandoDia ? 'Creando…' : '+ Añadir nueva sesión'}
+      </button>
 
       {rutina.days.map((d) => (
         <section key={d.id} className="section mc-bloque">
-          <div className="mc-head">
+          <div className="mc-head gy-dia-head">
             <h2>
               <NombreDia dia={d} onCambio={onCambio} />
             </h2>

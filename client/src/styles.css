@@ -214,7 +214,7 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .crumbs { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-muted); margin-bottom: 14px; flex-wrap: wrap; }
 .crumbs a:hover { color: var(--ink); text-decoration: underline; }
-.page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; flex-wrap: wrap; }
+.page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 26px; flex-wrap: wrap; }
 /* Veces que se ha aplazado una tarea: discreto en la lista, marcado cuando ya
    son unas cuantas y la tarea se está encasquillando */
 .aplazada {
@@ -1876,3 +1876,34 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .foco-resultado:hover { border-color: #fff; }
 .foco-resultado.crear { color: #8f8f8f; border-style: dashed; }
 .foco-resultado-pr { font-size: 11.5px; color: #8f8f8f; flex: none; }
+
+/* ---------- Cabecera del gimnasio: 4 pestañas ---------- */
+/* Cuatro pestañas no caben al lado del título en 375 px sin desplazarse ni
+   partirse. En móvil bajan a su propia línea, a lo ancho y repartidas: nada
+   asoma por el borde y nada salta de línea. En ordenador siguen junto al
+   título, donde sí caben. */
+@media (max-width: 720px) {
+  /* flex-basis y no width: dentro de un flex, width deja encoger y las
+     pestañas se quedaban apretujadas al lado del título en vez de bajar.
+     Y hay que devolverle el wrap a la cabecera: la regla general lo quita
+     para que TRES pestañas queden en línea con el título; con cuatro, no caben. */
+  .page-head:has(.seg-lleno) { flex-wrap: wrap; }
+  .head-acciones:has(.seg-lleno) { flex: 0 0 100%; }
+  .seg.seg-lleno { width: 100%; display: flex; }
+  .seg.seg-lleno button { flex: 1; text-align: center; padding: 6px 0; font-size: 12.5px; }
+}
+
+/* La cabecera de cada sesión de la rutina: el título largo parte en dos líneas
+   y el botón queda alineado con la ÚLTIMA línea, no empujado debajo. */
+.gy-dia-head { flex-wrap: nowrap; align-items: flex-end; }
+.gy-dia-head h2 { flex: 1; min-width: 0; }
+.gy-dia-head .btn { flex: none; }
+.gy-nombre { text-align: left; white-space: normal; }
+
+/* Añadir una sesión nueva: encima de la primera, discreto y a lo ancho */
+.gy-nueva-sesion {
+  display: block; width: 100%; margin: 22px 0 14px; padding: 10px;
+  border: 1px dashed var(--line); border-radius: 12px; background: none;
+  font-size: 12.5px; color: var(--ink-muted); text-align: center;
+}
+.gy-nueva-sesion:hover { border-color: var(--ink); color: var(--ink); }

@@ -181,11 +181,7 @@ export default function SesionPage() {
           {improvisando && (
             <ElegirEjercicio
               titulo="Añadir a este entrenamiento"
-              bloques={
-                ((datos.day as { muscles?: string } | null)?.muscles ?? '').split(',').filter(Boolean).length
-                  ? ((datos.day as { muscles?: string }).muscles as string).split(',').filter(Boolean)
-                  : [...new Set(datos.exercises.flatMap((e) => (e.muscles || '').split(',').filter(Boolean)))]
-              }
+              bloques={[...new Set(datos.exercises.flatMap((e) => (e.muscles || '').split(',').filter(Boolean)))]}
               onClose={() => setImprovisando(false)}
               onPick={async (e) => {
                 await gymApi.improvisar(sesionId, { catalogId: e.catalogId, name: e.name });

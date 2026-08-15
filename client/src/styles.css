@@ -1951,3 +1951,13 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .gy-ord.arrastrando, .ss-grupo.arrastrando { opacity: 0.55; }
 .ss-eti-fila { display: flex; align-items: center; justify-content: space-between; }
 .gy-bloque-lado { display: flex; align-items: center; gap: 6px; flex: none; }
+
+/* La fila colapsada: solo el nombre, el resto vive en la ficha */
+.gy-ej-plegado { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.gy-ej-plegado .gy-ej-n { font-size: 14px; }
+.gy-ej-chev { color: var(--ink-muted); font-size: 15px; flex: none; }
+
+.gy-nueva-aviso {
+  font-size: 12.5px; color: var(--ink-soft); text-align: center;
+  margin: -6px 0 14px; animation: fadein 200ms ease-out;
+}

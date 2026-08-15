@@ -3,6 +3,9 @@ import Modal from '../../components/Modal';
 import { ElegirEjercicio } from './Catalogo';
 import { gymApi, listaMusculos, nombreMusculo, numTxt, type DiaRutina, type Ejercicio } from './api';
 
+/** Los bloques que la sesión ya trabaja, derivados de sus ejercicios. */
+const bloquesDe = (dia: DiaRutina) => [...new Set(dia.exercises.flatMap((e) => listaMusculos(e.muscles)))];
+
 /**
  * La ficha de un ejercicio dentro de una sesión de la rutina.
  *
@@ -165,7 +168,7 @@ export default function DetalleEjercicio({
       {sustituyendo && (
         <ElegirEjercicio
           titulo={`Sustituir ${ejercicio.name} por…`}
-          bloques={dia.muscles ? dia.muscles.split(',').filter(Boolean) : []}
+          bloques={bloquesDe(dia)}
           onClose={() => setSustituyendo(false)}
           onPick={async (e) => {
             // el nuevo hereda el sitio y la superserie; el histórico del viejo no se toca
@@ -179,7 +182,7 @@ export default function DetalleEjercicio({
       {eligiendoSS && (
         <ElegirEjercicio
           titulo="Superserie con…"
-          bloques={dia.muscles ? dia.muscles.split(',').filter(Boolean) : []}
+          bloques={bloquesDe(dia)}
           onClose={() => setEligiendoSS(false)}
           onPick={async (e) => {
             // entra en la sesión y queda vinculado del tirón

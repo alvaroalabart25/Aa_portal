@@ -64,12 +64,35 @@ export function Sugerencias({ onCambio }: { onCambio: () => void }) {
               <span className="cp-item-t">
                 <b>{s.de}</b> {verbo(s.kind)} <b>{s.name}</b>
               </span>
-              <span className="cp-item-s">{s.dayName}</span>
+              <span className="cp-item-s">
+                {s.dayName}
+                {s.kind === 'alta' && !s.enTuListado ? ' · no está en tu listado' : ''}
+              </span>
             </div>
             <div className="cp-item-btns">
               <button className="btn sm" disabled={ocupado === s.id} onClick={() => resolver(s, true)}>
                 Cogerlo
               </button>
+              {/* la decisión doble: el ejercicio no está en tu listado, así que
+                  puedes quedártelo ahí sin meterlo en el día */}
+              {s.kind === 'alta' && !s.enTuListado && (
+                <button
+                  className="btn ghost sm"
+                  disabled={ocupado === s.id}
+                  onClick={async () => {
+                    setOcupado(s.id);
+                    try {
+                      await gymApi.soloAlListado(s.id);
+                      setAviso(`«${s.name}» guardado en tu listado de ejercicios, sin tocar tu día.`);
+                      await cargar();
+                    } finally {
+                      setOcupado(null);
+                    }
+                  }}
+                >
+                  Solo al listado
+                </button>
+              )}
               <button className="btn ghost sm" disabled={ocupado === s.id} onClick={() => resolver(s, false)}>
                 Paso
               </button>

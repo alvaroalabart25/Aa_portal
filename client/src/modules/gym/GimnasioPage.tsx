@@ -20,13 +20,15 @@ import {
 } from './api';
 import { CondicionanteModal, EjercicioModal, MetaModal } from './modals';
 import { Compartir, Sugerencias } from './Compartir';
+import { CatalogoTab, ElegirEjercicio } from './Catalogo';
 import { notaDelDia } from './score';
 
-type Vista = 'entrenar' | 'rutina' | 'objetivo';
+type Vista = 'entrenar' | 'rutina' | 'ejercicios' | 'objetivo';
 
 const VISTAS: [Vista, string][] = [
   ['entrenar', 'Entrenar'],
   ['rutina', 'Rutina'],
+  ['ejercicios', 'Ejercicios'],
   ['objetivo', 'Objetivo'],
 ];
 
@@ -41,7 +43,7 @@ const VISTAS: [Vista, string][] = [
 export default function GimnasioPage() {
   const [params, setParams] = useSearchParams();
   const pedida = params.get('tab');
-  const vista: Vista = pedida === 'rutina' || pedida === 'objetivo' ? pedida : 'entrenar';
+  const vista: Vista = pedida === 'rutina' || pedida === 'objetivo' || pedida === 'ejercicios' ? pedida : 'entrenar';
   const irA = (v: Vista) => setParams(v === 'entrenar' ? {} : { tab: v }, { replace: true });
 
   const [rutina, setRutina] = useState<Rutina | null>(null);
@@ -78,6 +80,8 @@ export default function GimnasioPage() {
         <Entrenar rutina={rutina} />
       ) : vista === 'rutina' ? (
         <LaRutina rutina={rutina} onCambio={cargar} />
+      ) : vista === 'ejercicios' ? (
+        <CatalogoTab />
       ) : (
         <Objetivo rutina={rutina} />
       )}
@@ -282,6 +286,8 @@ function duracion(h: SesionHistorial): string | null {
 
 function LaRutina({ rutina, onCambio }: { rutina: Rutina; onCambio: () => void }) {
   const [editando, setEditando] = useState<{ dayId: number; ejercicio?: Ejercicio } | null>(null);
+  // añadir = elegir de la lista; el formulario grande queda solo para editar
+  const [eligiendo, setEligiendo] = useState<number | null>(null);
   const [partes, setPartes] = useState<Parte[]>([]);
   const [creandoDia, setCreandoDia] = useState(false);
 
@@ -341,7 +347,7 @@ function LaRutina({ rutina, onCambio }: { rutina: Rutina; onCambio: () => void }
             <h2>
               <NombreDia dia={d} onCambio={onCambio} />
             </h2>
-            <button className="btn ghost sm" onClick={() => setEditando({ dayId: d.id })}>
+            <button className="btn ghost sm" onClick={() => setEligiendo(d.id)}>
               + Ejercicio
             </button>
           </div>
@@ -431,6 +437,24 @@ function LaRutina({ rutina, onCambio }: { rutina: Rutina; onCambio: () => void }
       ))}
 
       <Compartir onCambio={onCambio} />
+
+      {eligiendo != null && (
+        <ElegirEjercicio
+          titulo="Añadir a este día"
+          // el filtro sale de lo que el día ya trabaja: nada que rellenar a mano
+          bloques={[
+            ...new Set(
+              (rutina.days.find((d) => d.id === eligiendo)?.exercises ?? []).flatMap((e) => listaMusculos(e.muscles)),
+            ),
+          ]}
+          onClose={() => setEligiendo(null)}
+          onPick={async (e) => {
+            // entra con el objetivo por defecto y se ajusta tocándolo, como el peso
+            await gymApi.crearEjercicio({ dayId: eligiendo, catalogId: e.catalogId, name: e.name });
+            onCambio();
+          }}
+        />
+      )}
 
       {editando && (
         <EjercicioModal

@@ -7,6 +7,7 @@ import { gymConditions, gymDays, gymExercises, gymGoals, gymSessions, gymSets, h
 import type { AuthedRequest } from '../../core/auth/middleware';
 import { limpiarPartes, musculosDePartes, PARTES } from './partes';
 import { compartirRouter, emitirCambio, romperVinculosDeDia } from './compartir';
+import { asegurarIdentidad, catalogoRouter } from './catalogo';
 
 /**
  * Gimnasio: la rutina y lo que de verdad se levanta.
@@ -25,6 +26,7 @@ export const gymModule = Router();
 // Compartir la rutina con otra cuenta vive en su propio fichero: es la única
 // parte del portal donde dos cuentas se tocan, y conviene poder leerla entera.
 gymModule.use(compartirRouter);
+gymModule.use(catalogoRouter);
 
 /** Los bloques. Los ejercicios se etiquetan por PARTE (ver partes.ts) y el
  *  bloque sale de ahí; esta lista la usan los condicionantes, que sí van por
@@ -140,6 +142,9 @@ gymModule.delete('/dias/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
 
 const ejercicioInput = z.object({
   dayId: z.number().int().positive(),
+  // Con catalogId el nombre y las partes vienen de la lista; sin él, el camino
+  // manual sigue existiendo pero pasa igualmente por el catálogo (privado).
+  catalogId: z.number().int().positive().nullish(),
   name: z.string().trim().min(1).max(160),
   parts: z.string().max(320).default(''),
   kind: z.enum(['repes', 'tiempo']).default('repes'),
@@ -164,10 +169,16 @@ gymModule.post('/ejercicios', ah(async (req: AuthedRequest, res) => {
     .from(gymExercises)
     .where(and(eq(gymExercises.dayId, parsed.data.dayId), isNull(gymExercises.archivedAt)));
 
-  const { targetWeight, parts, ...resto } = parsed.data;
-  const partes = limpiarPartes(parts);
+  const { targetWeight, parts, catalogId, ...resto } = parsed.data;
+  // Identidad SIEMPRE: venga de la lista o escrito a mano. Es lo que evita los
+  // duplicados y lo que mantiene el histórico unido cuando la rutina cambia.
+  const ident = await asegurarIdentidad(req.userId!, { catalogId, name: parsed.data.name, parts, kind: parsed.data.kind });
+  const partes = catalogId ? ident.parts : limpiarPartes(parts);
   const [r] = await db.insert(gymExercises).values({
     ...resto,
+    name: ident.name,
+    kind: catalogId ? ident.kind : parsed.data.kind,
+    catalogId: ident.id,
     parts: partes,
     // el bloque se deriva de las partes: un solo sitio donde decirlo
     muscles: musculosDePartes(partes),
@@ -227,6 +238,7 @@ gymModule.delete('/ejercicios/:id(\\d+)', ah(async (req: AuthedRequest, res) => 
       name: antes.name,
       exerciseKind: antes.kind,
       parts: antes.parts,
+      catalogId: antes.catalogId,
     });
   }
   res.json({ archived: true });
@@ -885,6 +897,7 @@ gymModule.post('/sesiones/:id(\\d+)/improvisar', ah(async (req: AuthedRequest, r
   const id = Number(req.params.id);
   const parsed = z
     .object({
+      catalogId: z.number().int().positive().nullish(),
       name: z.string().trim().min(1).max(160),
       parts: z.string().max(320).default(''),
       kind: z.enum(['repes', 'tiempo']).default('repes'),
@@ -906,12 +919,19 @@ gymModule.post('/sesiones/:id(\\d+)/improvisar', ah(async (req: AuthedRequest, r
     .from(gymExercises)
     .where(and(eq(gymExercises.dayId, sesion.dayId), isNull(gymExercises.archivedAt)));
 
-  const partes = limpiarPartes(parsed.data.parts);
+  const ident = await asegurarIdentidad(req.userId!, {
+    catalogId: parsed.data.catalogId,
+    name: parsed.data.name,
+    parts: parsed.data.parts,
+    kind: parsed.data.kind,
+  });
+  const partes = parsed.data.catalogId ? ident.parts : limpiarPartes(parsed.data.parts);
   const [r] = await db.insert(gymExercises).values({
     userId: req.userId!,
     dayId: sesion.dayId,
-    name: parsed.data.name,
-    kind: parsed.data.kind,
+    name: ident.name,
+    kind: parsed.data.catalogId ? ident.kind : parsed.data.kind,
+    catalogId: ident.id,
     parts: partes,
     muscles: musculosDePartes(partes),
     targetSets: parsed.data.targetSets,

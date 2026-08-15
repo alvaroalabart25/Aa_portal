@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   descansoSugerido,
   gymApi,
+  type CatalogoItem,
   listaMusculos,
   nombreMusculo,
   numTxt,
@@ -69,13 +70,20 @@ export default function ModoFoco({
   const [anadiendo, setAnadiendo] = useState(false);
   const [nombreNuevo, setNombreNuevo] = useState('');
   const [guardandoNuevo, setGuardandoNuevo] = useState(false);
+  // el catálogo se pide solo si llegas a abrir el añadir: en pleno foco no se
+  // carga nada que no haga falta
+  const [catalogo, setCatalogo] = useState<CatalogoItem[] | null>(null);
+  useEffect(() => {
+    if (anadiendo && catalogo === null) gymApi.catalogo().then(setCatalogo).catch(() => setCatalogo([]));
+  }, [anadiendo, catalogo]);
   const [esCastigo, setEsCastigo] = useState(false);
 
-  async function anadirNuevo() {
-    if (!nombreNuevo.trim() || guardandoNuevo) return;
+  async function anadirNuevo(catalogId?: number, nombre?: string) {
+    const name = (nombre ?? nombreNuevo).trim();
+    if (!name || guardandoNuevo) return;
     setGuardandoNuevo(true);
     try {
-      await gymApi.improvisar(sesionId, { name: nombreNuevo.trim() });
+      await gymApi.improvisar(sesionId, { catalogId, name });
       // se añade al final de la lista: saltamos directos a él, que para eso
       // lo acabas de pedir
       await onCambio();
@@ -283,13 +291,30 @@ export default function ModoFoco({
             autoFocus
             value={nombreNuevo}
             onChange={(e) => setNombreNuevo(e.target.value)}
-            placeholder="Nombre del ejercicio"
-            onKeyDown={(e) => e.key === 'Enter' && anadirNuevo()}
+            placeholder="Busca en tu lista…"
           />
+          {/* del catálogo, filtrado por lo que escribes; los de los bloques de
+              esta sesión primero. Crear a mano queda como última fila. */}
+          <div className="foco-resultados">
+            {(catalogo ?? [])
+              .filter((c) => !nombreNuevo.trim() || c.name.toLowerCase().includes(nombreNuevo.trim().toLowerCase()))
+              .sort((a, b) => (b.inRoutine ? 1 : 0) - (a.inRoutine ? 1 : 0))
+              .slice(0, 6)
+              .map((c) => (
+                <button key={c.id} className="foco-resultado" disabled={guardandoNuevo} onClick={() => anadirNuevo(c.id, c.name)}>
+                  <span>{c.name}</span>
+                  {c.pr && <span className="foco-resultado-pr">PR {Number(c.pr).toLocaleString('es-ES')} kg</span>}
+                </button>
+              ))}
+            {catalogo !== null &&
+              nombreNuevo.trim().length >= 3 &&
+              !catalogo.some((c) => c.name.toLowerCase() === nombreNuevo.trim().toLowerCase()) && (
+                <button className="foco-resultado crear" disabled={guardandoNuevo} onClick={() => anadirNuevo()}>
+                  + Crear «{nombreNuevo.trim()}» (solo lo verás tú)
+                </button>
+              )}
+          </div>
           <p className="foco-antes">No entra en tu rutina: al terminar te preguntará si se queda.</p>
-          <button className="foco-btn grande" disabled={!nombreNuevo.trim() || guardandoNuevo} onClick={anadirNuevo}>
-            {guardandoNuevo ? 'Añadiendo…' : 'Añadir y hacerlo ahora'}
-          </button>
           <button className="foco-mini" onClick={() => { setAnadiendo(false); setNombreNuevo(''); }}>
             Cancelar
           </button>

@@ -754,6 +754,9 @@ export const gymExercises = mysqlTable('gym_exercises', {
   targetWeight: decimal('target_weight', { precision: 6, scale: 2 }),
   restSeconds: int('rest_seconds'),
   notes: text('notes'), // técnica: «codos pegados», «banco a 30°»
+  // Identidad en el catálogo: es lo que hace que quitar un ejercicio y volverlo
+  // a meter en marzo siga siendo EL MISMO ejercicio para el histórico y el PR.
+  catalogId: bigint('catalog_id', { mode: 'number' }),
   sortOrder: int('sort_order').notNull().default(0),
   // Improvisado durante un entrenamiento: existe para poder apuntarle series,
   // pero NO forma parte del plan. Al acabar se propone en la pantalla Rutina y
@@ -960,6 +963,7 @@ export const gymChanges = mysqlTable('gym_changes', {
   targetReps: varchar('target_reps', { length: 20 }),
   prevSets: int('prev_sets'),
   prevReps: varchar('prev_reps', { length: 20 }),
+  catalogId: bigint('catalog_id', { mode: 'number' }), // para casar exacto, no por nombre
   status: mysqlEnum('status', ['pendiente', 'aceptada', 'rechazada', 'sustituida']).notNull().default('pendiente'),
   createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
   resolvedAt: datetime('resolved_at'),
@@ -968,3 +972,45 @@ export const gymChanges = mysqlTable('gym_changes', {
 export type GymPair = typeof gymPairs.$inferSelect;
 export type GymDayLink = typeof gymDayLinks.$inferSelect;
 export type GymChange = typeof gymChanges.$inferSelect;
+
+/**
+ * El catálogo de ejercicios: el vocabulario del gimnasio.
+ *
+ * Dos capas con reglas distintas:
+ *  - `createdBy` NULL: ejercicio POR DEFECTO, común a todas las cuentas. Existe
+ *    para que casi nunca haga falta crear nada y para que dos cuentas hablen
+ *    del mismo ejercicio con la misma identidad.
+ *  - `createdBy` = una cuenta: ejercicio PRIVADO. Nadie más lo ve.
+ */
+export const gymCatalog = mysqlTable('gym_catalog', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  name: varchar('name', { length: 160 }).notNull(),
+  parts: varchar('parts', { length: 320 }).notNull().default(''),
+  kind: mysqlEnum('kind', ['repes', 'tiempo']).notNull().default('repes'),
+  // explicación genérica del ejercicio (cómo se hace), no notas personales
+  explainText: text('explain_text'),
+  createdBy: bigint('created_by', { mode: 'number' }),
+  archivedAt: datetime('archived_at'),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`)
+    .$onUpdateFn(() => new Date()),
+});
+
+/** Tu relación con un ejercicio del catálogo: «lo dejé por el hombro». Es
+ *  personal y sobrevive a cualquier cambio de rutina. */
+export const gymCatalogNotes = mysqlTable('gym_catalog_notes', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  catalogId: bigint('catalog_id', { mode: 'number' }).notNull(),
+  note: text('note').notNull(),
+  updatedAt: datetime('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`)
+    .$onUpdateFn(() => new Date()),
+});
+
+export type GymCatalogItem = typeof gymCatalog.$inferSelect;

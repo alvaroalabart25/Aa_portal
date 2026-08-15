@@ -1,4 +1,4 @@
-import { del, get, patch, post } from '../../lib/api';
+import { api, del, get, patch, post } from '../../lib/api';
 
 export type Musculo =
   | 'pecho'
@@ -200,6 +200,32 @@ export interface SemanaGym {
   avgVolume: number | null;
 }
 
+/** Un ejercicio del catálogo, con TUS números al lado. */
+export interface CatalogoItem {
+  id: number;
+  name: string;
+  parts: string;
+  kind: 'repes' | 'tiempo';
+  explain: string | null;
+  mine: boolean;
+  pr: string | null;
+  lastDone: string | null;
+  sets: number;
+  hasNote: boolean;
+  inRoutine: boolean;
+}
+
+export interface FichaCatalogo {
+  id: number;
+  name: string;
+  parts: string;
+  kind: 'repes' | 'tiempo';
+  explain: string | null;
+  mine: boolean;
+  note: string | null;
+  history: { fecha: string; sets: number; mejorPeso: number | null; mejorReps: number | null; mejorSegs: number | null }[];
+}
+
 /** Con quién comparto y qué sesiones. */
 export interface Compartido {
   pairId: number;
@@ -212,6 +238,8 @@ export interface Compartido {
  *  objetivo, el peso y las notas son de cada uno y no viajan. */
 export interface Sugerencia {
   id: number;
+  /** false = el ejercicio no está en tu listado: la decisión es doble */
+  enTuListado: boolean;
   kind: 'alta' | 'baja';
   name: string;
   exerciseKind: 'repes' | 'tiempo';
@@ -248,11 +276,20 @@ export const gymApi = {
   dejarDeCompartir: (pairId: number) => del<{ ok: true }>(`/gym/compartir/${pairId}`),
 
   sugerencias: () => get<Sugerencia[]>('/gym/sugerencias'),
+  soloAlListado: (id: number) => post<{ ok: true; name: string }>(`/gym/sugerencias/${id}/solo-listado`, {}),
+
+  // El catálogo: la lista común más los tuyos, con tu PR al lado.
+  catalogo: () => get<CatalogoItem[]>('/gym/catalogo'),
+  fichaCatalogo: (id: number) => get<FichaCatalogo>(`/gym/catalogo/${id}`),
+  crearEnCatalogo: (data: { name: string; parts?: string; kind?: 'repes' | 'tiempo' }) =>
+    post<{ id: number; name: string }>('/gym/catalogo', data),
+  explicarEjercicio: (id: number, explain: string | null) => patch<{ ok: true }>(`/gym/catalogo/${id}`, { explain }),
+  notaDeEjercicio: (id: number, note: string) => api<{ ok: true }>(`/gym/catalogo/${id}/nota`, { method: 'PUT', body: JSON.stringify({ note }) }),
   aceptarSugerencia: (id: number) => post<{ ok: true; aviso: string | null }>(`/gym/sugerencias/${id}/aceptar`, {}),
   rechazarSugerencia: (id: number) => post<{ ok: true }>(`/gym/sugerencias/${id}/rechazar`, {}),
 
   // Improvisar entrenando: se apunta ahora, se decide al acabar.
-  improvisar: (sessionId: number, data: { name: string; parts?: string; kind?: 'repes' | 'tiempo'; targetSets?: number; targetReps?: string }) =>
+  improvisar: (sessionId: number, data: { catalogId?: number; name: string; parts?: string; kind?: 'repes' | 'tiempo'; targetSets?: number; targetReps?: string }) =>
     post<Ejercicio>(`/gym/sesiones/${sessionId}/improvisar`, data),
   aceptarPropuesta: (id: number) => post<{ ok: true }>(`/gym/propuestas/${id}/aceptar`, {}),
   descartarPropuesta: (id: number) => post<{ ok: true }>(`/gym/propuestas/${id}/descartar`, {}),

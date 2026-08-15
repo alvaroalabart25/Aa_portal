@@ -25,6 +25,7 @@ import { gymChanges, gymDayLinks, gymDays, gymExercises, gymPairs, gymShareCodes
 import { type AuthedRequest } from '../../core/auth/middleware';
 import { sendToUser } from '../push';
 import { limpiarPartes, musculosDePartes } from './partes';
+import { asegurarIdentidad } from './catalogo';
 
 export const compartirRouter = Router();
 
@@ -96,6 +97,9 @@ export interface CambioEmitido {
   name: string;
   exerciseKind?: 'repes' | 'tiempo';
   parts?: string;
+  /** La identidad de catálogo: si es un ejercicio común, el otro lado casa
+   *  exacto; si es privado, el nombre sigue valiendo de puente. */
+  catalogId?: number | null;
   /** Al aceptar una sugerencia no se devuelve el eco a quien la mandó. */
   exceptoLink?: number;
 }
@@ -128,7 +132,9 @@ export async function emitirCambio(c: CambioEmitido): Promise<void> {
           eq(gymExercises.dayId, v.otroDia),
           isNull(gymExercises.archivedAt),
           isNull(gymExercises.proposedAt),
-          sql`lower(${gymExercises.name}) = lower(${c.name})`,
+          c.catalogId
+            ? or(eq(gymExercises.catalogId, c.catalogId), sql`lower(${gymExercises.name}) = lower(${c.name})`)
+            : sql`lower(${gymExercises.name}) = lower(${c.name})`,
         ),
       );
 
@@ -156,6 +162,7 @@ export async function emitirCambio(c: CambioEmitido): Promise<void> {
       exerciseName: c.name,
       exerciseKind: c.exerciseKind ?? 'repes',
       parts: c.parts ?? '',
+      catalogId: c.catalogId ?? null,
     });
 
     // El aviso dice QUÉ ha cambiado. «Ha cambiado su rutina» no sirve de nada.
@@ -262,11 +269,15 @@ compartirRouter.post('/compartir/canjear', ah(async (req: AuthedRequest, res) =>
       .orderBy(gymExercises.sortOrder, gymExercises.id);
 
     for (const e of sus) {
+      // La copia conserva la identidad: si el ejercicio es común se comparte el
+      // id; si era privado de quien invita, nace una copia privada del receptor.
+      const ident = await asegurarIdentidad(yo, { catalogId: e.catalogId, name: e.name, parts: e.parts, kind: e.kind });
       await db.insert(gymExercises).values({
         userId: yo,
         dayId: nuevo.insertId,
         name: e.name,
         kind: e.kind,
+        catalogId: ident.id,
         parts: e.parts,
         muscles: e.muscles,
         targetSets: e.targetSets,
@@ -357,6 +368,16 @@ compartirRouter.get('/sugerencias', ah(async (req: AuthedRequest, res) => {
     .orderBy(sql`${gymChanges.id} desc`)
     .limit(60);
 
+  // Lo que esta cuenta VE en el catálogo, para saber si un alta trae además un
+  // ejercicio que no está en su listado (ahí la sugerencia es doble).
+  const { gymCatalog } = await import('../../db/schema');
+  const visibles = await db
+    .select({ id: gymCatalog.id, name: gymCatalog.name })
+    .from(gymCatalog)
+    .where(and(isNull(gymCatalog.archivedAt), or(sql`${gymCatalog.createdBy} is null`, eq(gymCatalog.createdBy, req.userId!))));
+  const idsVisibles = new Set(visibles.map((v) => v.id));
+  const nombresVisibles = new Set(visibles.map((v) => v.name.trim().toLowerCase()));
+
   const salida = [];
   for (const { c, link } of filas) {
     // mi día del vínculo: el que NO es del que manda
@@ -366,6 +387,8 @@ compartirRouter.get('/sugerencias', ah(async (req: AuthedRequest, res) => {
       .where(and(inArray(gymDays.id, [link.dayA, link.dayB]), eq(gymDays.userId, req.userId!), isNull(gymDays.archivedAt)));
     if (!mio) continue; // el día es mío y ya no está: el vínculo se romperá solo
     salida.push({
+      enTuListado:
+        (c.catalogId != null && idsVisibles.has(c.catalogId)) || nombresVisibles.has(c.exerciseName.trim().toLowerCase()),
       id: c.id,
       kind: c.kind,
       name: c.exerciseName,
@@ -414,6 +437,7 @@ compartirRouter.post('/sugerencias/:id(\\d+)/aceptar', ah(async (req: AuthedRequ
 
   let aviso: string | null = null;
 
+  let identidad: { id: number; parts: string } | null = null;
   if (c.kind === 'alta') {
     if (existente) {
       aviso = 'Ya lo tenías en ese día: no se ha duplicado.';
@@ -422,14 +446,24 @@ compartirRouter.post('/sugerencias/:id(\\d+)/aceptar', ah(async (req: AuthedRequ
         .select({ n: sql<number>`count(*)` })
         .from(gymExercises)
         .where(and(eq(gymExercises.dayId, mio.id), isNull(gymExercises.archivedAt)));
-      const partes = limpiarPartes(c.parts);
+      // La identidad se resuelve PARA EL RECEPTOR: si el ejercicio es común se
+      // reutiliza; si era privado del otro (o no existe aquí), nace como
+      // privado de quien acepta. Cogerlo al día implica tenerlo en el listado.
+      const ident = await asegurarIdentidad(req.userId!, {
+        catalogId: c.catalogId,
+        name: c.exerciseName,
+        parts: c.parts,
+        kind: c.exerciseKind,
+      });
+      identidad = { id: ident.id, parts: ident.parts || limpiarPartes(c.parts) };
       await db.insert(gymExercises).values({
         userId: req.userId!,
         dayId: mio.id,
-        name: c.exerciseName,
+        name: ident.name,
         kind: c.exerciseKind,
-        parts: partes,
-        muscles: musculosDePartes(partes),
+        catalogId: ident.id,
+        parts: identidad.parts,
+        muscles: musculosDePartes(identidad.parts),
         // Objetivo por defecto: el suyo no viaja y no se va a inventar uno
         // ajeno. Se ajusta al entrenarlo, como el peso.
         targetSets: 4,
@@ -454,11 +488,37 @@ compartirRouter.post('/sugerencias/:id(\\d+)/aceptar', ah(async (req: AuthedRequ
       name: c.exerciseName,
       exerciseKind: c.exerciseKind,
       parts: c.parts,
+      catalogId: identidad?.id ?? c.catalogId,
       exceptoLink: link.id,
     });
   }
 
   res.json({ ok: true, aviso });
+}));
+
+/**
+ * POST /gym/sugerencias/:id/solo-listado — la segunda mitad de la decisión
+ * doble: «no lo quiero en mi día, pero guárdamelo en el listado». Solo tiene
+ * sentido en las altas de ejercicios que no tenías: el ejercicio se te crea
+ * (o se reutiliza el común) y la sugerencia del día queda descartada.
+ */
+compartirRouter.post('/sugerencias/:id(\\d+)/solo-listado', ah(async (req: AuthedRequest, res) => {
+  const id = Number(req.params.id);
+  const [c] = await db
+    .select()
+    .from(gymChanges)
+    .where(and(eq(gymChanges.id, id), eq(gymChanges.toUser, req.userId!), eq(gymChanges.status, 'pendiente')));
+  if (!c) return res.status(404).json({ error: 'Esa sugerencia ya no está' });
+  if (c.kind !== 'alta') return res.status(400).json({ error: 'Solo las altas se pueden guardar en el listado' });
+
+  const ident = await asegurarIdentidad(req.userId!, {
+    catalogId: c.catalogId,
+    name: c.exerciseName,
+    parts: c.parts,
+    kind: c.exerciseKind,
+  });
+  await db.update(gymChanges).set({ status: 'rechazada', resolvedAt: new Date() }).where(eq(gymChanges.id, id));
+  res.json({ ok: true, catalogId: ident.id, name: ident.name });
 }));
 
 /** POST /gym/sugerencias/:id/rechazar — se descarta y no vuelve. Si el otro

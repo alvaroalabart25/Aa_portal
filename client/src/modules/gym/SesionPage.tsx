@@ -4,7 +4,7 @@ import Celebracion from './Celebracion';
 import { EjercicioModal } from './modals';
 import ModoFoco from './ModoFoco';
 import { ElegirEjercicio } from './Catalogo';
-import { agruparSuperseries } from './GimnasioPage';
+import { ListaOrdenable } from './Ordenable';
 import {
   gymApi,
   kg,
@@ -149,34 +149,28 @@ export default function SesionPage() {
         </button>
       )}
 
-      {agruparSuperseries(datos.exercises).map((grupo) =>
-        grupo.length > 1 ? (
-          <div key={grupo[0].id} className="ss-grupo">
-            <span className="ss-etiqueta">Superserie · uno de cada, alternando</span>
-            {grupo.map((e) => (
-              <BloqueEjercicio
-                key={e.id}
-                ejercicio={e}
-                sesionId={sesionId}
-                onCambio={cargar}
-                bloqueado={cerrada}
-                condiciones={condiciones}
-                onEditar={() => setEditando(e)}
-              />
-            ))}
-          </div>
-        ) : (
+      <ListaOrdenable
+        ejercicios={datos.exercises}
+        conAsa={!cerrada}
+        etiqueta="Superserie · uno de cada, alternando"
+        onOrden={async (ids) => {
+          await gymApi.reordenar('ejercicios', ids);
+          await cargar();
+        }}
+      >
+        {(e, asa) => (
           <BloqueEjercicio
-            key={grupo[0].id}
-            ejercicio={grupo[0]}
+            key={e.id}
+            ejercicio={e}
             sesionId={sesionId}
             onCambio={cargar}
             bloqueado={cerrada}
             condiciones={condiciones}
-            onEditar={() => setEditando(grupo[0])}
+            onEditar={() => setEditando(e)}
+            asa={asa}
           />
-        ),
-      )}
+        )}
+      </ListaOrdenable>
 
       {!cerrada && (
         <>
@@ -250,6 +244,7 @@ function BloqueEjercicio({
   bloqueado,
   condiciones,
   onEditar,
+  asa,
 }: {
   ejercicio: EjercicioEnSesion;
   sesionId: number;
@@ -257,6 +252,7 @@ function BloqueEjercicio({
   bloqueado: boolean;
   condiciones: Condicionante[];
   onEditar: () => void;
+  asa?: import('react').ReactNode;
 }) {
   const series = Array.from({ length: ejercicio.targetSets }, (_, i) => i + 1);
   const completo = ejercicio.done.length >= ejercicio.targetSets;
@@ -282,7 +278,10 @@ function BloqueEjercicio({
             <p className="gy-ej-m">{listaMusculos(ejercicio.muscles).map(nombreMusculo).join(' · ')}</p>
           )}
         </div>
-        {completo && <span className="gy-tic">✓</span>}
+        <div className="gy-bloque-lado">
+          {completo && <span className="gy-tic">✓</span>}
+          {asa}
+        </div>
       </div>
 
       {avisos.map((c) => (

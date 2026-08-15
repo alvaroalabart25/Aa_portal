@@ -258,6 +258,24 @@ export interface Sugerencia {
   createdAt: string;
 }
 
+/** Superseries juntas, el resto suelto, respetando el orden de la lista. */
+export function agruparSuperseries<T extends { id: number; supersetId?: number | null }>(ejercicios: T[]): T[][] {
+  const grupos: T[][] = [];
+  const vistos = new Set<number>();
+  for (const e of ejercicios) {
+    if (vistos.has(e.id)) continue;
+    if (e.supersetId != null) {
+      const grupo = ejercicios.filter((x) => x.supersetId === e.supersetId);
+      grupo.forEach((x) => vistos.add(x.id));
+      grupos.push(grupo);
+    } else {
+      vistos.add(e.id);
+      grupos.push([e]);
+    }
+  }
+  return grupos;
+}
+
 export const gymApi = {
   semana: () => get<SemanaGym>('/gym/semana'),
   rutina: () => get<Rutina>('/gym/rutina'),

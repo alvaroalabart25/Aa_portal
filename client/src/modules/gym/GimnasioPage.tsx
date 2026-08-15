@@ -22,6 +22,7 @@ import { CondicionanteModal, MetaModal } from './modals';
 import Modal from '../../components/Modal';
 import { Compartir, Sugerencias } from './Compartir';
 import { CatalogoTab, ElegirEjercicio } from './Catalogo';
+import { ListaOrdenable } from './Ordenable';
 import DetalleEjercicio from './DetalleEjercicio';
 import { notaDelDia } from './score';
 
@@ -369,18 +370,20 @@ function LaRutina({ rutina, onCambio }: { rutina: Rutina; onCambio: () => void }
             <p className="muted mc-vacio">Sin ejercicios todavía.</p>
           ) : (
             <div className="gy-lista">
-              {agruparSuperseries(d.exercises).map((grupo) =>
-                grupo.length > 1 ? (
-                  <div key={grupo[0].id} className="ss-grupo">
-                    <span className="ss-etiqueta">Superserie · alternados</span>
-                    {grupo.map((e) => (
-                      <FilaEjercicio key={e.id} e={e} onClick={() => setDetalle({ dia: d, ejercicio: e })} />
-                    ))}
+              <ListaOrdenable
+                ejercicios={d.exercises}
+                onOrden={async (ids) => {
+                  await gymApi.reordenar('ejercicios', ids);
+                  onCambio();
+                }}
+              >
+                {(e, asa) => (
+                  <div key={e.id} className="gy-fila-ord">
+                    <FilaEjercicio e={e} onClick={() => setDetalle({ dia: d, ejercicio: e })} />
+                    {asa}
                   </div>
-                ) : (
-                  <FilaEjercicio key={grupo[0].id} e={grupo[0]} onClick={() => setDetalle({ dia: d, ejercicio: grupo[0] })} />
-                ),
-              )}
+                )}
+              </ListaOrdenable>
             </div>
           )}
 
@@ -883,24 +886,6 @@ function FilaEjercicio({ e, onClick }: { e: Ejercicio; onClick: () => void }) {
       </span>
     </button>
   );
-}
-
-/** Superseries juntas, el resto suelto, respetando el orden de la lista. */
-export function agruparSuperseries<T extends { id: number; supersetId?: number | null }>(ejercicios: T[]): T[][] {
-  const grupos: T[][] = [];
-  const vistos = new Set<number>();
-  for (const e of ejercicios) {
-    if (vistos.has(e.id)) continue;
-    if (e.supersetId != null) {
-      const grupo = ejercicios.filter((x) => x.supersetId === e.supersetId);
-      grupo.forEach((x) => vistos.add(x.id));
-      grupos.push(grupo);
-    } else {
-      vistos.add(e.id);
-      grupos.push([e]);
-    }
-  }
-  return grupos;
 }
 
 /** Qué trabaja esta sesión, en bloques generales. Filtra el selector. */

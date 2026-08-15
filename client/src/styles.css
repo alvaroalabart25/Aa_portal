@@ -1934,3 +1934,18 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
   position: absolute; right: 18px; bottom: 18px;
   width: 92px; border-radius: 10px;
 }
+
+/* ---------- Reordenar ejercicios arrastrando ---------- */
+/* touch-action none en el asa: sin ello, el navegador del móvil interpreta el
+   gesto como scroll de la página y el arrastre no llega a empezar */
+.gy-asa {
+  background: none; border: none; padding: 8px 6px; flex: none;
+  color: var(--ink-muted); font-size: 15px; letter-spacing: 1px;
+  cursor: grab; touch-action: none; user-select: none;
+}
+.gy-asa:active { cursor: grabbing; color: var(--ink); }
+.gy-fila-ord { display: flex; align-items: center; gap: 4px; }
+.gy-fila-ord > :first-child { flex: 1; min-width: 0; }
+.gy-ord.arrastrando, .ss-grupo.arrastrando { opacity: 0.55; }
+.ss-eti-fila { display: flex; align-items: center; justify-content: space-between; }
+.gy-bloque-lado { display: flex; align-items: center; gap: 6px; flex: none; }

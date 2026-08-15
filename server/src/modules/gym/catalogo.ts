@@ -38,22 +38,30 @@ function visiblePara(userId: number) {
 export async function asegurarIdentidad(
   userId: number,
   pedido: { catalogId?: number | null; name: string; parts?: string; kind?: 'repes' | 'tiempo' },
-): Promise<{ id: number; name: string; parts: string; kind: 'repes' | 'tiempo' }> {
+): Promise<{ id: number; name: string; parts: string; partsSecondary: string; kind: 'repes' | 'tiempo' }> {
   if (pedido.catalogId) {
     const [c] = await db
       .select()
       .from(gymCatalog)
       .where(and(eq(gymCatalog.id, pedido.catalogId), visiblePara(userId)));
-    if (c) return { id: c.id, name: c.name, parts: c.parts, kind: c.kind };
+    if (c) return { id: c.id, name: c.name, parts: c.parts, partsSecondary: c.partsSecondary, kind: c.kind };
   }
 
   const visibles = await db
-    .select({ id: gymCatalog.id, name: gymCatalog.name, parts: gymCatalog.parts, kind: gymCatalog.kind })
+    .select({
+      id: gymCatalog.id,
+      name: gymCatalog.name,
+      parts: gymCatalog.parts,
+      partsSecondary: gymCatalog.partsSecondary,
+      kind: gymCatalog.kind,
+    })
     .from(gymCatalog)
     .where(visiblePara(userId));
   const igual = visibles.find((c) => norm(c.name) === norm(pedido.name));
   if (igual) return igual;
 
+  // Lo creado a mano nace con todo como principal: no hay forma honesta de
+  // adivinar qué es colateral, y exigir de más se corrige mejor que mentir.
   const partes = limpiarPartes(pedido.parts ?? '');
   const [r] = await db.insert(gymCatalog).values({
     name: pedido.name.trim(),
@@ -61,7 +69,7 @@ export async function asegurarIdentidad(
     kind: pedido.kind ?? 'repes',
     createdBy: userId,
   });
-  return { id: r.insertId, name: pedido.name.trim(), parts: partes, kind: pedido.kind ?? 'repes' };
+  return { id: r.insertId, name: pedido.name.trim(), parts: partes, partsSecondary: '', kind: pedido.kind ?? 'repes' };
 }
 
 // GET /gym/catalogo — la lista, con TUS números al lado de cada uno
@@ -107,6 +115,7 @@ catalogoRouter.get('/catalogo', ah(async (req: AuthedRequest, res) => {
       id: c.id,
       name: c.name,
       parts: c.parts,
+      partsSecondary: c.partsSecondary,
       kind: c.kind,
       explain: c.explainText,
       mine: c.createdBy != null,
@@ -163,6 +172,7 @@ catalogoRouter.get('/catalogo/:id(\\d+)', ah(async (req: AuthedRequest, res) => 
     id: c.id,
     name: c.name,
     parts: c.parts,
+    partsSecondary: c.partsSecondary,
     kind: c.kind,
     explain: c.explainText,
     mine: c.createdBy != null,

@@ -1,119 +1,78 @@
-import type { DiaRutina, Parte } from './api';
+import { nombreMusculo, type DiaRutina, type Parte } from './api';
 
 /**
- * Nota del 1 al 10 de un día de rutina.
+ * Cobertura de una sesión, del 1 al 10.
  *
- * IMPORTANTE: esto es una regla escrita a mano, no ciencia del deporte. Mide
- * cuatro cosas concretas y enseña el desglose siempre, para que se pueda estar
- * en desacuerdo con el número. Un 7 no significa «entrenas un 7»: significa que
- * de estos cuatro criterios cumples estos.
+ * Mide UNA sola cosa: si lo que planificas en la sesión cubre las partes de lo
+ * que esa sesión quiere entrenar. El objetivo se deriva de las partes
+ * PRINCIPALES de sus ejercicios (el bíceps que trabaja de rebote en un jalón
+ * no convierte el día en día de bíceps); para darse por cubierta, a una parte
+ * le vale cualquier trabajo, principal o colateral.
  *
- * No mide si el ejercicio es bueno, si la técnica es correcta ni si el peso es
- * el adecuado. Nada de eso se puede saber desde una tabla.
+ * Fuera quedaron, a petición suya, los criterios de reparto entre bloques (su
+ * pierna de 2 ejercicios diarios es un diseño, no un adorno, y un día de solo
+ * pecho es legítimo) y el de fichas completas (eso es higiene del dato, no
+ * cobertura): el score tiene que valer para cualquier forma de montar días.
  */
-export interface Criterio {
+export interface BloqueNota {
   id: string;
   label: string;
-  puntos: number;
-  tope: number;
-  detalle: string;
+  /** partes de este bloque cubiertas (por trabajo principal o colateral) */
+  cubiertas: number;
+  posibles: number;
+  /** las que faltan, con ideas del catálogo de partes para cubrirlas */
+  faltan: { label: string; ideas: string[] }[];
 }
 
 export interface Nota {
-  total: number;
-  criterios: Criterio[];
+  total: number; // 1-10
+  cubiertas: number;
+  posibles: number;
+  bloques: BloqueNota[];
+  /** ejercicios que no declaran músculos: no pueden contar, y se dice */
+  sinMusculos: string[];
 }
+
+const lista = (v: string | null | undefined) => (v ? v.split(',').map((x) => x.trim()).filter(Boolean) : []);
 
 export function notaDelDia(dia: DiaRutina, partes: Parte[]): Nota | null {
   if (dia.exercises.length === 0) return null;
 
-  const parteDe = new Map(partes.map((p) => [p.id, p]));
-  const lista = (v: string) => (v ? v.split(',').filter(Boolean) : []);
-
-  // Series por parte y por bloque dentro de ESTE día
-  const porParte = new Map<string, number>();
-  const porBloque = new Map<string, number>();
-  let sinEtiquetar = 0;
-  let sinObjetivo = 0;
-
+  const principales = new Set<string>();
+  const tocadas = new Set<string>();
+  const sinMusculos: string[] = [];
   for (const e of dia.exercises) {
     const suyas = lista(e.parts);
-    if (suyas.length === 0) sinEtiquetar += 1;
-    if (!e.targetReps?.trim()) sinObjetivo += 1;
-    for (const id of suyas) {
-      porParte.set(id, (porParte.get(id) ?? 0) + e.targetSets);
-      const bloque = parteDe.get(id)?.muscle;
-      if (bloque) porBloque.set(bloque, (porBloque.get(bloque) ?? 0) + e.targetSets);
+    if (suyas.length === 0) sinMusculos.push(e.name);
+    for (const p of suyas) {
+      principales.add(p);
+      tocadas.add(p);
     }
+    for (const p of lista(e.partsSecondary)) tocadas.add(p);
   }
 
-  const bloques = [...porBloque.keys()];
-  const seriesTotales = dia.exercises.reduce((n, e) => n + e.targetSets, 0);
+  // El objetivo de la sesión: los bloques a los que pertenecen las principales
+  const parteDe = new Map(partes.map((p) => [p.id, p]));
+  const bloquesObjetivo = [...new Set([...principales].map((p) => parteDe.get(p)?.muscle).filter(Boolean))] as string[];
+  if (bloquesObjetivo.length === 0) return null;
 
-  // 1. De los bloques que toca este día, ¿cubre sus partes o repite zona? (0-4)
   let cubiertas = 0;
   let posibles = 0;
-  for (const b of bloques) {
-    const suyas = partes.filter((p) => p.muscle === b);
+  const bloques: BloqueNota[] = bloquesObjetivo.map((bloque) => {
+    const suyas = partes.filter((p) => p.muscle === bloque);
+    const bien = suyas.filter((p) => tocadas.has(p.id));
+    const faltan = suyas.filter((p) => !tocadas.has(p.id));
+    cubiertas += bien.length;
     posibles += suyas.length;
-    cubiertas += suyas.filter((p) => porParte.get(p.id)).length;
-  }
-  const ratio = posibles === 0 ? 0 : cubiertas / posibles;
-  const c1: Criterio = {
-    id: 'cobertura',
-    label: 'Cubre las partes de lo que toca',
-    puntos: Math.round(ratio * 4 * 10) / 10,
-    tope: 4,
-    detalle: `${cubiertas} de ${posibles} partes de los bloques que trabajas hoy`,
-  };
+    return {
+      id: bloque,
+      label: nombreMusculo(bloque),
+      cubiertas: bien.length,
+      posibles: suyas.length,
+      faltan: faltan.map((p) => ({ label: p.label, ideas: p.ideas.slice(0, 2) })),
+    };
+  });
 
-  // 2. Volumen por bloque principal: ni testimonial ni todo a uno (0-3)
-  const principales = bloques.filter((b) => (porBloque.get(b) ?? 0) >= 3);
-  const excesivos = bloques.filter((b) => (porBloque.get(b) ?? 0) > 14);
-  let p2 = 3;
-  if (principales.length === 0) p2 = 0;
-  else if (principales.length === 1) p2 = 1.5;
-  if (excesivos.length > 0) p2 = Math.max(0, p2 - 1);
-  const c2: Criterio = {
-    id: 'volumen',
-    label: 'Volumen con sentido',
-    puntos: p2,
-    tope: 3,
-    detalle:
-      principales.length === 0
-        ? 'ningún bloque llega a 3 series: todo queda testimonial'
-        : `${principales.length} ${principales.length === 1 ? 'bloque' : 'bloques'} con 3 series o más${
-            excesivos.length ? `, y ${excesivos.join(', ')} por encima de 14` : ''
-          }`,
-  };
-
-  // 3. Reparto: que un solo bloque no se lleve más de la mitad del día (0-2)
-  const mayor = Math.max(0, ...[...porBloque.values()]);
-  const cuota = seriesTotales === 0 ? 1 : mayor / seriesTotales;
-  const p3 = cuota <= 0.45 ? 2 : cuota <= 0.6 ? 1 : 0;
-  const c3: Criterio = {
-    id: 'reparto',
-    label: 'Reparto entre bloques',
-    puntos: p3,
-    tope: 2,
-    detalle: `el bloque más cargado se lleva el ${Math.round(cuota * 100)} % de las series`,
-  };
-
-  // 4. La ficha completa: sin esto el resto del portal miente (0-1)
-  const p4 = sinEtiquetar === 0 && sinObjetivo === 0 ? 1 : sinEtiquetar === 0 || sinObjetivo === 0 ? 0.5 : 0;
-  const c4: Criterio = {
-    id: 'ficha',
-    label: 'Ejercicios bien fichados',
-    puntos: p4,
-    tope: 1,
-    detalle:
-      sinEtiquetar === 0 && sinObjetivo === 0
-        ? 'todos con músculos y objetivo'
-        : `${sinEtiquetar} sin músculos, ${sinObjetivo} sin objetivo de repes`,
-  };
-
-  const criterios = [c1, c2, c3, c4];
-  const bruto = criterios.reduce((n, c) => n + c.puntos, 0);
-  // de 1 a 10: un día con ejercicios nunca es un 0
-  return { total: Math.max(1, Math.round(bruto * 10) / 10), criterios };
+  const total = Math.max(1, Math.round((cubiertas / posibles) * 10 * 10) / 10);
+  return { total, cubiertas, posibles, bloques, sinMusculos };
 }

@@ -482,10 +482,12 @@ function LaRutina({ rutina, onCambio }: { rutina: Rutina; onCambio: () => void }
 }
 
 /**
- * La nota del día, con su desglose a un toque.
+ * La cobertura de la sesión, con su desglose a un toque.
  *
- * El número sin el desglose sería un oráculo: se enseña siempre de dónde sale,
- * porque es una regla escrita a mano y se puede estar en desacuerdo con ella.
+ * Una sola pregunta: ¿lo que planificas aquí cubre las partes de lo que esta
+ * sesión quiere entrenar? El objetivo se deriva de los músculos PRINCIPALES de
+ * sus ejercicios, así que a nadie se le exige lo que solo trabaja de rebote,
+ * ni se le compara con la rutina de otro.
  */
 function NotaDia({ dia, partes }: { dia: DiaRutina; partes: Parte[] }) {
   const [abierto, setAbierto] = useState(false);
@@ -500,26 +502,33 @@ function NotaDia({ dia, partes }: { dia: DiaRutina; partes: Parte[] }) {
         <span className="gy-nota-n">{String(nota.total).replace('.', ',')}</span>
         <span className="gy-nota-de">/ 10</span>
         <span className="gy-nota-t">
-          {nota.total >= 8 ? 'día bien montado' : nota.total >= 6 ? 'le falta algo' : 'desequilibrado'}
+          {nota.cubiertas === nota.posibles
+            ? 'cubre todo lo que trabaja'
+            : `cubre ${nota.cubiertas} de ${nota.posibles} partes de lo que trabaja`}
         </span>
         <span className="gy-nota-chev">{abierto ? '▾' : '▸'}</span>
       </button>
 
       {abierto && (
         <div className="gy-nota-detalle">
-          {nota.criterios.map((c) => (
-            <div key={c.id} className="gy-crit">
-              <span className="gy-crit-l">{c.label}</span>
+          {nota.bloques.map((b) => (
+            <div key={b.id} className="gy-crit">
+              <span className="gy-crit-l">{b.label}</span>
               <span className="gy-crit-p">
-                {String(c.puntos).replace('.', ',')}/{c.tope}
+                {b.cubiertas}/{b.posibles}
               </span>
-              <span className="gy-crit-d">{c.detalle}</span>
+              <span className="gy-crit-d">
+                {b.faltan.length === 0
+                  ? 'todas sus partes con trabajo'
+                  : b.faltan.map((f) => `falta ${f.label.toLowerCase()} (${f.ideas.join(' o ').toLowerCase()})`).join(' · ')}
+              </span>
             </div>
           ))}
-          <p className="muted gy-crit-nota">
-            Es una regla mía, no ciencia del deporte: mide estos cuatro criterios y nada más. No sabe si el ejercicio
-            es bueno para ti, si la técnica es correcta ni si el peso es el que toca.
-          </p>
+          {nota.sinMusculos.length > 0 && (
+            <p className="muted gy-crit-nota">
+              {nota.sinMusculos.join(', ')} no declara músculos, así que no puede contar aquí.
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -578,31 +587,45 @@ export function Cobertura({ rutina }: { rutina: Rutina }) {
     gymApi.partes().then(setPartes).catch(() => {});
   }, []);
 
-  const series = useMemo(() => {
-    const m = new Map<string, number>();
+  // Trabajo por parte en una vuelta completa: el principal (lo que entrenas) y
+  // el colateral (lo que trabaja de rebote) se cuentan separados.
+  const trabajo = useMemo(() => {
+    const prin = new Map<string, number>();
+    const col = new Map<string, number>();
     for (const d of rutina.days) {
       for (const e of d.exercises) {
-        for (const parte of listaMusculos(e.parts)) m.set(parte, (m.get(parte) ?? 0) + e.targetSets);
+        for (const parte of listaMusculos(e.parts)) prin.set(parte, (prin.get(parte) ?? 0) + e.targetSets);
+        for (const parte of listaMusculos(e.partsSecondary)) col.set(parte, (col.get(parte) ?? 0) + e.targetSets);
       }
     }
-    return m;
+    return { prin, col };
   }, [rutina]);
 
   const bloques = useMemo(() => {
     return MUSCULOS.map((bloque) => {
       const suyas = partes.filter((p) => p.muscle === bloque.id);
-      const total = suyas.reduce((n, p) => n + (series.get(p.id) ?? 0), 0);
-      const vacias = suyas.filter((p) => !series.get(p.id));
-      return { bloque, partes: suyas, total, vacias };
+      const total = suyas.reduce((n, p) => n + (trabajo.prin.get(p.id) ?? 0), 0);
+      const colateral = suyas.reduce((n, p) => n + (trabajo.col.get(p.id) ?? 0), 0);
+      const vacias = suyas.filter((p) => !trabajo.prin.get(p.id) && !trabajo.col.get(p.id));
+      return { bloque, partes: suyas, total, colateral, vacias };
     }).filter((b) => b.partes.length > 0);
-  }, [partes, series]);
+  }, [partes, trabajo]);
 
   const [desplegado, setDesplegado] = useState(false);
 
   if (partes.length === 0) return null;
 
-  const sinTocar = bloques.filter((b) => b.total === 0).map((b) => b.bloque.label);
+  const sinTocar = bloques.filter((b) => b.total === 0 && b.colateral === 0).map((b) => b.bloque.label);
+  const soloRebote = bloques.filter((b) => b.total === 0 && b.colateral > 0).map((b) => b.bloque.label);
   const conHuecos = bloques.filter((b) => b.total > 0 && b.vacias.length > 0).map((b) => b.bloque.label);
+  // La proporción: un bloque puede estar «tocado» y aun así casi sin trabajo.
+  // La vara de medir es la media de tus propios bloques entrenados, no un
+  // número de manual: se avisa cuando uno no llega ni a un tercio de ella.
+  const entrenados = bloques.filter((b) => b.total > 0);
+  const media = entrenados.length ? Math.round(entrenados.reduce((n, b) => n + b.total, 0) / entrenados.length) : 0;
+  const escasos = entrenados
+    .filter((b) => entrenados.length > 1 && b.total * 3 <= media)
+    .map((b) => `${b.bloque.label} (${b.total})`);
 
   return (
     <section className="section mc-bloque">
@@ -613,10 +636,12 @@ export function Cobertura({ rutina }: { rutina: Rutina }) {
         <span className="gy-cob-chev">{desplegado ? '▾' : '▸'}</span>
         <h2>Cobertura</h2>
         <span className="gy-cob-resumen">
-          {sinTocar.length === 0 && conHuecos.length === 0
+          {sinTocar.length === 0 && conHuecos.length === 0 && soloRebote.length === 0 && escasos.length === 0
             ? 'todos los bloques completos'
             : [
                 sinTocar.length > 0 ? `sin tocar: ${sinTocar.join(', ').toLowerCase()}` : null,
+                soloRebote.length > 0 ? `solo de rebote: ${soloRebote.join(', ').toLowerCase()}` : null,
+                escasos.length > 0 ? `casi sin trabajo: ${escasos.join(', ').toLowerCase()}` : null,
                 conHuecos.length > 0 ? `con huecos: ${conHuecos.join(', ').toLowerCase()}` : null,
               ]
                 .filter(Boolean)
@@ -627,8 +652,9 @@ export function Cobertura({ rutina }: { rutina: Rutina }) {
       {desplegado && (
       <>
       <div className="gy-cob">
-        {bloques.map(({ bloque, partes: suyas, total, vacias }) => {
-          const estado = total === 0 ? 'cero' : vacias.length === 0 ? 'bien' : 'parcial';
+        {bloques.map(({ bloque, partes: suyas, total, colateral, vacias }) => {
+          const estado =
+            total === 0 ? (colateral > 0 ? 'parcial' : 'cero') : vacias.length === 0 ? 'bien' : 'parcial';
           const abiertoEste = abierto === bloque.id;
           return (
             <div key={bloque.id} className={`gy-bl ${estado}`}>
@@ -636,13 +662,16 @@ export function Cobertura({ rutina }: { rutina: Rutina }) {
                 <span className="gy-bl-n">{bloque.label}</span>
                 <span className="gy-bl-s">
                   {total} {total === 1 ? 'serie' : 'series'}
+                  {colateral > 0 && ` +${colateral} de rebote`}
                 </span>
                 <span className="gy-bl-e">
-                  {estado === 'bien'
-                    ? 'bloque completo'
-                    : estado === 'cero'
-                      ? 'sin tocar'
-                      : `falta ${vacias.length} de ${suyas.length}`}
+                  {total === 0 && colateral > 0
+                    ? 'solo de rebote'
+                    : estado === 'bien'
+                      ? 'bloque completo'
+                      : estado === 'cero'
+                        ? 'sin tocar'
+                        : `falta ${vacias.length} de ${suyas.length}`}
                 </span>
                 <span className="gy-bl-chev">{abiertoEste ? '▾' : '▸'}</span>
               </button>
@@ -650,12 +679,13 @@ export function Cobertura({ rutina }: { rutina: Rutina }) {
               {abiertoEste && (
                 <div className="gy-bl-partes">
                   {suyas.map((parte) => {
-                    const n = series.get(parte.id) ?? 0;
+                    const n = trabajo.prin.get(parte.id) ?? 0;
+                    const c = trabajo.col.get(parte.id) ?? 0;
                     return (
-                      <div key={parte.id} className={`gy-parte${n === 0 ? ' vacia' : ''}`}>
+                      <div key={parte.id} className={`gy-parte${n === 0 && c === 0 ? ' vacia' : ''}`}>
                         <span className="gy-parte-n">{parte.label}</span>
-                        <span className="gy-parte-s">{n}</span>
-                        {n === 0 && (
+                        <span className="gy-parte-s">{n === 0 && c > 0 ? `${c} de rebote` : n}</span>
+                        {n === 0 && c === 0 && (
                           <span className="gy-parte-idea">
                             probaría con {parte.ideas.slice(0, 2).join(' o ')}
                           </span>
@@ -671,9 +701,10 @@ export function Cobertura({ rutina }: { rutina: Rutina }) {
       </div>
 
       <p className="muted mc-vacio">
-        «Bloque completo» solo quiere decir que hay al menos un ejercicio por cada parte, no que el volumen sea el
-        correcto. El número de series es orientativo: suele hablarse de unas 10 por bloque a la semana, pero eso lo
-        decides tú, no el portal.
+        «Bloque completo» quiere decir que cada parte tiene al menos un ejercicio, no que el volumen sea el correcto.
+        «De rebote» es trabajo colateral: el bíceps en un jalón cuenta como trabajo que existe, pero no como entrenar
+        bíceps. Y «casi sin trabajo» compara cada bloque con la media de TUS bloques entrenados —ahora {media} series
+        por vuelta— y avisa por debajo de un tercio de ella, no contra un número de manual.
       </p>
       </>
       )}

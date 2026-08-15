@@ -67,8 +67,10 @@ export interface Ejercicio {
   id: number;
   dayId: number;
   muscles: string;
-  /** partes concretas del bloque; el bloque se deriva de aquí */
+  /** partes PRINCIPALES (lo que el ejercicio entrena); el bloque se deriva de aquí */
   parts: string;
+  /** partes colaterales: trabajan de rebote, no crean expectativas de cobertura */
+  partsSecondary: string;
   name: string;
   kind: 'repes' | 'tiempo';
   targetSets: number;
@@ -211,6 +213,7 @@ export interface CatalogoItem {
   id: number;
   name: string;
   parts: string;
+  partsSecondary: string;
   kind: 'repes' | 'tiempo';
   explain: string | null;
   mine: boolean;
@@ -225,6 +228,7 @@ export interface FichaCatalogo {
   id: number;
   name: string;
   parts: string;
+  partsSecondary: string;
   kind: 'repes' | 'tiempo';
   explain: string | null;
   mine: boolean;

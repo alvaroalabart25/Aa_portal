@@ -306,6 +306,7 @@ compartirRouter.post('/compartir/canjear', ah(async (req: AuthedRequest, res) =>
         kind: e.kind,
         catalogId: ident.id,
         parts: e.parts,
+        partsSecondary: e.partsSecondary,
         muscles: e.muscles,
         targetSets: e.targetSets,
         targetReps: e.targetReps,
@@ -486,6 +487,7 @@ compartirRouter.post('/sugerencias/:id(\\d+)/aceptar', ah(async (req: AuthedRequ
           kind: ident.kind,
           catalogId: ident.id,
           parts: ident.parts,
+          partsSecondary: ident.partsSecondary,
           muscles: musculosDePartes(ident.parts),
           targetSets: 4,
           targetReps: '8-10',
@@ -542,6 +544,7 @@ compartirRouter.post('/sugerencias/:id(\\d+)/aceptar', ah(async (req: AuthedRequ
         kind: c.exerciseKind,
         catalogId: ident.id,
         parts: identidad.parts,
+        partsSecondary: ident.partsSecondary,
         muscles: musculosDePartes(identidad.parts),
         // Objetivo por defecto: el suyo no viaja y no se va a inventar uno
         // ajeno. Se ajusta al entrenarlo, como el peso.

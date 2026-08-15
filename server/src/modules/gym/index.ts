@@ -190,7 +190,8 @@ gymModule.post('/ejercicios', ah(async (req: AuthedRequest, res) => {
     kind: catalogId ? ident.kind : parsed.data.kind,
     catalogId: ident.id,
     parts: partes,
-    // el bloque se deriva de las partes: un solo sitio donde decirlo
+    partsSecondary: catalogId ? ident.partsSecondary : '',
+    // el bloque se deriva de las partes PRINCIPALES: un solo sitio donde decirlo
     muscles: musculosDePartes(partes),
     targetWeight: targetWeight == null ? null : String(targetWeight),
     userId: req.userId!,
@@ -943,6 +944,7 @@ gymModule.post('/sesiones/:id(\\d+)/improvisar', ah(async (req: AuthedRequest, r
     kind: parsed.data.catalogId ? ident.kind : parsed.data.kind,
     catalogId: ident.id,
     parts: partes,
+    partsSecondary: parsed.data.catalogId ? ident.partsSecondary : '',
     muscles: musculosDePartes(partes),
     targetSets: parsed.data.targetSets,
     targetReps: parsed.data.targetReps,
@@ -1078,6 +1080,7 @@ gymModule.post('/ejercicios/:id(\\d+)/sustituir', ah(async (req: AuthedRequest, 
     kind: ident.kind,
     catalogId: ident.id,
     parts: ident.parts,
+    partsSecondary: ident.partsSecondary,
     muscles: musculosDePartes(ident.parts),
     targetSets: viejo.targetSets, // el hueco en la sesión es el mismo
     targetReps: viejo.targetReps,

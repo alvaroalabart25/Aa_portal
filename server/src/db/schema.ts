@@ -746,8 +746,12 @@ export const gymExercises = mysqlTable('gym_exercises', {
   // bloque muscular se está quedando sin trabajar.
   muscles: varchar('muscles', { length: 240 }).notNull().default(''),
   // Partes dentro del bloque: «pecho» no dice si trabajas el superior o solo el
-  // medio, y esa es justo la pregunta. `muscles` se deriva de aquí.
+  // medio, y esa es justo la pregunta. `muscles` se deriva de aquí (solo de las
+  // PRINCIPALES: el objetivo de la sesión no incluye lo que trabaja de rebote).
   parts: varchar('parts', { length: 320 }).notNull().default(''),
+  // Lo colateral: el bíceps en un jalón, el tríceps en un press. Cuenta como
+  // trabajo que existe, pero no crea expectativas de cobertura.
+  partsSecondary: varchar('parts_secondary', { length: 320 }).notNull().default(''),
   name: varchar('name', { length: 160 }).notNull(),
   // Una plancha no se mide en repeticiones, se mide en segundos
   kind: mysqlEnum('kind', ['repes', 'tiempo']).notNull().default('repes'),
@@ -994,7 +998,10 @@ export type GymChange = typeof gymChanges.$inferSelect;
 export const gymCatalog = mysqlTable('gym_catalog', {
   id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
   name: varchar('name', { length: 160 }).notNull(),
+  // principales: lo que el ejercicio ENTRENA. Colaterales: lo que trabaja de
+  // rebote (bíceps en un jalón). La cobertura solo exige por las principales.
   parts: varchar('parts', { length: 320 }).notNull().default(''),
+  partsSecondary: varchar('parts_secondary', { length: 320 }).notNull().default(''),
   kind: mysqlEnum('kind', ['repes', 'tiempo']).notNull().default('repes'),
   // explicación genérica del ejercicio (cómo se hace), no notas personales
   explainText: text('explain_text'),

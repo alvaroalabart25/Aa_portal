@@ -220,6 +220,16 @@ function FichaModal({ id, onClose, onCambio }: { id: number; onClose: () => void
           .filter(Boolean)
           .map((p) => p.replace(/_/g, ' '))
           .join(' · ')}
+        {ficha.partsSecondary && (
+          <>
+            {' '}· de rebote:{' '}
+            {ficha.partsSecondary
+              .split(',')
+              .filter(Boolean)
+              .map((p) => p.replace(/_/g, ' '))
+              .join(', ')}
+          </>
+        )}
       </p>
 
       {(ficha.explain || editandoExpl) &&

@@ -1996,3 +1996,24 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .gy-obj-linea:hover { text-decoration: underline dotted; }
 .gy-obj-p { font-size: 12.5px; margin: 14px 0 6px; }
 .gy-crit-2 { color: var(--ink-muted); font-weight: 400; font-size: 11px; }
+
+/* Guía de primera vez: hoja inferior en el móvil, tarjeta centrada en grande */
+.guia-velo {
+  position: fixed; inset: 0; z-index: 120; background: rgba(10, 10, 10, 0.45);
+  display: flex; align-items: flex-end; justify-content: center;
+  animation: fadein 160ms ease-out;
+}
+.guia {
+  background: var(--paper); width: 100%; max-width: 520px;
+  border-radius: 18px 18px 0 0; padding: 22px 20px calc(20px + env(safe-area-inset-bottom));
+}
+@media (min-width: 768px) {
+  .guia-velo { align-items: center; }
+  .guia { border-radius: 18px; padding: 26px 26px 24px; }
+}
+.guia-eti { font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-muted); margin: 0 0 6px; }
+.guia h3 { font-family: var(--font-title); font-size: 20px; margin: 0 0 6px; }
+.guia-idea { font-size: 13.5px; line-height: 1.55; margin: 0 0 10px; }
+.guia-puntos { margin: 0; padding: 0 0 0 18px; display: flex; flex-direction: column; gap: 6px; }
+.guia-puntos li { font-size: 13px; line-height: 1.5; color: var(--ink-soft); }
+.guia-btn { width: 100%; margin-top: 18px; }

@@ -42,6 +42,9 @@ export const users = mysqlTable('users', {
   // Módulos activos, separados por comas (ids de client/src/shell/modules.tsx).
   // NULL = cuenta recién creada que aún no ha elegido.
   modules: varchar('modules', { length: 255 }),
+  // Pantallas cuya guía de primera vez ya se ha visto (ids del cliente, csv).
+  // En el servidor a propósito: reinstalar la PWA no repite el tour.
+  guidedSeen: varchar('guided_seen', { length: 600 }).notNull().default(''),
   lastSeenAt: datetime('last_seen_at'), // solo cuándo, nunca qué
   disabledAt: datetime('disabled_at'), // cortar el acceso sin borrar sus datos
   email: varchar('email', { length: 190 }), // destino de la recuperación de contraseña

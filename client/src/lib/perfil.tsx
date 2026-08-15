@@ -19,6 +19,8 @@ export interface Perfil {
   displayName: string | null;
   role: 'admin' | 'user';
   modules: string[];
+  /** pantallas cuya guía de primera vez ya se vio (ids de components/Guia.tsx) */
+  guiadoVisto: string[];
 }
 
 interface Estado {

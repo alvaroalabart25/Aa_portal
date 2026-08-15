@@ -406,6 +406,7 @@ authRouter.get('/me', requireAuth, ah(async (req: AuthedRequest, res) => {
       displayName: users.displayName,
       role: users.role,
       modules: users.modules,
+      guidedSeen: users.guidedSeen,
     })
     .from(users)
     .where(eq(users.id, req.userId!));
@@ -418,6 +419,8 @@ authRouter.get('/me', requireAuth, ah(async (req: AuthedRequest, res) => {
     // Una cuenta antigua sin elegir se queda con los de por defecto, no vacía:
     // un menú en blanco parece un portal roto.
     modules: limpiarModulos(user.modules) ?? MODULOS_POR_DEFECTO,
+    // pantallas cuya guía de primera vez ya vio
+    guiadoVisto: user.guidedSeen ? user.guidedSeen.split(',').filter(Boolean) : [],
   });
 }));
 
@@ -426,17 +429,22 @@ authRouter.patch('/me', requireAuth, ah(async (req: AuthedRequest, res) => {
     .object({
       displayName: z.string().trim().max(80).optional(),
       modules: z.array(z.string()).optional(),
+      // guía contextual: la lista completa de pantallas ya vistas
+      guiadoVisto: z.array(z.string().regex(/^[a-z0-9-]{1,40}$/)).max(40).optional(),
     })
     .safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Datos incorrectos' });
 
-  const cambios: { displayName?: string | null; modules?: string } = {};
+  const cambios: { displayName?: string | null; modules?: string; guidedSeen?: string } = {};
   if (parsed.data.displayName !== undefined) cambios.displayName = parsed.data.displayName || null;
   if (parsed.data.modules !== undefined) {
     const limpios = limpiarModulos(parsed.data.modules);
     // Dejarlo todo apagado no es una preferencia, es quedarse sin portal.
     if (!limpios) return res.status(400).json({ error: 'Deja al menos un módulo activo' });
     cambios.modules = aTexto(limpios);
+  }
+  if (parsed.data.guiadoVisto !== undefined) {
+    cambios.guidedSeen = [...new Set(parsed.data.guiadoVisto)].join(',').slice(0, 600);
   }
   if (!Object.keys(cambios).length) return res.status(400).json({ error: 'Nada que cambiar' });
 

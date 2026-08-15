@@ -4,6 +4,7 @@ import { clearToken } from '../lib/auth';
 import { entrarConPasskey, marcarActividad, tocaBloquear } from '../lib/passkeys';
 import { MODULES, ORDEN_MOVIL, type PortalLink, type PortalModule } from './modules';
 import { usePerfil } from '../lib/perfil';
+import Guia from '../components/Guia';
 
 /**
  * ¿Está activo este enlace? Si apunta a una pestaña concreta (los subapartados
@@ -317,6 +318,10 @@ export default function Layout() {
       <main className="main">
         <Outlet />
       </main>
+
+      {/* La guía de primera vez: bienvenida al entrar y un aviso corto por
+          pantalla. Vive aquí porque necesita la ruta y el perfil a la vez. */}
+      <Guia />
 
       <BottomBar />
     </div>

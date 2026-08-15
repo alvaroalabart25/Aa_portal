@@ -72,6 +72,11 @@ export const NOTIFICATION_TYPES: Array<{ type: string; label: string; defaultTim
 // Exportada: el gimnasio compartido avisa al otro lado cuando cambia una
 // sesión vinculada, y no tiene sentido duplicar el envío en dos sitios.
 export async function sendToUser(userId: number, payload: { title: string; body: string; url?: string }) {
+  // Se configura aquí dentro, no en cada llamante: el aviso de las rutinas
+  // compartidas se perdía en silencio justo por llamar a esto sin configurar
+  // VAPID antes. Configurarlo dos veces no cuesta nada; olvidarlo, sí.
+  if (!vapidConfigured()) return 0;
+  setupVapid();
   const subs = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
   let sent = 0;
   for (const s of subs) {

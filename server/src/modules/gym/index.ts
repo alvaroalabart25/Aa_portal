@@ -526,6 +526,19 @@ gymModule.delete('/sesiones/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
     .where(and(eq(gymSessions.id, id), eq(gymSessions.userId, req.userId!)));
   if (!sesion) return res.status(404).json({ error: 'Sesión no encontrada' });
   await db.delete(gymSets).where(and(eq(gymSets.sessionId, id), eq(gymSets.userId, req.userId!)));
+  // Los ejercicios improvisados EN esta sesión se van con ella: descartar el
+  // entrenamiento es decir «al final no lo hago», y dejar sus improvisaciones
+  // proponiéndose en Rutina sería un fantasma de algo que no pasó.
+  await db
+    .update(gymExercises)
+    .set({ archivedAt: new Date() })
+    .where(
+      and(
+        eq(gymExercises.userId, req.userId!),
+        eq(gymExercises.proposedFrom, id),
+        sql`${gymExercises.proposedAt} is not null`,
+      ),
+    );
   await db.delete(gymSessions).where(and(eq(gymSessions.id, id), eq(gymSessions.userId, req.userId!)));
   res.json({ deleted: true });
 }));

@@ -1816,3 +1816,17 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
   .cp-item-btns { width: 100%; }
   .cp-item-btns .btn { flex: 1; }
 }
+
+/* Añadir un ejercicio desde el modo foco (fondo negro) */
+.foco-nombre {
+  width: 100%; max-width: 420px; text-align: center;
+  font-size: 19px; padding: 14px 12px; border-radius: 14px;
+  border: 1px solid #333; background: #141414; color: #fff;
+}
+.foco-nombre:focus { border-color: #fff; outline: none; }
+.foco-anadir {
+  background: none; border: 1px dashed #333; border-radius: 12px;
+  color: #8f8f8f; font-size: 12.5px; padding: 10px; margin: 0 auto 10px;
+  display: block; width: 100%; max-width: 420px;
+}
+.foco-anadir:hover { border-color: #8f8f8f; color: #fff; }

@@ -64,7 +64,30 @@ export default function ModoFoco({
   const [fase, setFase] = useState<Fase>('lista');
   const [guardando, setGuardando] = useState(false);
   const [castigo, setCastigo] = useState<{ peso: number; serie: number } | null>(null);
+  // Añadir un ejercicio que no estaba, sin salir del modo foco: la máquina
+  // libre se ve DESDE el banco, no desde la pantalla de la sesión.
+  const [anadiendo, setAnadiendo] = useState(false);
+  const [nombreNuevo, setNombreNuevo] = useState('');
+  const [guardandoNuevo, setGuardandoNuevo] = useState(false);
   const [esCastigo, setEsCastigo] = useState(false);
+
+  async function anadirNuevo() {
+    if (!nombreNuevo.trim() || guardandoNuevo) return;
+    setGuardandoNuevo(true);
+    try {
+      await gymApi.improvisar(sesionId, { name: nombreNuevo.trim() });
+      // se añade al final de la lista: saltamos directos a él, que para eso
+      // lo acabas de pedir
+      await onCambio();
+      setEi(lista.length);
+      setSerie(1);
+      setFase('lista');
+      setNombreNuevo('');
+      setAnadiendo(false);
+    } finally {
+      setGuardandoNuevo(false);
+    }
+  }
 
   const ejercicio = lista[ei];
   const porTiempo = ejercicio?.kind === 'tiempo';
@@ -251,6 +274,26 @@ export default function ModoFoco({
             No, sigo
           </button>
         </div>
+      ) : anadiendo ? (
+        <div className="foco-centro" key="anadir">
+          <span className="foco-et">Fuera del plan</span>
+          <h1 className="foco-ej">¿Qué añades?</h1>
+          <input
+            className="foco-nombre"
+            autoFocus
+            value={nombreNuevo}
+            onChange={(e) => setNombreNuevo(e.target.value)}
+            placeholder="Nombre del ejercicio"
+            onKeyDown={(e) => e.key === 'Enter' && anadirNuevo()}
+          />
+          <p className="foco-antes">No entra en tu rutina: al terminar te preguntará si se queda.</p>
+          <button className="foco-btn grande" disabled={!nombreNuevo.trim() || guardandoNuevo} onClick={anadirNuevo}>
+            {guardandoNuevo ? 'Añadiendo…' : 'Añadir y hacerlo ahora'}
+          </button>
+          <button className="foco-mini" onClick={() => { setAnadiendo(false); setNombreNuevo(''); }}>
+            Cancelar
+          </button>
+        </div>
       ) : fase === 'descanso' ? (
         <div className="foco-centro" key={`descanso-${serie}`}>
           <span className="foco-et">Descanso{esCastigo ? ' · antes del castigo' : ''}</span>
@@ -361,6 +404,12 @@ export default function ModoFoco({
           )}
           {ejercicio.notes && <p className="foco-nota">{ejercicio.notes}</p>}
         </div>
+      )}
+
+      {!anadiendo && (
+        <button className="foco-anadir" onClick={() => setAnadiendo(true)}>
+          + Añadir un ejercicio que no estaba
+        </button>
       )}
 
       <div className="foco-pie">

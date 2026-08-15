@@ -60,6 +60,10 @@ export interface Condicionante {
 }
 
 export interface Ejercicio {
+  /** los del mismo grupo se hacen alternados (X1, Y1, X2, Y2…) */
+  supersetId?: number | null;
+  /** identidad en el catálogo: por ella viven el PR y el historial */
+  catalogId?: number | null;
   id: number;
   dayId: number;
   muscles: string;
@@ -79,6 +83,8 @@ export interface DiaRutina {
   id: number;
   name: string;
   notes: string | null;
+  /** Los bloques generales de la sesión: filtran el selector de ejercicios. */
+  muscles: string;
   sortOrder: number;
   /** última vez que se terminó, en ISO; null si nunca */
   lastDone: string | null;
@@ -257,7 +263,7 @@ export const gymApi = {
   partes: () => get<Parte[]>('/gym/partes'),
 
   crearDia: (data: { name: string; notes?: string | null }) => post<DiaRutina>('/gym/dias', data),
-  editarDia: (id: number, data: Partial<{ name: string; notes: string | null }>) =>
+  editarDia: (id: number, data: Partial<{ name: string; notes: string | null; muscles: string[] }>) =>
     patch<DiaRutina>(`/gym/dias/${id}`, data),
   borrarDia: (id: number) => del<{ archived: boolean }>(`/gym/dias/${id}`),
 
@@ -267,6 +273,8 @@ export const gymApi = {
   editarEjercicio: (id: number, data: Record<string, unknown>) => patch<Ejercicio>(`/gym/ejercicios/${id}`, data),
   borrarEjercicio: (id: number) => del<{ archived: boolean }>(`/gym/ejercicios/${id}`),
   reordenar: (que: 'dias' | 'ejercicios', ids: number[]) => post<{ ok: true }>('/gym/orden', { que, ids }),
+  superserie: (id: number, withId: number | null) =>
+    patch<{ ok: true; supersetId?: number }>(`/gym/ejercicios/${id}/superserie`, { withId }),
 
   // Compartir con otra cuenta. La key se enseña UNA vez: solo se guarda su huella.
   compartido: () => get<Compartido[]>('/gym/compartir'),

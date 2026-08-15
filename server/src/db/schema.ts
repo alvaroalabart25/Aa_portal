@@ -719,6 +719,9 @@ export const gymDays = mysqlTable('gym_days', {
     .notNull()
     .references(() => users.id),
   name: varchar('name', { length: 120 }).notNull(),
+  // Los bloques generales de la sesión («espalda,cuadriceps»): el selector de
+  // ejercicios se abre filtrado por ellos. Los pone el usuario.
+  muscles: varchar('muscles', { length: 240 }).notNull().default(''),
   notes: text('notes'),
   sortOrder: int('sort_order').notNull().default(0),
   archivedAt: datetime('archived_at'),
@@ -757,6 +760,9 @@ export const gymExercises = mysqlTable('gym_exercises', {
   // Identidad en el catálogo: es lo que hace que quitar un ejercicio y volverlo
   // a meter en marzo siga siendo EL MISMO ejercicio para el histórico y el PR.
   catalogId: bigint('catalog_id', { mode: 'number' }),
+  // Superserie: los ejercicios del día que comparten este id se hacen
+  // alternados (X1, Y1, X2, Y2…). Cada uno conserva sus pesos y sus series.
+  supersetId: bigint('superset_id', { mode: 'number' }),
   sortOrder: int('sort_order').notNull().default(0),
   // Improvisado durante un entrenamiento: existe para poder apuntarle series,
   // pero NO forma parte del plan. Al acabar se propone en la pantalla Rutina y

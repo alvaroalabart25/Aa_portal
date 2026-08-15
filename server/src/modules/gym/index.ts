@@ -68,6 +68,7 @@ gymModule.get('/rutina', ah(async (req: AuthedRequest, res) => {
       id: gymDays.id,
       name: gymDays.name,
       notes: gymDays.notes,
+      muscles: gymDays.muscles,
       sortOrder: gymDays.sortOrder,
       // ojo: la columna de fuera va escrita a mano, no interpolada — Drizzle la
       // generaría sin cualificar y la capturaría la tabla de dentro
@@ -102,7 +103,15 @@ gymModule.get('/rutina', ah(async (req: AuthedRequest, res) => {
   });
 }));
 
-const diaInput = z.object({ name: z.string().trim().min(1).max(120), notes: z.string().max(4000).nullish() });
+const diaInput = z.object({
+  name: z.string().trim().min(1).max(120),
+  notes: z.string().max(4000).nullish(),
+  // los bloques de la sesión: lista cerrada, lo que no exista se descarta
+  muscles: z
+    .array(z.string())
+    .transform((v) => v.filter((m) => (MUSCULOS as readonly string[]).includes(m)).join(','))
+    .optional(),
+});
 
 gymModule.post('/dias', ah(async (req: AuthedRequest, res) => {
   const parsed = diaInput.safeParse(req.body);
@@ -981,4 +990,76 @@ gymModule.post('/propuestas/:id(\\d+)/descartar', ah(async (req: AuthedRequest, 
     );
   if (r.affectedRows === 0) return res.status(404).json({ error: 'Esa propuesta ya no está' });
   res.json({ ok: true });
+}));
+
+// ---------- Superseries ----------
+/**
+ * Vincular (o soltar) un ejercicio en superserie con otro del mismo día.
+ *
+ * La superserie es cómo se EJECUTAN (alternados, X1 Y1 X2 Y2…), no qué son:
+ * cada ejercicio conserva su identidad, sus pesos y sus series. Por eso es un
+ * id de grupo compartido y no una fusión. Al vincular, los miembros se
+ * recolocan adyacentes: una superserie partida por en medio de la lista no
+ * hay quien la lea.
+ */
+gymModule.patch('/ejercicios/:id(\\d+)/superserie', ah(async (req: AuthedRequest, res) => {
+  const parsed = z.object({ withId: z.number().int().positive().nullable() }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Datos incorrectos' });
+
+  const id = Number(req.params.id);
+  const [ej] = await db
+    .select()
+    .from(gymExercises)
+    .where(and(eq(gymExercises.id, id), eq(gymExercises.userId, req.userId!), isNull(gymExercises.archivedAt)));
+  if (!ej) return res.status(404).json({ error: 'Ejercicio no encontrado' });
+
+  if (parsed.data.withId === null) {
+    // soltar: si el grupo se queda con un solo miembro, ese también se limpia
+    if (ej.supersetId) {
+      await db.update(gymExercises).set({ supersetId: null }).where(eq(gymExercises.id, id));
+      const resto = await db
+        .select({ id: gymExercises.id })
+        .from(gymExercises)
+        .where(and(eq(gymExercises.supersetId, ej.supersetId), isNull(gymExercises.archivedAt)));
+      if (resto.length === 1) {
+        await db.update(gymExercises).set({ supersetId: null }).where(eq(gymExercises.id, resto[0].id));
+      }
+    }
+    return res.json({ ok: true });
+  }
+
+  const [otro] = await db
+    .select()
+    .from(gymExercises)
+    .where(
+      and(
+        eq(gymExercises.id, parsed.data.withId),
+        eq(gymExercises.userId, req.userId!),
+        eq(gymExercises.dayId, ej.dayId),
+        isNull(gymExercises.archivedAt),
+        isNull(gymExercises.proposedAt),
+      ),
+    );
+  if (!otro) return res.status(400).json({ error: 'Ese ejercicio no está en la misma sesión' });
+  if (otro.id === ej.id) return res.status(400).json({ error: 'Un ejercicio no se superpone consigo mismo' });
+
+  // el grupo hereda el id que ya exista; si no, nace con el del primero
+  const grupo = otro.supersetId ?? ej.supersetId ?? ej.id;
+  await db.update(gymExercises).set({ supersetId: grupo }).where(inArray(gymExercises.id, [ej.id, otro.id]));
+
+  // recolocar: los miembros del grupo, adyacentes, en el sitio del primero
+  const todos = await db
+    .select({ id: gymExercises.id, sortOrder: gymExercises.sortOrder, supersetId: gymExercises.supersetId })
+    .from(gymExercises)
+    .where(and(eq(gymExercises.dayId, ej.dayId), isNull(gymExercises.archivedAt), isNull(gymExercises.proposedAt)))
+    .orderBy(asc(gymExercises.sortOrder), asc(gymExercises.id));
+  const delGrupo = todos.filter((e) => e.supersetId === grupo);
+  const resto = todos.filter((e) => e.supersetId !== grupo);
+  const primera = todos.findIndex((e) => e.supersetId === grupo);
+  const orden = [...resto.slice(0, primera), ...delGrupo, ...resto.slice(primera)];
+  for (let i = 0; i < orden.length; i += 1) {
+    if (orden[i].sortOrder !== i) await db.update(gymExercises).set({ sortOrder: i }).where(eq(gymExercises.id, orden[i].id));
+  }
+
+  res.json({ ok: true, supersetId: grupo });
 }));

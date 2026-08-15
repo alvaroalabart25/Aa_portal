@@ -164,6 +164,18 @@ export const MODULES: PortalModule[] = [
           </svg>
         ),
       },
+      {
+        id: 'objetivos-salud',
+        title: 'Objetivos',
+        path: '/salud/objetivos',
+        // diana: a dónde vas
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" {...stroke}>
+            <circle cx="12" cy="12" r="8" />
+            <circle cx="12" cy="12" r="3.2" />
+          </svg>
+        ),
+      },
     ],
   },
   {

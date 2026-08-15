@@ -1877,22 +1877,6 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .foco-resultado.crear { color: #8f8f8f; border-style: dashed; }
 .foco-resultado-pr { font-size: 11.5px; color: #8f8f8f; flex: none; }
 
-/* ---------- Cabecera del gimnasio: 4 pestañas ---------- */
-/* Cuatro pestañas no caben al lado del título en 375 px sin desplazarse ni
-   partirse. En móvil bajan a su propia línea, a lo ancho y repartidas: nada
-   asoma por el borde y nada salta de línea. En ordenador siguen junto al
-   título, donde sí caben. */
-@media (max-width: 720px) {
-  /* flex-basis y no width: dentro de un flex, width deja encoger y las
-     pestañas se quedaban apretujadas al lado del título en vez de bajar.
-     Y hay que devolverle el wrap a la cabecera: la regla general lo quita
-     para que TRES pestañas queden en línea con el título; con cuatro, no caben. */
-  .page-head:has(.seg-lleno) { flex-wrap: wrap; }
-  .head-acciones:has(.seg-lleno) { flex: 0 0 100%; }
-  .seg.seg-lleno { width: 100%; display: flex; }
-  .seg.seg-lleno button { flex: 1; text-align: center; padding: 6px 0; font-size: 12.5px; }
-}
-
 /* La cabecera de cada sesión de la rutina: el título largo parte en dos líneas
    y el botón queda alineado con la ÚLTIMA línea, no empujado debajo. */
 .gy-dia-head { flex-wrap: nowrap; align-items: flex-end; }
@@ -1907,3 +1891,28 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
   font-size: 12.5px; color: var(--ink-muted); text-align: center;
 }
 .gy-nueva-sesion:hover { border-color: var(--ink); color: var(--ink); }
+
+/* ---------- Superseries y categorías de sesión ---------- */
+/* El grupo se lee como una unidad: borde punteado y etiqueta arriba */
+.ss-grupo {
+  border: 1px dashed var(--line); border-radius: 12px;
+  padding: 4px 12px 8px; margin: 10px 0;
+}
+.ss-etiqueta {
+  display: block; font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--ink-muted); padding: 8px 0 2px;
+}
+.foco-ss { font-size: 12px; color: #8f8f8f; margin-top: 2px; }
+
+/* Las categorías del día, como una línea tocable bajo el título */
+.gy-cats {
+  display: block; background: none; border: none; padding: 0; margin: 2px 0 0;
+  font-size: 12px; color: var(--ink-muted); text-align: left; cursor: pointer;
+}
+.gy-cats:hover { text-decoration: underline dotted; }
+
+/* La ficha ligera del ejercicio en la rutina */
+.de-campos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+.de-campos label { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; color: var(--ink-muted); }
+.de-campos input { width: 100%; }
+.de-ss { margin-top: 6px; }

@@ -45,6 +45,7 @@ export function CatalogoTab() {
   const [partes, setPartes] = useState<Parte[]>([]);
   const [filtro, setFiltro] = useState('');
   const [abierto, setAbierto] = useState<number | null>(null);
+  const [creando, setCreando] = useState(false);
 
   const cargar = useCallback(async () => setLista(await gymApi.catalogo()), []);
   useEffect(() => {
@@ -71,9 +72,9 @@ export function CatalogoTab() {
       <section className="section">
         <div className="mc-head">
           <h2>Ejercicios</h2>
-          <span className="muted" style={{ fontSize: 12.5 }}>
-            {lista.length} en tu lista
-          </span>
+          <button className="btn ghost sm" onClick={() => setCreando(true)}>
+            + Nuevo ejercicio
+          </button>
         </div>
         <p className="muted cp-nota">
           Los de la lista común los ve todo el mundo; los que crees tú, solo tú. El PR y el historial son siempre los
@@ -108,7 +109,85 @@ export function CatalogoTab() {
       ))}
 
       {abierto != null && <FichaModal id={abierto} onClose={() => setAbierto(null)} onCambio={cargar} />}
+      {creando && <NuevoEjercicio partes={partes} onClose={() => setCreando(false)} onCreado={cargar} />}
     </div>
+  );
+}
+
+/** Crear un ejercicio nuevo: nace PRIVADO (solo lo ves tú). */
+function NuevoEjercicio({ partes, onClose, onCreado }: { partes: Parte[]; onClose: () => void; onCreado: () => void }) {
+  const [nombre, setNombre] = useState('');
+  const [kind, setKind] = useState<'repes' | 'tiempo'>('repes');
+  const [elegidas, setElegidas] = useState<string[]>([]);
+  const [error, setError] = useState('');
+  const [guardando, setGuardando] = useState(false);
+
+  const bloques = [...new Set(partes.map((p) => p.muscle))];
+
+  async function crear() {
+    setError('');
+    setGuardando(true);
+    try {
+      await gymApi.crearEnCatalogo({ name: nombre.trim(), parts: elegidas.join(','), kind });
+      onCreado();
+      onClose();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <Modal title="Nuevo ejercicio" onClose={onClose}>
+      <p className="muted" style={{ fontSize: 12.5, marginTop: -4 }}>
+        Solo lo verás tú. Los comunes ya cubren lo normal: busca antes de crear.
+      </p>
+      <input
+        value={nombre}
+        onChange={(e) => setNombre(e.target.value)}
+        placeholder="Nombre del ejercicio"
+        style={{ width: '100%', marginTop: 8 }}
+        aria-label="Nombre del ejercicio nuevo"
+      />
+      <div className="us-chips" style={{ marginTop: 10 }}>
+        <button type="button" className={`us-chip${kind === 'repes' ? ' on' : ''}`} onClick={() => setKind('repes')}>
+          por repes
+        </button>
+        <button type="button" className={`us-chip${kind === 'tiempo' ? ' on' : ''}`} onClick={() => setKind('tiempo')}>
+          por tiempo
+        </button>
+      </div>
+      <p className="muted" style={{ fontSize: 12, margin: '12px 0 4px' }}>Qué trabaja (para la cobertura y el filtro):</p>
+      <div className="cat-picker" style={{ maxHeight: '32vh' }}>
+        {bloques.map((b) => (
+          <div key={b}>
+            <span className="cat-picker-bloque">{nombreMusculo(b)}</span>
+            <div className="us-chips">
+              {partes
+                .filter((p) => p.muscle === b)
+                .map((p) => {
+                  const on = elegidas.includes(p.id);
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className={`us-chip${on ? ' on' : ''}`}
+                      onClick={() => setElegidas((v) => (on ? v.filter((x) => x !== p.id) : [...v, p.id]))}
+                    >
+                      {p.label}
+                    </button>
+                  );
+                })}
+            </div>
+          </div>
+        ))}
+      </div>
+      {error && <div className="error-msg" style={{ marginTop: 10 }}>{error}</div>}
+      <button className="btn sm" style={{ marginTop: 12 }} disabled={nombre.trim().length < 2 || guardando} onClick={crear}>
+        {guardando ? 'Creando…' : 'Crear'}
+      </button>
+    </Modal>
   );
 }
 
@@ -298,8 +377,9 @@ export function ElegirEjercicio({
 
   return (
     <Modal title={titulo} onClose={onClose}>
+      {/* sin autoFocus a propósito: en el móvil abriría el teclado tapando la
+          lista, y el camino normal es TOCAR un ejercicio, no escribir */}
       <input
-        autoFocus
         value={filtro}
         onChange={(e) => setFiltro(e.target.value)}
         placeholder="Buscar…"

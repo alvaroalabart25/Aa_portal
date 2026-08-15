@@ -4,6 +4,7 @@ import Celebracion from './Celebracion';
 import { EjercicioModal } from './modals';
 import ModoFoco from './ModoFoco';
 import { ElegirEjercicio } from './Catalogo';
+import { agruparSuperseries } from './GimnasioPage';
 import {
   gymApi,
   kg,
@@ -148,17 +149,34 @@ export default function SesionPage() {
         </button>
       )}
 
-      {datos.exercises.map((e) => (
-        <BloqueEjercicio
-          key={e.id}
-          ejercicio={e}
-          sesionId={sesionId}
-          onCambio={cargar}
-          bloqueado={cerrada}
-          condiciones={condiciones}
-          onEditar={() => setEditando(e)}
-        />
-      ))}
+      {agruparSuperseries(datos.exercises).map((grupo) =>
+        grupo.length > 1 ? (
+          <div key={grupo[0].id} className="ss-grupo">
+            <span className="ss-etiqueta">Superserie · uno de cada, alternando</span>
+            {grupo.map((e) => (
+              <BloqueEjercicio
+                key={e.id}
+                ejercicio={e}
+                sesionId={sesionId}
+                onCambio={cargar}
+                bloqueado={cerrada}
+                condiciones={condiciones}
+                onEditar={() => setEditando(e)}
+              />
+            ))}
+          </div>
+        ) : (
+          <BloqueEjercicio
+            key={grupo[0].id}
+            ejercicio={grupo[0]}
+            sesionId={sesionId}
+            onCambio={cargar}
+            bloqueado={cerrada}
+            condiciones={condiciones}
+            onEditar={() => setEditando(grupo[0])}
+          />
+        ),
+      )}
 
       {!cerrada && (
         <>
@@ -169,7 +187,11 @@ export default function SesionPage() {
           {improvisando && (
             <ElegirEjercicio
               titulo="Añadir a este entrenamiento"
-              bloques={[...new Set(datos.exercises.flatMap((e) => (e.muscles || '').split(',').filter(Boolean)))]}
+              bloques={
+                ((datos.day as { muscles?: string } | null)?.muscles ?? '').split(',').filter(Boolean).length
+                  ? ((datos.day as { muscles?: string }).muscles as string).split(',').filter(Boolean)
+                  : [...new Set(datos.exercises.flatMap((e) => (e.muscles || '').split(',').filter(Boolean)))]
+              }
               onClose={() => setImprovisando(false)}
               onPick={async (e) => {
                 await gymApi.improvisar(sesionId, { catalogId: e.catalogId, name: e.name });

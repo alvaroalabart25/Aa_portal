@@ -48,12 +48,29 @@ export default function ModoFoco({
   const [saltados, setSaltados] = useState<number[]>([]);
   const lista = useMemo(() => ejercicios.filter((e) => !saltados.includes(e.id)), [ejercicios, saltados]);
 
-  // Se entra por donde se quedó: el primer hueco sin marcar
+  // Se entra por donde se quedó: el primer hueco sin marcar. En una superserie
+  // el hueco se busca por RONDA, no por ejercicio: si dejaste hecha la primera
+  // de sentadilla pero no la de dominadas, se entra por dominadas 1, no por
+  // sentadilla 2 — la alternancia también manda al reanudar.
   const primerHueco = useMemo(() => {
+    const hueco = (e: (typeof lista)[number]) => {
+      for (let n = 1; n <= e.targetSets; n += 1) if (!e.done.some((d) => d.setNumber === n)) return n;
+      return null;
+    };
+    const vistos = new Set<number>();
     for (let i = 0; i < lista.length; i += 1) {
       const e = lista[i];
-      for (let n = 1; n <= e.targetSets; n += 1) {
-        if (!e.done.some((d) => d.setNumber === n)) return { ei: i, serie: n };
+      if (vistos.has(e.id)) continue;
+      const grupo = e.supersetId != null
+        ? lista.map((x, j) => ({ x, j })).filter((g) => g.x.supersetId === e.supersetId)
+        : [{ x: e, j: i }];
+      grupo.forEach((g) => vistos.add(g.x.id));
+      const candidatos = grupo
+        .map((g) => ({ ei: g.j, serie: hueco(g.x) }))
+        .filter((c): c is { ei: number; serie: number } => c.serie != null);
+      if (candidatos.length) {
+        candidatos.sort((a, b) => a.serie - b.serie || a.ei - b.ei);
+        return candidatos[0];
       }
     }
     return { ei: Math.max(0, lista.length - 1), serie: 1 };
@@ -140,10 +157,39 @@ export default function ModoFoco({
     setReales(v == null ? '' : String(v));
   }, [ei, serie, ejercicio, hecha, antes, porTiempo]);
 
+  // La superserie manda en el orden: dentro de un grupo se alterna serie a
+  // serie (X1, Y1, X2, Y2…), y solo al agotar el grupo entero se pasa al
+  // siguiente ejercicio suelto. Cada uno mantiene sus pesos y sus repes.
   const avanzar = useCallback(
     (aDescanso: boolean) => {
       if (!ejercicio) return;
-      if (serie < ejercicio.targetSets) setSerie(serie + 1);
+
+      const grupo = ejercicio.supersetId != null
+        ? lista.map((e, i) => ({ e, i })).filter((x) => x.e.supersetId === ejercicio.supersetId)
+        : null;
+
+      if (grupo && grupo.length > 1) {
+        const pos = grupo.findIndex((x) => x.i === ei);
+        let movido = false;
+        for (let k = 1; k <= grupo.length; k += 1) {
+          const g = grupo[(pos + k) % grupo.length];
+          const ronda = pos + k >= grupo.length ? serie + 1 : serie;
+          if (ronda <= g.e.targetSets) {
+            setEi(g.i);
+            setSerie(ronda);
+            movido = true;
+            break;
+          }
+        }
+        if (!movido) {
+          // grupo agotado: al siguiente fuera de él
+          const ultimo = Math.max(...grupo.map((x) => x.i));
+          if (ultimo < lista.length - 1) {
+            setEi(ultimo + 1);
+            setSerie(1);
+          }
+        }
+      } else if (serie < ejercicio.targetSets) setSerie(serie + 1);
       else if (ei < lista.length - 1) {
         setEi(ei + 1);
         setSerie(1);
@@ -155,7 +201,7 @@ export default function ModoFoco({
         setFase('descanso');
       } else setFase('lista');
     },
-    [ejercicio, serie, ei, lista.length],
+    [ejercicio, serie, ei, lista],
   );
 
   function empezarSerie() {
@@ -398,6 +444,11 @@ export default function ModoFoco({
             Serie {serie} de {ejercicio.targetSets}
             {esUltimaSerie && ' · la última'}
           </span>
+          {ejercicio.supersetId != null && (
+            <span className="foco-ss">
+              Superserie con {lista.filter((e) => e.supersetId === ejercicio.supersetId && e.id !== ejercicio.id).map((e) => e.name).join(' + ') || 'otro'}
+            </span>
+          )}
 
           <div className="foco-campos">
             <label>

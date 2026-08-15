@@ -18,18 +18,21 @@ import {
   type SesionOlvidada,
   type SemanaGym,
 } from './api';
-import { CondicionanteModal, EjercicioModal, MetaModal } from './modals';
+import { CondicionanteModal, MetaModal } from './modals';
+import Modal from '../../components/Modal';
 import { Compartir, Sugerencias } from './Compartir';
 import { CatalogoTab, ElegirEjercicio } from './Catalogo';
+import DetalleEjercicio from './DetalleEjercicio';
 import { notaDelDia } from './score';
 
-type Vista = 'entrenar' | 'rutina' | 'ejercicios' | 'objetivo';
+type Vista = 'entrenar' | 'rutina' | 'ejercicios';
 
+// Tres pestañas COMO MÁXIMO: es lo que cabe en línea con el título en 375 px
+// sin desplazarse ni saltar de línea. Objetivo vive ahora en Salud › Objetivos.
 const VISTAS: [Vista, string][] = [
   ['entrenar', 'Entrenar'],
   ['rutina', 'Rutina'],
   ['ejercicios', 'Ejercicios'],
-  ['objetivo', 'Objetivo'],
 ];
 
 /**
@@ -43,7 +46,12 @@ const VISTAS: [Vista, string][] = [
 export default function GimnasioPage() {
   const [params, setParams] = useSearchParams();
   const pedida = params.get('tab');
-  const vista: Vista = pedida === 'rutina' || pedida === 'objetivo' || pedida === 'ejercicios' ? pedida : 'entrenar';
+  const navigate = useNavigate();
+  // la pestaña Objetivo se mudó a Salud: los enlaces viejos siguen valiendo
+  useEffect(() => {
+    if (pedida === 'objetivo') navigate('/salud/objetivos', { replace: true });
+  }, [pedida, navigate]);
+  const vista: Vista = pedida === 'rutina' || pedida === 'ejercicios' ? pedida : 'entrenar';
   const irA = (v: Vista) => setParams(v === 'entrenar' ? {} : { tab: v }, { replace: true });
 
   const [rutina, setRutina] = useState<Rutina | null>(null);
@@ -58,7 +66,7 @@ export default function GimnasioPage() {
       <div className="page-head">
         <h1>Gimnasio</h1>
         <div className="head-acciones">
-          <div className="seg seg-lleno" role="tablist">
+          <div className="seg" role="tablist">
             {VISTAS.map(([v, etiqueta]) => (
               <button
                 key={v}
@@ -80,10 +88,8 @@ export default function GimnasioPage() {
         <Entrenar rutina={rutina} />
       ) : vista === 'rutina' ? (
         <LaRutina rutina={rutina} onCambio={cargar} />
-      ) : vista === 'ejercicios' ? (
-        <CatalogoTab />
       ) : (
-        <Objetivo rutina={rutina} />
+        <CatalogoTab />
       )}
     </div>
   );
@@ -285,7 +291,8 @@ function duracion(h: SesionHistorial): string | null {
 // ---------------------------------------------------------------- la rutina
 
 function LaRutina({ rutina, onCambio }: { rutina: Rutina; onCambio: () => void }) {
-  const [editando, setEditando] = useState<{ dayId: number; ejercicio?: Ejercicio } | null>(null);
+  const [detalle, setDetalle] = useState<{ dia: DiaRutina; ejercicio: Ejercicio } | null>(null);
+  const [categorizando, setCategorizando] = useState<DiaRutina | null>(null);
   // añadir = elegir de la lista; el formulario grande queda solo para editar
   const [eligiendo, setEligiendo] = useState<number | null>(null);
   const [partes, setPartes] = useState<Parte[]>([]);
@@ -351,26 +358,29 @@ function LaRutina({ rutina, onCambio }: { rutina: Rutina; onCambio: () => void }
 
           <NotaDia dia={d} partes={partes} />
 
+          {/* los bloques de la sesión: filtran el selector al añadir */}
+          <button className="gy-cats" onClick={() => setCategorizando(d)} title="Qué trabaja esta sesión">
+            {d.muscles
+              ? d.muscles.split(',').filter(Boolean).map(nombreMusculo).join(' · ')
+              : 'Sin categorías · tócame para ponerlas'}
+          </button>
+
           {d.exercises.length === 0 ? (
             <p className="muted mc-vacio">Sin ejercicios todavía.</p>
           ) : (
             <div className="gy-lista">
-              {d.exercises.map((e) => (
-                <button key={e.id} className="gy-ej" onClick={() => setEditando({ dayId: d.id, ejercicio: e })}>
-                  <span className="gy-ej-txt">
-                    <span className="gy-ej-n">{e.name}</span>
-                    <span className="gy-ej-obj">
-                      {e.targetSets} × {e.targetReps}
-                      {e.targetWeight ? ` · ${kg(e.targetWeight)}` : ''}
-                      {e.restSeconds ? ` · ${e.restSeconds}s` : ''}
-                    </span>
-                    {/* el músculo, en pequeño y gris: está para consultarlo, no para leerlo */}
-                    {listaMusculos(e.muscles).length > 0 && (
-                      <span className="gy-ej-m">{listaMusculos(e.muscles).map(nombreMusculo).join(' · ')}</span>
-                    )}
-                  </span>
-                </button>
-              ))}
+              {agruparSuperseries(d.exercises).map((grupo) =>
+                grupo.length > 1 ? (
+                  <div key={grupo[0].id} className="ss-grupo">
+                    <span className="ss-etiqueta">Superserie · alternados</span>
+                    {grupo.map((e) => (
+                      <FilaEjercicio key={e.id} e={e} onClick={() => setDetalle({ dia: d, ejercicio: e })} />
+                    ))}
+                  </div>
+                ) : (
+                  <FilaEjercicio key={grupo[0].id} e={grupo[0]} onClick={() => setDetalle({ dia: d, ejercicio: grupo[0] })} />
+                ),
+              )}
             </div>
           )}
 
@@ -438,12 +448,14 @@ function LaRutina({ rutina, onCambio }: { rutina: Rutina; onCambio: () => void }
       {eligiendo != null && (
         <ElegirEjercicio
           titulo="Añadir a este día"
-          // el filtro sale de lo que el día ya trabaja: nada que rellenar a mano
-          bloques={[
-            ...new Set(
-              (rutina.days.find((d) => d.id === eligiendo)?.exercises ?? []).flatMap((e) => listaMusculos(e.muscles)),
-            ),
-          ]}
+          // el filtro sale de las categorías de la sesión; si no están puestas,
+          // se deriva de lo que ya tiene dentro
+          bloques={(() => {
+            const d = rutina.days.find((x) => x.id === eligiendo);
+            if (!d) return [];
+            const puestas = d.muscles.split(',').filter(Boolean);
+            return puestas.length ? puestas : [...new Set(d.exercises.flatMap((e) => listaMusculos(e.muscles)))];
+          })()}
           onClose={() => setEligiendo(null)}
           onPick={async (e) => {
             // entra con el objetivo por defecto y se ajusta tocándolo, como el peso
@@ -453,16 +465,17 @@ function LaRutina({ rutina, onCambio }: { rutina: Rutina; onCambio: () => void }
         />
       )}
 
-      {editando && (
-        <EjercicioModal
-          dayId={editando.dayId}
-          ejercicio={editando.ejercicio}
-          onClose={() => setEditando(null)}
-          onGuardado={() => {
-            setEditando(null);
-            onCambio();
-          }}
+      {detalle && (
+        <DetalleEjercicio
+          ejercicio={detalle.ejercicio}
+          dia={detalle.dia}
+          onClose={() => setDetalle(null)}
+          onCambio={onCambio}
         />
+      )}
+
+      {categorizando && (
+        <CategoriasDia dia={categorizando} onClose={() => setCategorizando(null)} onCambio={onCambio} />
       )}
     </div>
   );
@@ -666,7 +679,7 @@ function Cobertura({ rutina }: { rutina: Rutina }) {
 
 // ---------------------------------------------------------------- objetivo
 
-function Objetivo({ rutina }: { rutina: Rutina }) {
+export function Objetivo({ rutina }: { rutina: Rutina }) {
   const [metas, setMetas] = useState<MetaGym[]>([]);
   const [condiciones, setCondiciones] = useState<Condicionante[]>([]);
   const [creando, setCreando] = useState(false);
@@ -850,5 +863,89 @@ function TarjetaMeta({
         )}
       </span>
     </button>
+  );
+}
+
+/** Una fila de ejercicio en la rutina: nombre, objetivo y músculo en gris. */
+function FilaEjercicio({ e, onClick }: { e: Ejercicio; onClick: () => void }) {
+  return (
+    <button className="gy-ej" onClick={onClick}>
+      <span className="gy-ej-txt">
+        <span className="gy-ej-n">{e.name}</span>
+        <span className="gy-ej-obj">
+          {e.targetSets} × {e.targetReps}
+          {e.targetWeight ? ` · ${kg(e.targetWeight)}` : ''}
+          {e.restSeconds ? ` · ${e.restSeconds}s` : ''}
+        </span>
+        {listaMusculos(e.muscles).length > 0 && (
+          <span className="gy-ej-m">{listaMusculos(e.muscles).map(nombreMusculo).join(' · ')}</span>
+        )}
+      </span>
+    </button>
+  );
+}
+
+/** Superseries juntas, el resto suelto, respetando el orden de la lista. */
+export function agruparSuperseries<T extends { id: number; supersetId?: number | null }>(ejercicios: T[]): T[][] {
+  const grupos: T[][] = [];
+  const vistos = new Set<number>();
+  for (const e of ejercicios) {
+    if (vistos.has(e.id)) continue;
+    if (e.supersetId != null) {
+      const grupo = ejercicios.filter((x) => x.supersetId === e.supersetId);
+      grupo.forEach((x) => vistos.add(x.id));
+      grupos.push(grupo);
+    } else {
+      vistos.add(e.id);
+      grupos.push([e]);
+    }
+  }
+  return grupos;
+}
+
+/** Qué trabaja esta sesión, en bloques generales. Filtra el selector. */
+function CategoriasDia({ dia, onClose, onCambio }: { dia: DiaRutina; onClose: () => void; onCambio: () => void }) {
+  const [puestos, setPuestos] = useState<string[]>(dia.muscles.split(',').filter(Boolean));
+  const [guardando, setGuardando] = useState(false);
+
+  return (
+    <Modal title={`¿Qué trabaja ${dia.name}?`} onClose={onClose}>
+      <p className="muted" style={{ fontSize: 12.5, marginTop: -4 }}>
+        Al añadir un ejercicio, el listado se abre filtrado por estos bloques.
+      </p>
+      <div className="us-chips" style={{ marginTop: 10 }}>
+        {MUSCULOS.map((m) => {
+          const on = puestos.includes(m.id);
+          return (
+            <button
+              key={m.id}
+              type="button"
+              className={`us-chip${on ? ' on' : ''}`}
+              aria-pressed={on}
+              onClick={() => setPuestos((p) => (on ? p.filter((x) => x !== m.id) : [...p, m.id]))}
+            >
+              {m.label}
+            </button>
+          );
+        })}
+      </div>
+      <button
+        className="btn sm"
+        style={{ marginTop: 14 }}
+        disabled={guardando}
+        onClick={async () => {
+          setGuardando(true);
+          try {
+            await gymApi.editarDia(dia.id, { muscles: puestos });
+            onCambio();
+            onClose();
+          } finally {
+            setGuardando(false);
+          }
+        }}
+      >
+        {guardando ? 'Guardando…' : 'Guardar'}
+      </button>
+    </Modal>
   );
 }

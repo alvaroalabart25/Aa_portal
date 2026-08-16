@@ -11,6 +11,7 @@ import {
   bancoConfigurado,
   bancosDisponibles,
   canjearSesion,
+  crudo,
   iniciarAutorizacion,
   movimientosDe,
   saldosDe,
@@ -275,6 +276,31 @@ bancoRouter.get('/movimientos', ah(async (req: AuthedRequest, res) => {
     .orderBy(desc(bankTransactions.bookingDate), desc(bankTransactions.id))
     .limit(limite);
   res.json(filas);
+}));
+
+// GET /crudo — la respuesta del banco SIN interpretar, para poder mirarla.
+// Es la herramienta del primer paso: antes de decidir qué se enseña, ver qué
+// campos rellena de verdad cada banco. Solo cuentas propias.
+bancoRouter.get('/crudo/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
+  const [cuenta] = await db
+    .select()
+    .from(bankAccounts)
+    .where(and(eq(bankAccounts.id, Number(req.params.id)), eq(bankAccounts.userId, req.userId!)));
+  if (!cuenta) return res.status(404).json({ error: 'No existe esa cuenta' });
+
+  const desde = new Date();
+  desde.setDate(desde.getDate() - Number(req.query.dias ?? DIAS_HISTORIAL));
+  const uid = encodeURIComponent(cuenta.accountUid);
+  try {
+    const [saldos, movimientos] = await Promise.all([
+      crudo(`/accounts/${uid}/balances`),
+      crudo(`/accounts/${uid}/transactions?date_from=${desde.toISOString().slice(0, 10)}`),
+    ]);
+    res.json({ cuenta: cuenta.name, saldos, movimientos });
+  } catch (e) {
+    const f = fallo(e);
+    res.status(f.status).json({ error: f.error });
+  }
 }));
 
 // DELETE /conexiones/:id — desconectar el banco

@@ -211,17 +211,9 @@ export const MODULES: PortalModule[] = [
           </svg>
         ),
       },
-      {
-        id: 'banco',
-        title: 'Banco',
-        path: '/autonomo/banco',
-        // edificio con columnas: el banco
-        icon: (
-          <svg width="16" height="16" viewBox="0 0 24 24" {...stroke}>
-            <path d="M3 10h18M4 10 12 4l8 6M6 10v8M10 10v8M14 10v8M18 10v8M3 21h18" />
-          </svg>
-        ),
-      },
+      // (Banco vive en /autonomo/banco pero NO se enseña en el menú todavía: la
+      // conexión existe para VER qué datos da cada banco. Cuando sepamos qué
+      // hay de verdad se diseña la pantalla y entonces entra aquí.)
       {
         id: 'cuentas',
         title: 'Cuentas',

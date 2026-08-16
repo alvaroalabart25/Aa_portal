@@ -3,11 +3,15 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { bancoApi, type ConexionBanco, type MovimientoBanco } from './api';
 
 /**
- * Finanzas › Banco: leer tus cuentas, no tocarlas.
+ * Banco: BANCO DE PRUEBAS, no una pantalla terminada.
  *
- * Lo que se ve aquí lo autorizas tú en la web de tu propio banco; el portal
- * nunca ve tus claves y no puede mover dinero, solo leer saldos y movimientos.
- * El consentimiento caduca (unos 180 días) y hay que renovarlo: se avisa.
+ * Existe para contestar a una pregunta antes de diseñar nada: ¿qué datos da
+ * de verdad cada banco? Por eso no está en el menú y se llega por dirección
+ * directa (/autonomo/banco). Cuando sepamos qué llega de Ibercaja, Santander
+ * y Revolut, se decide qué enseñar y esto se tira o se rehace.
+ *
+ * Lo que sí es definitivo es lo de debajo: se autoriza en la web del propio
+ * banco, el portal nunca ve las claves y solo puede leer.
  */
 export default function BancoPage() {
   const [params, setParams] = useSearchParams();
@@ -97,7 +101,8 @@ export default function BancoPage() {
         <h1>Banco</h1>
       </div>
       <p className="page-sub">
-        Tus cuentas en modo lectura: saldos y movimientos. El portal no puede mover dinero ni ve tus claves.
+        Banco de pruebas: sirve para ver qué datos da cada banco antes de diseñar nada. Solo lectura — el portal no
+        puede mover dinero ni ve tus claves.
       </p>
 
       {error && <div className="error-msg">{error}</div>}

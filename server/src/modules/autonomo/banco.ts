@@ -150,6 +150,18 @@ export async function canjearSesion(code: string): Promise<{
 
 // ---------------------------------------------------------------- leer
 
+/**
+ * La respuesta CRUDA de una ruta suya, sin interpretar.
+ *
+ * Está para la pregunta previa a diseñar nada: qué campos rellena de verdad
+ * cada banco (unos mandan el concepto en `remittance_information`, otros lo
+ * dejan vacío y ponen el nombre en `creditor`, y el histórico va de 3 a 12
+ * meses según la casa). Verlo antes evita construir sobre suposiciones.
+ */
+export async function crudo(ruta: string): Promise<unknown> {
+  return llamar(ruta);
+}
+
 export interface SaldoApi {
   balance_amount?: { currency?: string; amount?: string };
   balance_type?: string;

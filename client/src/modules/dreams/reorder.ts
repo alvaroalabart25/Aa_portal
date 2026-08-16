@@ -32,14 +32,28 @@ export function useArrastre<T extends { id: number }>(
   useEffect(() => {
     if (activo == null) return;
 
+    // ANTES se miraba qué fila había justo bajo el dedo (`elementFromPoint`):
+    // en los huecos entre tarjetas no hay ninguna y el arrastre se quedaba
+    // pillado, y al cruzar filas de alturas distintas la fila objetivo cambiaba
+    // de sitio bajo el dedo y temblaba. AHORA la posición se calcula contando
+    // cuántas filas de ESTA lista tienen su punto medio por encima del dedo:
+    // no hay zonas muertas y solo se recoloca al cruzar un punto medio.
     function move(e: globalThis.PointerEvent) {
-      const bajo = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-rid]') as HTMLElement | null;
-      const sobre = bajo ? Number(bajo.dataset.rid) : null;
-      if (sobre == null || sobre === activo) return;
       const l = ref.current.lista;
       const desde = l.findIndex((x) => x.id === activo);
-      const hasta = l.findIndex((x) => x.id === sobre);
-      if (desde < 0 || hasta < 0) return;
+      if (desde < 0) return;
+      // solo las filas de la lista que se está arrastrando: en una pantalla
+      // puede haber varias listas ordenables (un día por lista en Rutina)
+      const ids = new Set(l.map((x) => x.id));
+      const filas = [...document.querySelectorAll<HTMLElement>('[data-rid]')].filter(
+        (f) => ids.has(Number(f.dataset.rid)) && Number(f.dataset.rid) !== activo,
+      );
+      if (filas.length === 0) return;
+      const hasta = filas.filter((f) => {
+        const r = f.getBoundingClientRect();
+        return (r.top + r.bottom) / 2 < e.clientY;
+      }).length;
+      if (hasta === desde) return;
       const copia = l.slice();
       copia.splice(hasta, 0, ...copia.splice(desde, 1));
       ref.current.setLista(copia);
@@ -54,10 +68,14 @@ export function useArrastre<T extends { id: number }>(
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
     window.addEventListener('pointercancel', up);
+    // si la app pierde el foco a mitad de arrastre (llamada, cambio de app),
+    // el puntero no vuelve: se suelta donde estaba para no quedar pillado
+    window.addEventListener('blur', up);
     return () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
       window.removeEventListener('pointercancel', up);
+      window.removeEventListener('blur', up);
     };
   }, [activo]);
 

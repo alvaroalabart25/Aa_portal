@@ -2024,3 +2024,6 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
   font-size: 13px; color: var(--ink-soft); line-height: 1.5;
   max-width: 560px; margin: -16px 0 22px;
 }
+
+/* Acciones del ejercicio dentro del entrenamiento: cambiarlo sin ir a Rutina */
+.gy-bloque-acciones { display: flex; gap: 8px; margin-top: 12px; justify-content: flex-end; }

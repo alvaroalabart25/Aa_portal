@@ -35,6 +35,7 @@ export default function SesionPage() {
   const [error, setError] = useState('');
   const [foco, setFoco] = useState(false);
   const [editando, setEditando] = useState<EjercicioEnSesion | null>(null);
+  const [sustituyendo, setSustituyendo] = useState<EjercicioEnSesion | null>(null);
   const [celebrando, setCelebrando] = useState(false);
   const [improvisando, setImprovisando] = useState(false);
 
@@ -167,10 +168,37 @@ export default function SesionPage() {
             bloqueado={cerrada}
             condiciones={condiciones}
             onEditar={() => setEditando(e)}
+            onSustituir={() => setSustituyendo(e)}
+            onQuitar={async () => {
+              const aviso =
+                e.done.length > 0
+                  ? `¿Quitar «${e.name}»? Sale también del plan de este día; las ${e.done.length} series que ya has apuntado se conservan en el histórico.`
+                  : `¿Quitar «${e.name}»? Sale también del plan de este día.`;
+              if (!confirm(aviso)) return;
+              await gymApi.borrarEjercicio(e.id);
+              await cargar();
+            }}
             asa={asa}
           />
         )}
       </ListaOrdenable>
+
+      {/* Sustituir un ejercicio SIN salir del entrenamiento: hoy la máquina
+          está ocupada o el hombro dice que no, y la ficha de Rutina queda
+          lejos con el móvil en la mano. El nuevo hereda el sitio y la
+          superserie; lo ya apuntado se queda en el histórico del viejo. */}
+      {sustituyendo && (
+        <ElegirEjercicio
+          titulo={`Sustituir ${sustituyendo.name}`}
+          bloques={[...new Set(datos.exercises.flatMap((e) => (e.muscles || '').split(',').filter(Boolean)))]}
+          onClose={() => setSustituyendo(null)}
+          onPick={async (e) => {
+            await gymApi.sustituir(sustituyendo.id, { catalogId: e.catalogId, name: e.name });
+            setSustituyendo(null);
+            await cargar();
+          }}
+        />
+      )}
 
       {!cerrada && (
         <>
@@ -240,6 +268,8 @@ function BloqueEjercicio({
   bloqueado,
   condiciones,
   onEditar,
+  onSustituir,
+  onQuitar,
   asa,
 }: {
   ejercicio: EjercicioEnSesion;
@@ -248,6 +278,8 @@ function BloqueEjercicio({
   bloqueado: boolean;
   condiciones: Condicionante[];
   onEditar: () => void;
+  onSustituir: () => void;
+  onQuitar: () => void | Promise<void>;
   asa?: import('react').ReactNode;
 }) {
   const series = Array.from({ length: ejercicio.targetSets }, (_, i) => i + 1);
@@ -330,6 +362,19 @@ function BloqueEjercicio({
           />
         ))}
       </div>
+
+      {/* Lo que hoy no se puede hacer se cambia AQUÍ, sin ir a Rutina: la
+          máquina ocupada o la molestia aparecen entrenando, no planificando. */}
+      {!bloqueado && (
+        <div className="gy-bloque-acciones">
+          <button className="btn ghost sm" onClick={onSustituir}>
+            Sustituir por otro
+          </button>
+          <button className="btn ghost sm" onClick={onQuitar}>
+            Quitar
+          </button>
+        </div>
+      )}
         </>
       )}
     </section>

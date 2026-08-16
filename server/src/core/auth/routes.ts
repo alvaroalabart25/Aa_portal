@@ -6,7 +6,7 @@ import { desc, eq } from 'drizzle-orm';
 import { db } from '../../db';
 import { and, isNull, gt } from 'drizzle-orm';
 import { invites, passwordResets, securityEvents, totpRecoveryCodes, users } from '../../db/schema';
-import { aTexto, limpiarModulos, MODULOS_POR_DEFECTO } from '../modulos';
+import { aTexto, limpiarModulos, MODULOS, MODULOS_POR_DEFECTO } from '../modulos';
 import { enviarCorreo } from '../../lib/mail';
 import { passkeysRouter, usarFirmador } from './passkeys';
 import { bumpTokenVersion, requireAdmin, requireAuth, type AuthedRequest } from './middleware';
@@ -406,19 +406,27 @@ authRouter.get('/me', requireAuth, ah(async (req: AuthedRequest, res) => {
       displayName: users.displayName,
       role: users.role,
       modules: users.modules,
+      modulesAllowed: users.modulesAllowed,
       guidedSeen: users.guidedSeen,
     })
     .from(users)
     .where(eq(users.id, req.userId!));
   if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+  // Disponibles (los pone el admin; sin poner = todos) y, de esos, los que la
+  // cuenta tiene encendidos. Si la intersección queda vacía, se cae a lo
+  // disponible: un menú en blanco parece un portal roto.
+  const disponibles = limpiarModulos(user.modulesAllowed) ?? [...MODULOS];
+  const activos = limpiarModulos(user.modules) ?? MODULOS_POR_DEFECTO;
+  let efectivos = activos.filter((m) => disponibles.includes(m));
+  if (efectivos.length === 0) efectivos = disponibles.filter((m) => MODULOS_POR_DEFECTO.includes(m));
+  if (efectivos.length === 0) efectivos = disponibles;
   res.json({
     id: user.id,
     username: user.username,
     displayName: user.displayName,
     role: user.role,
-    // Una cuenta antigua sin elegir se queda con los de por defecto, no vacía:
-    // un menú en blanco parece un portal roto.
-    modules: limpiarModulos(user.modules) ?? MODULOS_POR_DEFECTO,
+    modules: efectivos,
+    modulesAllowed: disponibles,
     // pantallas cuya guía de primera vez ya vio
     guiadoVisto: user.guidedSeen ? user.guidedSeen.split(',').filter(Boolean) : [],
   });
@@ -438,9 +446,16 @@ authRouter.patch('/me', requireAuth, ah(async (req: AuthedRequest, res) => {
   const cambios: { displayName?: string | null; modules?: string; guidedSeen?: string } = {};
   if (parsed.data.displayName !== undefined) cambios.displayName = parsed.data.displayName || null;
   if (parsed.data.modules !== undefined) {
-    const limpios = limpiarModulos(parsed.data.modules);
+    // Solo se pueden encender módulos DISPONIBLES para la cuenta: lo demás se
+    // descarta en silencio (el cliente ni los enseña).
+    const [fila] = await db
+      .select({ modulesAllowed: users.modulesAllowed })
+      .from(users)
+      .where(eq(users.id, req.userId!));
+    const disponibles = limpiarModulos(fila?.modulesAllowed) ?? [...MODULOS];
+    const limpios = (limpiarModulos(parsed.data.modules) ?? []).filter((m) => disponibles.includes(m));
     // Dejarlo todo apagado no es una preferencia, es quedarse sin portal.
-    if (!limpios) return res.status(400).json({ error: 'Deja al menos un módulo activo' });
+    if (!limpios.length) return res.status(400).json({ error: 'Deja al menos un módulo activo' });
     cambios.modules = aTexto(limpios);
   }
   if (parsed.data.guiadoVisto !== undefined) {

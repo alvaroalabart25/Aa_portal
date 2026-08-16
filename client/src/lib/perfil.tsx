@@ -18,7 +18,10 @@ export interface Perfil {
   username: string;
   displayName: string | null;
   role: 'admin' | 'user';
+  /** los módulos ENCENDIDOS (ya filtrados por los disponibles) */
   modules: string[];
+  /** los módulos DISPONIBLES para esta cuenta (los decide el admin) */
+  modulesAllowed: string[];
   /** pantallas cuya guía de primera vez ya se vio (ids de components/Guia.tsx) */
   guiadoVisto: string[];
 }

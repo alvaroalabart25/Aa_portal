@@ -42,6 +42,9 @@ export const users = mysqlTable('users', {
   // Módulos activos, separados por comas (ids de client/src/shell/modules.tsx).
   // NULL = cuenta recién creada que aún no ha elegido.
   modules: varchar('modules', { length: 255 }),
+  // Módulos DISPONIBLES para la cuenta (los decide el admin; NULL = todos).
+  // De los disponibles, cada uno enciende los suyos en `modules`.
+  modulesAllowed: varchar('modules_allowed', { length: 255 }),
   // Pantallas cuya guía de primera vez ya se ha visto (ids del cliente, csv).
   // En el servidor a propósito: reinstalar la PWA no repite el tour.
   guidedSeen: varchar('guided_seen', { length: 600 }).notNull().default(''),

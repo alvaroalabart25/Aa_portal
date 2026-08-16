@@ -9,6 +9,8 @@ interface Usuario {
   displayName: string | null;
   role: 'admin' | 'user';
   modules: string[];
+  /** qué módulos PUEDE usar (los decide el admin); de estos enciende los suyos */
+  modulesAllowed: string[];
   lastSeenAt: string | null;
   disabledAt: string | null;
   createdAt: string;
@@ -42,6 +44,9 @@ export default function UsuariosTab() {
   const [invitaciones, setInvitaciones] = useState<Invitacion[]>([]);
   const [cargando, setCargando] = useState(true);
   const [abierto, setAbierto] = useState<number | null>(null);
+  // el editor de módulos disponibles de la ficha abierta
+  const [disp, setDisp] = useState<string[]>([]);
+  const [guardandoDisp, setGuardandoDisp] = useState(false);
 
   const [creando, setCreando] = useState(false);
   // enlace de recuperación recién creado, por usuario: se enseña una sola vez
@@ -56,7 +61,8 @@ export default function UsuariosTab() {
 
   async function cargar() {
     const [u, i] = await Promise.all([get<Usuario[]>('/admin/usuarios'), get<Invitacion[]>('/admin/invitaciones')]);
-    setUsuarios(u);
+    // ?? por si la API aún no manda los disponibles a mitad de despliegue
+    setUsuarios(u.map((x) => ({ ...x, modulesAllowed: x.modulesAllowed ?? MODULOS_ACTIVABLES.map((m) => m.id) })));
     setInvitaciones(i);
     setCargando(false);
   }
@@ -172,7 +178,14 @@ export default function UsuariosTab() {
             const yo = u.id === perfil?.id;
             return (
               <div key={u.id} className={`us-fila${u.disabledAt ? ' off' : ''}`}>
-                <button className="us-cab" onClick={() => setAbierto(abierto === u.id ? null : u.id)}>
+                <button
+                  className="us-cab"
+                  onClick={() => {
+                    setAbierto(abierto === u.id ? null : u.id);
+                    // ?? por si la API aún no manda la lista a mitad de despliegue
+                    setDisp(u.modulesAllowed ?? MODULOS_ACTIVABLES.map((m) => m.id));
+                  }}
+                >
                   <span className="us-nombre">
                     {u.displayName || u.username}
                     {u.role === 'admin' && <span className="us-tag">admin</span>}
@@ -202,6 +215,51 @@ export default function UsuariosTab() {
                       <span>Módulos puestos</span>
                       <b>{u.modules.map((id) => MODULOS_ACTIVABLES.find((m) => m.id === id)?.title ?? id).join(', ')}</b>
                     </p>
+
+                    {/* Qué módulos PUEDE usar esta cuenta. Es disponibilidad,
+                        no contenido: de estos, cada uno enciende los suyos
+                        desde su Configuración. */}
+                    {!yo && (
+                      <>
+                        <p className="inv-pista" style={{ marginTop: 12 }}>
+                          Módulos disponibles para esta cuenta (de estos, enciende los que quiera):
+                        </p>
+                        <div className="us-chips">
+                          {MODULOS_ACTIVABLES.map((m) => {
+                            const on = disp.includes(m.id);
+                            return (
+                              <button
+                                key={m.id}
+                                type="button"
+                                className={`us-chip${on ? ' on' : ''}`}
+                                aria-pressed={on}
+                                onClick={() => setDisp((p) => (on ? p.filter((x) => x !== m.id) : [...p, m.id]))}
+                              >
+                                {m.title}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {(disp.length !== u.modulesAllowed.length || disp.some((x) => !u.modulesAllowed.includes(x))) && (
+                          <button
+                            className="btn sm"
+                            style={{ marginTop: 10 }}
+                            disabled={!disp.length || guardandoDisp}
+                            onClick={async () => {
+                              setGuardandoDisp(true);
+                              try {
+                                await patch(`/admin/usuarios/${u.id}`, { modulesAllowed: disp });
+                                await cargar();
+                              } finally {
+                                setGuardandoDisp(false);
+                              }
+                            }}
+                          >
+                            {guardandoDisp ? 'Guardando…' : 'Guardar disponibles'}
+                          </button>
+                        )}
+                      </>
+                    )}
 
                     {Object.keys(u.detalle).length > 0 && (
                       <div className="us-filas">

@@ -59,7 +59,10 @@ export default function ModulosTab() {
       </p>
 
       <div className="inv-modulos" style={{ marginTop: 14 }}>
-        {MODULOS_ACTIVABLES.map((m) => {
+        {/* solo lo DISPONIBLE para esta cuenta: lo que el admin no ha puesto a
+            su alcance ni se enseña — un interruptor que no funciona confunde.
+            (?? por si la API aún no manda la lista a mitad de despliegue) */}
+        {MODULOS_ACTIVABLES.filter((m) => (perfil.modulesAllowed ?? MODULOS_ACTIVABLES.map((x) => x.id)).includes(m.id)).map((m) => {
           const on = puestos.includes(m.id);
           return (
             <button

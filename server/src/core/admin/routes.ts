@@ -33,7 +33,7 @@ import {
 import { olvidarUsuario, type AuthedRequest } from '../auth/middleware';
 import { clientIp } from '../../lib/security';
 import { logSecurityEvent } from '../../lib/security';
-import { aTexto, limpiarModulos, MODULOS_POR_DEFECTO } from '../modulos';
+import { aTexto, limpiarModulos, MODULOS, MODULOS_POR_DEFECTO } from '../modulos';
 
 export const adminModule = Router();
 
@@ -67,6 +67,7 @@ adminModule.get('/usuarios', ah(async (_req: AuthedRequest, res) => {
       displayName: users.displayName,
       role: users.role,
       modules: users.modules,
+      modulesAllowed: users.modulesAllowed,
       lastSeenAt: users.lastSeenAt,
       disabledAt: users.disabledAt,
       createdAt: users.createdAt,
@@ -103,6 +104,8 @@ adminModule.get('/usuarios', ah(async (_req: AuthedRequest, res) => {
       displayName: u.displayName,
       role: u.role,
       modules: limpiarModulos(u.modules) ?? MODULOS_POR_DEFECTO,
+      // qué módulos PUEDE usar la cuenta (los pone el admin; sin poner = todos)
+      modulesAllowed: limpiarModulos(u.modulesAllowed) ?? [...MODULOS],
       lastSeenAt: u.lastSeenAt,
       disabledAt: u.disabledAt,
       createdAt: u.createdAt,
@@ -113,22 +116,43 @@ adminModule.get('/usuarios', ah(async (_req: AuthedRequest, res) => {
   );
 }));
 
-// PATCH /api/admin/usuarios/:id  { disabled: boolean }
-// Lo único que se puede hacer sobre otra cuenta: abrirle o cerrarle la puerta.
-// No se le cambian sus módulos ni su nombre: eso es suyo.
+// PATCH /api/admin/usuarios/:id  { disabled?: boolean, modulesAllowed?: string[] }
+// Lo que se puede hacer sobre otra cuenta: abrirle o cerrarle la puerta, y
+// decidir qué módulos tiene DISPONIBLES. Cuáles enciende de los disponibles,
+// su nombre y todo lo de dentro sigue siendo suyo.
 adminModule.patch('/usuarios/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
-  const parsed = z.object({ disabled: z.boolean() }).safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: 'Datos incorrectos' });
+  const parsed = z
+    .object({
+      disabled: z.boolean().optional(),
+      modulesAllowed: z.array(z.string()).optional(),
+    })
+    .safeParse(req.body);
+  if (!parsed.success || (parsed.data.disabled === undefined && parsed.data.modulesAllowed === undefined)) {
+    return res.status(400).json({ error: 'Datos incorrectos' });
+  }
 
   const id = Number(req.params.id);
   // Desactivarse a uno mismo deja el portal sin administrador y sin forma de
   // volver a entrar salvo tocando la base a mano.
-  if (id === req.userId) return res.status(400).json({ error: 'No puedes desactivar tu propia cuenta' });
+  if (parsed.data.disabled !== undefined && id === req.userId) {
+    return res.status(400).json({ error: 'No puedes desactivar tu propia cuenta' });
+  }
 
   const [u] = await db.select({ id: users.id, username: users.username }).from(users).where(eq(users.id, id));
   if (!u) return res.status(404).json({ error: 'No existe esa cuenta' });
 
-  await db.update(users).set({ disabledAt: parsed.data.disabled ? new Date() : null }).where(eq(users.id, id));
+  const cambios: { disabledAt?: Date | null; modulesAllowed?: string | null } = {};
+  if (parsed.data.disabled !== undefined) cambios.disabledAt = parsed.data.disabled ? new Date() : null;
+  if (parsed.data.modulesAllowed !== undefined) {
+    const limpios = limpiarModulos(parsed.data.modulesAllowed);
+    // Una cuenta sin ningún módulo disponible es una cuenta sin portal.
+    if (!limpios) return res.status(400).json({ error: 'Deja al menos un módulo disponible' });
+    // Con todos marcados se guarda NULL: el comportamiento de siempre, y los
+    // módulos que se estrenen en el futuro entran solos.
+    cambios.modulesAllowed = limpios.length === MODULOS.length ? null : aTexto(limpios);
+  }
+
+  await db.update(users).set(cambios).where(eq(users.id, id));
   olvidarUsuario(id); // que surta efecto ya, sin esperar a que caduque la caché
   res.json({ ok: true });
 }));

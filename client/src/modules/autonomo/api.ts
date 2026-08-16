@@ -24,3 +24,50 @@ export const autonomoApi = {
 
   summary: (year: number) => get<{ year: number; quarters: QuarterSummary[] }>(`/autonomo/summary?year=${year}`),
 };
+
+// ---------- El banco (lectura vía Enable Banking) ----------
+export interface CuentaBanco {
+  id: number;
+  nombre: string | null;
+  iban: string | null;
+  moneda: string;
+  saldo: string | null;
+  saldoAt: string | null;
+}
+
+export interface ConexionBanco {
+  id: number;
+  banco: string;
+  pais: string;
+  estado: 'pendiente' | 'activa' | 'caducada' | 'revocada';
+  validoHasta: string | null;
+  ultimaSync: string | null;
+  error: string | null;
+  cuentas: CuentaBanco[];
+}
+
+export interface MovimientoBanco {
+  id: number;
+  fecha: string | null;
+  importe: string;
+  moneda: string;
+  direccion: 'CRDT' | 'DBIT';
+  contraparte: string | null;
+  concepto: string | null;
+  estado: string;
+  cuenta: string | null;
+  cuentaIban: string | null;
+}
+
+export const bancoApi = {
+  estado: () => get<{ configurado: boolean; conexiones: ConexionBanco[] }>('/autonomo/banco/estado'),
+  bancos: (pais = 'ES') =>
+    get<{ nombre: string; pais: string; logo: string | null }[]>(`/autonomo/banco/bancos?pais=${pais}`),
+  conectar: (banco: string, pais = 'ES') =>
+    post<{ url: string; conexionId: number }>('/autonomo/banco/conectar', { banco, pais }),
+  vuelta: (code: string, state: string) =>
+    post<{ ok: boolean; cuentas: number }>('/autonomo/banco/vuelta', { code, state }),
+  sincronizar: (id: number) => post<{ ok: boolean; nuevos: number }>(`/autonomo/banco/sincronizar/${id}`, {}),
+  movimientos: (limite = 100) => get<MovimientoBanco[]>(`/autonomo/banco/movimientos?limite=${limite}`),
+  desconectar: (id: number) => del<{ ok: boolean }>(`/autonomo/banco/conexiones/${id}`),
+};

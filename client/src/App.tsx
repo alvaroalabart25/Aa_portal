@@ -9,6 +9,7 @@ import TasksPage from './modules/tasks/TasksPage';
 import TaskPage from './modules/tasks/TaskPage';
 import FacturasPage from './modules/autonomo/FacturasPage';
 import CuentasPage from './modules/autonomo/CuentasPage';
+import BancoPage from './modules/autonomo/BancoPage';
 import RoadmapPage from './modules/roadmap/RoadmapPage';
 import RutinaPage from './modules/routine/RutinaPage';
 import DiarioPage from './modules/health/DiarioPage';
@@ -81,6 +82,9 @@ export default function App() {
             <Route path="/autonomo" element={<Navigate to="/autonomo/facturas" replace />} />
             <Route path="/autonomo/facturas" element={<FacturasPage />} />
             <Route path="/autonomo/cuentas" element={<CuentasPage />} />
+            {/* la vuelta del banco aterriza en /autonomo/banco/vuelta?code&state */}
+            <Route path="/autonomo/banco" element={<BancoPage />} />
+            <Route path="/autonomo/banco/vuelta" element={<BancoPage />} />
             <Route path="/roadmap" element={<RoadmapPage />} />
             <Route path="/rutina" element={<RutinaPage />} />
             <Route path="/suenos" element={<SuenosPage />} />

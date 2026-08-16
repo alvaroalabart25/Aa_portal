@@ -7,9 +7,14 @@ import { autonomoProfile, invoiceClients, invoices } from '../../db/schema';
 import type { AuthedRequest } from '../../core/auth/middleware';
 import { buildInvoicePdf } from './pdf';
 import { sendInvoiceEmail, smtpConfigured } from './mailer';
+import { bancoRouter } from './banco-routes';
 
 // Módulo "Autónomo": facturación, cuentas y trimestrales.
 export const autonomoModule = Router();
+
+// La lectura del banco vive aparte (es otro mundo: PSD2, consentimientos,
+// sincronización) pero cuelga de aquí porque es la misma parcela del portal.
+autonomoModule.use('/banco', bancoRouter);
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida (YYYY-MM-DD)');
 const money = z.number().positive().max(9_999_999);

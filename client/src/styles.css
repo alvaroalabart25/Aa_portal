@@ -2027,3 +2027,34 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 
 /* Acciones del ejercicio dentro del entrenamiento: cambiarlo sin ir a Rutina */
 .gy-bloque-acciones { display: flex; gap: 8px; margin-top: 12px; justify-content: flex-end; }
+
+/* Banco: conexiones, cuentas con saldo y movimientos */
+.bk-aviso { font-size: 13px; color: var(--ink-soft); margin: 0 0 12px; }
+.bk-error { font-size: 12.5px; color: var(--ink); background: var(--paper-soft); border-radius: 8px; padding: 8px 10px; }
+.bk-meta { font-size: 12.5px; color: var(--ink-muted); margin: -4px 0 12px; }
+.bk-cuentas { display: flex; flex-direction: column; gap: 8px; }
+.bk-cuenta {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
+}
+.bk-cuenta-n { font-size: 14px; font-weight: 500; }
+.bk-iban { color: var(--ink-muted); font-weight: 400; font-size: 12.5px; }
+.bk-saldo { font-family: var(--font-title); font-size: 17px; font-weight: 600; white-space: nowrap; }
+.bk-lista { display: flex; flex-direction: column; gap: 6px; max-height: 46vh; overflow-y: auto; }
+.bk-banco {
+  text-align: left; font: inherit; font-size: 13.5px; color: inherit; cursor: pointer;
+  background: none; border: 1px solid var(--line); border-radius: 10px; padding: 11px 13px;
+}
+.bk-banco:hover { background: var(--paper-soft); }
+.bk-movs { display: flex; flex-direction: column; }
+.bk-mov {
+  display: flex; align-items: baseline; gap: 12px; padding: 10px 2px;
+  border-bottom: 1px solid var(--line);
+}
+.bk-mov:last-child { border-bottom: none; }
+.bk-mov-f { font-size: 12px; color: var(--ink-muted); width: 42px; flex: none; }
+.bk-mov-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.bk-mov-t b { font-size: 13.5px; font-weight: 500; }
+.bk-mov-c { font-size: 11.5px; color: var(--ink-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bk-mov-i { font-size: 14px; font-weight: 600; white-space: nowrap; }
+.bk-mov-i.sale { color: var(--ink-soft); }

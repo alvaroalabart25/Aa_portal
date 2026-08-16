@@ -1040,3 +1040,80 @@ export const gymCatalogNotes = mysqlTable('gym_catalog_notes', {
 });
 
 export type GymCatalogItem = typeof gymCatalog.$inferSelect;
+
+// ---------------------------------------------------------------- el banco
+/**
+ * Lectura del banco (PSD2, vía Enable Banking). Solo entra lo que el banco
+ * deja LEER: cuentas, saldos y movimientos.
+ *
+ * Aquí NO hay credenciales bancarias y no puede haberlas: quien te identifica
+ * es tu propio banco, en su web, y lo único que vuelve es un identificador de
+ * sesión que caduca solo (~180 días) y se puede revocar.
+ */
+export const bankConnections = mysqlTable('bank_connections', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  aspspName: varchar('aspsp_name', { length: 120 }).notNull(),
+  aspspCountry: varchar('aspsp_country', { length: 2 }).notNull().default('ES'),
+  sessionId: varchar('session_id', { length: 120 }),
+  authState: varchar('auth_state', { length: 80 }),
+  status: mysqlEnum('status', ['pendiente', 'activa', 'caducada', 'revocada']).notNull().default('pendiente'),
+  validUntil: datetime('valid_until'),
+  lastSyncAt: datetime('last_sync_at'),
+  lastError: varchar('last_error', { length: 300 }),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`)
+    .$onUpdateFn(() => new Date()),
+});
+
+/** Una cuenta dentro de una conexión. Del IBAN se guardan solo los últimos
+ *  dígitos: el completo no hace falta para nada de lo que hace el portal. */
+export const bankAccounts = mysqlTable('bank_accounts', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  connectionId: bigint('connection_id', { mode: 'number' }).notNull(),
+  accountUid: varchar('account_uid', { length: 120 }).notNull(),
+  name: varchar('name', { length: 160 }),
+  ibanTail: varchar('iban_tail', { length: 8 }),
+  currency: varchar('currency', { length: 3 }).notNull().default('EUR'),
+  balance: decimal('balance', { precision: 14, scale: 2 }),
+  balanceAt: datetime('balance_at'),
+  archivedAt: datetime('archived_at'),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`)
+    .$onUpdateFn(() => new Date()),
+});
+
+/** Los movimientos. `entry_reference` es la referencia del propio banco y por
+ *  eso es única por cuenta: sincronizar dos veces no duplica nada. */
+export const bankTransactions = mysqlTable('bank_transactions', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  accountId: bigint('account_id', { mode: 'number' }).notNull(),
+  entryReference: varchar('entry_reference', { length: 140 }).notNull(),
+  bookingDate: date('booking_date', { mode: 'string' }),
+  valueDate: date('value_date', { mode: 'string' }),
+  amount: decimal('amount', { precision: 14, scale: 2 }).notNull(),
+  currency: varchar('currency', { length: 3 }).notNull().default('EUR'),
+  direction: mysqlEnum('direction', ['CRDT', 'DBIT']).notNull(),
+  counterparty: varchar('counterparty', { length: 200 }),
+  concept: varchar('concept', { length: 500 }),
+  status: varchar('status', { length: 8 }).notNull().default('BOOK'),
+  invoiceId: bigint('invoice_id', { mode: 'number' }),
+  category: varchar('category', { length: 60 }),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export type BankConnection = typeof bankConnections.$inferSelect;
+export type BankAccount = typeof bankAccounts.$inferSelect;
+export type BankTransaction = typeof bankTransactions.$inferSelect;

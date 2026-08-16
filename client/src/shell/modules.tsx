@@ -212,6 +212,17 @@ export const MODULES: PortalModule[] = [
         ),
       },
       {
+        id: 'banco',
+        title: 'Banco',
+        path: '/autonomo/banco',
+        // edificio con columnas: el banco
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" {...stroke}>
+            <path d="M3 10h18M4 10 12 4l8 6M6 10v8M10 10v8M14 10v8M18 10v8M3 21h18" />
+          </svg>
+        ),
+      },
+      {
         id: 'cuentas',
         title: 'Cuentas',
         path: '/autonomo/cuentas',

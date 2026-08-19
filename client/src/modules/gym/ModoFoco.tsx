@@ -99,6 +99,24 @@ export default function ModoFoco({
   }, [anadiendo, catalogo]);
   const [esCastigo, setEsCastigo] = useState(false);
 
+  // Una serie más de las planeadas, sin salir del foco: al llegar a la última
+  // es cuando uno decide si le queda otra. Sube el objetivo del ejercicio, o
+  // sea que queda en la RUTINA (igual que el «+ Serie» de la sesión); la de
+  // castigo, en cambio, es solo de hoy.
+  const [alargando, setAlargando] = useState(false);
+  async function unaSerieMas() {
+    if (!ejercicio || alargando) return;
+    setAlargando(true);
+    try {
+      await gymApi.editarEjercicio(ejercicio.id, { targetSets: ejercicio.targetSets + 1 });
+      // al refrescar, `ejercicio` llega con una serie más y el flujo sigue en
+      // este mismo ejercicio en vez de saltar al siguiente
+      await onCambio();
+    } finally {
+      setAlargando(false);
+    }
+  }
+
   async function anadirNuevo(catalogId?: number, nombre?: string) {
     const name = (nombre ?? nombreNuevo).trim();
     if (!name || guardandoNuevo) return;
@@ -507,6 +525,16 @@ export default function ModoFoco({
           )}
           {ejercicio.notes && <p className="foco-nota">{ejercicio.notes}</p>}
         </div>
+      )}
+
+      {/* En la última serie del ejercicio: «¿y una más?». Se ofrece justo
+          cuando la pregunta aparece —al final del ejercicio— y en las tres
+          pantallas donde se puede contestar: descansando antes de ella,
+          preparándola y al apuntarla. */}
+      {!anadiendo && !castigo && esUltimaSerie && (fase === 'lista' || fase === 'descanso' || fase === 'apuntar') && (
+        <button className="foco-anadir" disabled={alargando} onClick={unaSerieMas}>
+          {alargando ? 'Añadiendo…' : `+ Una serie más de ${ejercicio.name}`}
+        </button>
       )}
 
       {/* Solo entre un ejercicio y el siguiente: es el momento en que se decide

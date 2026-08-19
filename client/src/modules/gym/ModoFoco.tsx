@@ -80,6 +80,10 @@ export default function ModoFoco({
   const [serie, setSerie] = useState(primerHueco.serie);
   // La primera serie del día no tiene descanso previo que medir
   const [fase, setFase] = useState<Fase>('lista');
+  // ¿Acabamos de pasar a OTRO ejercicio? Marca los dos únicos momentos en que
+  // tiene sentido meter un ejercicio nuevo: entre uno y el siguiente. En plena
+  // serie el botón solo estorbaba.
+  const [entreEjercicios, setEntreEjercicios] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [castigo, setCastigo] = useState<{ peso: number; serie: number } | null>(null);
   // Añadir un ejercicio que no estaba, sin salir del modo foco: la máquina
@@ -168,6 +172,10 @@ export default function ModoFoco({
         ? lista.map((e, i) => ({ e, i })).filter((x) => x.e.supersetId === ejercicio.supersetId)
         : null;
 
+      // `setEi` no se puede leer justo después, así que el destino se calcula
+      // en una variable y de ella sale si hemos cambiado de ejercicio.
+      let destino = ei;
+
       if (grupo && grupo.length > 1) {
         const pos = grupo.findIndex((x) => x.i === ei);
         let movido = false;
@@ -175,6 +183,7 @@ export default function ModoFoco({
           const g = grupo[(pos + k) % grupo.length];
           const ronda = pos + k >= grupo.length ? serie + 1 : serie;
           if (ronda <= g.e.targetSets) {
+            destino = g.i;
             setEi(g.i);
             setSerie(ronda);
             movido = true;
@@ -185,15 +194,22 @@ export default function ModoFoco({
           // grupo agotado: al siguiente fuera de él
           const ultimo = Math.max(...grupo.map((x) => x.i));
           if (ultimo < lista.length - 1) {
+            destino = ultimo + 1;
             setEi(ultimo + 1);
             setSerie(1);
           }
         }
       } else if (serie < ejercicio.targetSets) setSerie(serie + 1);
       else if (ei < lista.length - 1) {
+        destino = ei + 1;
         setEi(ei + 1);
         setSerie(1);
       }
+      // Dentro de una superserie se alterna a cada serie: eso NO es cambiar de
+      // ejercicio, es el mismo bloque. Solo cuenta salir del grupo.
+      const mismoGrupo =
+        grupo != null && grupo.length > 1 && grupo.some((x) => x.i === destino);
+      setEntreEjercicios(destino !== ei && !mismoGrupo);
       setEsCastigo(false);
       if (aDescanso) {
         inicioRef.current = Date.now();
@@ -205,6 +221,7 @@ export default function ModoFoco({
   );
 
   function empezarSerie() {
+    setEntreEjercicios(false);
     if (fase === 'descanso') ultimoRef.current = { real: transcurrido, sugerido };
     inicioRef.current = Date.now();
     setSerieSegs(0);
@@ -261,6 +278,7 @@ export default function ModoFoco({
     if (!ejercicio) return;
     setSaltados((p) => [...p, ejercicio.id]);
     setSerie(1);
+    setEntreEjercicios(true);
     setFase('lista');
     setEi((i) => Math.min(i, Math.max(0, lista.length - 2)));
   }
@@ -297,6 +315,15 @@ export default function ModoFoco({
           {hechasTotal}/{totalSeries}
         </span>
       </div>
+
+      {/* Al pasar de un ejercicio al siguiente, decirlo alto y claro. Solo
+          descansando: ahí la pantalla es un reloj y no sabes qué te toca. En
+          la de «Empezar la serie» el nombre ya está en grande y sobraría. */}
+      {entreEjercicios && fase === 'descanso' && !anadiendo && !castigo && (
+        <p className="foco-siguiente">
+          El siguiente ejercicio es: <b>{ejercicio.name}</b>
+        </p>
+      )}
 
       {castigo ? (
         <div className="foco-centro" key="castigo">
@@ -482,7 +509,9 @@ export default function ModoFoco({
         </div>
       )}
 
-      {!anadiendo && (
+      {/* Solo entre un ejercicio y el siguiente: es el momento en que se decide
+          «me falta algo», y en plena serie el botón era ruido. */}
+      {!anadiendo && entreEjercicios && (
         <button className="foco-anadir" onClick={() => setAnadiendo(true)}>
           + Añadir un ejercicio que no estaba
         </button>

@@ -288,6 +288,20 @@ function BloqueEjercicio({
   // qué queda— y solo se abre el ejercicio que estás haciendo. Los ya
   // completos arrancan cerrados con más motivo.
   const [abierto, setAbierto] = useState(false);
+  const [anadiendo, setAnadiendo] = useState(false);
+
+  /** Una serie más en el plan de este ejercicio. */
+  async function anadirSerie() {
+    if (anadiendo) return;
+    setAnadiendo(true);
+    try {
+      await gymApi.editarEjercicio(ejercicio.id, { targetSets: ejercicio.targetSets + 1 });
+      onCambio();
+    } finally {
+      setAnadiendo(false);
+    }
+  }
+
   // El aviso sale aquí, delante del ejercicio, y no en una pantalla aparte que
   // no se abre con el móvil en la mano y sudando
   const avisos = condiciones.filter((c) =>
@@ -367,6 +381,12 @@ function BloqueEjercicio({
           máquina ocupada o la molestia aparecen entrenando, no planificando. */}
       {!bloqueado && (
         <div className="gy-bloque-acciones">
+          {/* Una serie más de las planeadas. Sube el objetivo del ejercicio, o
+              sea que queda en la RUTINA: si hoy te salen cinco, mañana el plan
+              son cinco. Es distinto de la serie de castigo, que es de hoy. */}
+          <button className="btn ghost sm" disabled={anadiendo} onClick={anadirSerie}>
+            {anadiendo ? 'Añadiendo…' : '+ Serie'}
+          </button>
           <button className="btn ghost sm" onClick={onSustituir}>
             Sustituir por otro
           </button>

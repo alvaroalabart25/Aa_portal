@@ -91,7 +91,7 @@ function Constancia({ sesiones }: { sesiones: SesionHistorial[] }) {
   const cumplidas = semanas.filter(([, n]) => n >= OBJETIVO_SEMANAL).length;
 
   return (
-    <section className="section mc-bloque">
+    <section className="section mc-bloque oscuro">
       <h2>Constancia</h2>
       <p className="an-sub">
         {cumplidas} de {semanas.length} {semanas.length === 1 ? 'semana' : 'semanas'} con tus {OBJETIVO_SEMANAL}{' '}
@@ -202,7 +202,7 @@ function ComoTeVes({ sesiones }: { sesiones: SesionHistorial[] }) {
   if (conNota.length < MINIMO_PARA_LINEA) return null;
 
   return (
-    <section className="section mc-bloque">
+    <section className="section mc-bloque oscuro">
       <h2>Cómo sales de entrenar</h2>
       <p className="an-sub">Lo que contestas al terminar, del 1 al 5.</p>
       <div className="an-notas">

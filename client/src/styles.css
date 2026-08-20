@@ -1458,15 +1458,18 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .gy-terminar { display: block; width: 100%; margin-top: 24px; padding: 14px; font-size: 15px; }
 
 @media (max-width: 720px) {
-  /* Su propia línea, sangrada bajo el título. El ancho descuenta la sangría:
-     con `100%` a secas, el margen se sumaba y la línea se salía de la
-     pantalla (se veía con la rutina vacía, que es cuando el texto es largo). */
-  .gy-cob-resumen { flex: 1 0 calc(100% - 21px); margin-left: 21px; }
+  /* (La sangría de 21 px que llevaba aquí era para alinearlo bajo la flecha
+     del conmutador. Sin conmutador, esa sangría dejaba el texto descolgado
+     del título: ahora va al ras, como cualquier subtítulo.) */
   /* el aviso y su salida, uno debajo del otro: en 375 px no caben en línea */
   .gy-abierta { flex-direction: column; align-items: stretch; margin-top: 14px; }
   .gy-toca { padding: 14px; }
   .gy-bloque { padding: 12px; }
-  .gy-hist-n { font-size: 11.5px; }
+  /* Los números no se encogen nunca, así que con un nombre largo («Biceps,
+     Triceps & Hombro + Pierna») el nombre se partía en cuatro líneas. En
+     móvil bajan a su propia línea, alineados bajo el nombre. */
+  .gy-hist-fila { flex-wrap: wrap; }
+  .gy-hist-n { font-size: 11.5px; flex: 1 0 100%; text-align: left; padding-left: 56px; }
   /* en el móvil la referencia de la vez anterior baja a su línea */
   .gy-serie { flex-wrap: wrap; }
   .gy-antes { order: 5; width: 100%; padding-left: 26px; }
@@ -2215,3 +2218,32 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 
 /* «Hoy ya te has pesado»: quita la duda de si lo apuntaste o no */
 .py-hecho { font-size: 13px; color: var(--ink); margin: 0 0 12px; }
+
+/* ---------------------------------------------------------------- bloque oscuro
+   El mismo contenedor, en negativo: negro con texto blanco y esquinas
+   redondeadas, para alternar con el blanco y dar contraste. Se usa SOLO en
+   Analíticas y en Entrenar, a propósito: si alternara en todo el portal
+   dejaría de destacar y se volvería ruido.
+
+   El truco está en que dentro se REDEFINEN los tokens de color. Todo lo que
+   hay debajo (textos apagados, bordes, barras, botones) usa esas variables,
+   así que se adapta solo sin repetir una sola regla. Lo único que se queda
+   fuera es lo que lleva color fijo —las insignias ámbar y rojas de
+   Cobertura—, y por eso ese bloque no se pinta en oscuro. */
+.section.oscuro {
+  --ink: #ffffff;
+  --ink-soft: #c9c9c9;
+  --ink-muted: #8f8f8f;
+  --paper: #0a0a0a;
+  --paper-soft: #1c1c1c;
+  --line: #2f2f2f;
+  background: #0a0a0a;
+  color: #ffffff;
+  border-radius: 16px;
+  padding: 20px 18px 22px;
+}
+/* Con fondo propio, el aire de arriba lo pone el contenedor: los títulos de
+   dentro no necesitan el margen que llevan sobre blanco. */
+.section.oscuro > h2:first-child { margin-top: 0; }
+.section.oscuro .an-sub,
+.section.oscuro .py-sub { color: var(--ink-soft); }

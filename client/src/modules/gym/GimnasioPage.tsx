@@ -216,7 +216,7 @@ function Entrenar({ rutina }: { rutina: Rutina }) {
       )}
 
       {toca && (
-        <section className="section mc-bloque">
+        <section className="section mc-bloque oscuro">
           <div className="mc-head">
             <h2>{cuartoOpcional ? 'El cuarto, si te apetece' : 'Te toca'}</h2>
             <span className="muted" style={{ fontSize: 12.5 }}>
@@ -258,7 +258,7 @@ function Entrenar({ rutina }: { rutina: Rutina }) {
       </section>
 
       {historial.length > 0 && (
-        <section className="section mc-bloque">
+        <section className="section mc-bloque oscuro">
           <h2>Últimos entrenamientos</h2>
           <div className="gy-hist">
             {historial.map((h) => (

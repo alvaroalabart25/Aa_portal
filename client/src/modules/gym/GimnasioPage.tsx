@@ -216,7 +216,7 @@ function Entrenar({ rutina }: { rutina: Rutina }) {
       )}
 
       {toca && (
-        <section className="section mc-bloque oscuro">
+        <section className="section mc-bloque">
           <div className="mc-head">
             <h2>{cuartoOpcional ? 'El cuarto, si te apetece' : 'Te toca'}</h2>
             <span className="muted" style={{ fontSize: 12.5 }}>
@@ -238,11 +238,14 @@ function Entrenar({ rutina }: { rutina: Rutina }) {
         </section>
       )}
 
-      <section className="section mc-bloque">
+      <section className="section mc-bloque oscuro">
         <h2>{toca ? 'Los otros días' : 'Los días de la rutina'}</h2>
         <div className="mk-grid">
+          {/* Islas claras dentro del bloque oscuro: `claro` devuelve los colores
+              de siempre, así que la tarjeta queda blanca y su «Empezar» negro,
+              sin tener que escribir una regla por cada cosa de dentro. */}
           {resto.map((d) => (
-            <div key={d.id} className="mk">
+            <div key={d.id} className="mk claro">
               <span className="mk-txt">
                 <span className="mk-t">{d.name}</span>
                 <span className="mk-sub">
@@ -258,7 +261,7 @@ function Entrenar({ rutina }: { rutina: Rutina }) {
       </section>
 
       {historial.length > 0 && (
-        <section className="section mc-bloque oscuro">
+        <section className="section mc-bloque">
           <h2>Últimos entrenamientos</h2>
           <div className="gy-hist">
             {historial.map((h) => (

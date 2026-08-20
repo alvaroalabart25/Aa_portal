@@ -157,20 +157,22 @@ export function Pesaje({ metas }: { metas: MetaGym[] }) {
             </p>
           )}
 
-          {pesadoHoy && <p className="py-hecho">Hoy ya te has pesado ✅</p>}
-
-          <div className="py-form">
-            <input
-              inputMode="decimal"
-              placeholder={pesadoHoy ? 'corregirlo' : 'kg de hoy'}
-              value={valor}
-              onChange={(e) => setValor(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && apuntar()}
-            />
-            <button className="btn sm" disabled={busy || !valor.trim()} onClick={apuntar}>
-              {busy ? 'Apuntando…' : pesadoHoy ? 'Corregir' : 'Apuntar pesaje'}
-            </button>
-          </div>
+          {pesadoHoy ? (
+            <p className="py-hecho">Hoy ya te has pesado ✅</p>
+          ) : (
+            <div className="py-form">
+              <input
+                inputMode="decimal"
+                placeholder="kg de hoy"
+                value={valor}
+                onChange={(e) => setValor(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && apuntar()}
+              />
+              <button className="btn sm" disabled={busy || !valor.trim()} onClick={apuntar}>
+                {busy ? 'Apuntando…' : 'Apuntar pesaje'}
+              </button>
+            </div>
+          )}
 
           <p className="muted py-nota">
             Es el mismo dato que el peso del Diario: apuntarlo aquí o allí da igual, hay una sola serie de pesajes.

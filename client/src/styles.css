@@ -2247,3 +2247,18 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .section.oscuro > h2:first-child { margin-top: 0; }
 .section.oscuro .an-sub,
 .section.oscuro .py-sub { color: var(--ink-soft); }
+
+/* Isla clara dentro de un bloque oscuro: devuelve los tokens a sus valores de
+   siempre, así que la tarjeta vuelve a ser blanca con texto y botones negros
+   sin escribir una regla por cada cosa que lleva dentro. Es el complemento
+   exacto de `.oscuro`, y funciona igual en cualquier bloque futuro. */
+.oscuro .claro {
+  --ink: #0a0a0a;
+  --ink-soft: #3f3f3f;
+  --ink-muted: #8a8a8a;
+  --paper: #ffffff;
+  --paper-soft: #f5f5f4;
+  --line: #e5e5e3;
+  background: #ffffff;
+  color: #0a0a0a;
+}

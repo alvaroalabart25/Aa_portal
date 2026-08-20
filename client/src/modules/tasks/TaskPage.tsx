@@ -43,7 +43,11 @@ export default function TaskPage() {
           antetítulo justo encima del nombre, y el nombre de la tarea no se
           repite: ya es el título. */}
       <div className="tk-crumbs">
-        <Link to="/agenda" className="btn ghost sm tk-back">
+        {/* A la pestaña Agenda, no a Macro: se viene de una tarea, y lo que
+            se quiere es volver a la lista de tareas del día. Macro es para
+            mirar el mes, y obligaba a un toque más cada vez que se iba y
+            se volvía. */}
+        <Link to="/agenda?tab=agenda" className="btn ghost sm tk-back">
           ‹ Agenda
         </Link>
         <span className="tk-path">

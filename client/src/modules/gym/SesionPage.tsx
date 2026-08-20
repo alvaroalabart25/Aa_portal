@@ -6,7 +6,6 @@ import ModoFoco from './ModoFoco';
 import { ElegirEjercicio } from './Catalogo';
 import { ListaOrdenable } from './Ordenable';
 import {
-  descansoSugerido,
   gymApi,
   kg,
   listaMusculos,
@@ -19,6 +18,21 @@ import {
 } from './api';
 
 const reloj = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+/**
+ * El descanso de esta pantalla: minuto y medio y punto.
+ *
+ * Antes se calculaba con su media real, pero medir aquí no es fiable —el reloj
+ * no sabe cuándo empieza la serie, y hay días en que no se apunta todo— así que
+ * la cuenta salía sucia. Un número fijo y honesto orienta mejor que uno listo y
+ * dudoso. Lo que sí decide él: alargarlo cuando el propio reloj vea que se
+ * queda corto.
+ */
+const DESCANSO_BASE = 90;
+// Pasarse de medio minuto no es «tardar»: es atarse la zapatilla. A partir de
+// ahí sí se ofrece alargar.
+const MARGEN_PARA_OFRECER = 30;
+const MAS_MINUTOS = [1, 2, 5] as const;
 
 /**
  * Seguir el entrenamiento, serie a serie.
@@ -47,8 +61,13 @@ export default function SesionPage() {
     nombre: string;
     serie: number;
     desde: number;
-    sugerido: number;
   } | null>(null);
+  // Cuánto se descansa hoy. Empieza en el minuto y medio de siempre y solo
+  // cambia si él decide alargarlo; vuelve a la base en la siguiente sesión.
+  const [descansoBase, setDescansoBase] = useState(DESCANSO_BASE);
+  // ¿Se pasó del reloj en el descanso anterior? Entonces en este se le ofrece
+  // alargarlo. No se hace nada solo: se propone y él elige.
+  const [ofrecerMas, setOfrecerMas] = useState(false);
 
   const cargar = useCallback(async () => setDatos(await gymApi.sesion(sesionId)), [sesionId]);
   useEffect(() => {
@@ -181,21 +200,16 @@ export default function SesionPage() {
             bloqueado={cerrada}
             condiciones={condiciones}
             onEditar={() => setEditando(e)}
-            onDescanso={(serie) =>
-              setDescanso({
-                nombre: e.name,
-                serie,
-                desde: Date.now(),
-                // la misma cuenta que el modo foco: lo que tienes puesto en el
-                // ejercicio mezclado con tu media real en él
-                sugerido: descansoSugerido({
-                  ultimoReal: null,
-                  ultimoSugerido: null,
-                  media: e.restAvg ?? null,
-                  objetivo: e.restSeconds,
-                }),
-              })
-            }
+            onDescanso={(serie) => {
+              // Lo que ha pasado desde la última marca. No es descanso puro
+              // (lleva la serie dentro), y justo por eso solo se usa para una
+              // pregunta, nunca como dato: «¿te alargo el reloj?».
+              if (descanso) {
+                const pasado = Math.floor((Date.now() - descanso.desde) / 1000);
+                if (pasado > descansoBase + MARGEN_PARA_OFRECER) setOfrecerMas(true);
+              }
+              setDescanso({ nombre: e.name, serie, desde: Date.now() });
+            }}
             onSustituir={() => setSustituyendo(e)}
             onQuitar={async () => {
               const aviso =
@@ -276,7 +290,20 @@ export default function SesionPage() {
 
       {/* El reloj de descanso: flota abajo, encima del menú. Va al final del
           árbol porque no ocupa sitio en el flujo, se superpone. */}
-      {!cerrada && descanso && <BarraDescanso descanso={descanso} onCerrar={() => setDescanso(null)} />}
+      {!cerrada && descanso && (
+        <BarraDescanso
+          descanso={descanso}
+          base={descansoBase}
+          ofrecerMas={ofrecerMas}
+          onAlargar={(minutos) => {
+            // sube el descanso de aquí en adelante, y también el que está
+            // corriendo: si pides un minuto más, lo quieres ya
+            setDescansoBase((v) => v + minutos * 60);
+            setOfrecerMas(false);
+          }}
+          onCerrar={() => setDescanso(null)}
+        />
+      )}
 
       {editando && (
         <EjercicioModal
@@ -440,26 +467,30 @@ function BloqueEjercicio({
 /**
  * El reloj de descanso de la pantalla de entrenamiento.
  *
- * Aparece al marcar una serie y se queda pegado arriba mientras haces scroll,
- * porque el descanso se mira de reojo entre series, no se busca.
+ * Flota abajo, encima del menú, porque el descanso se mira de reojo entre
+ * series y ahí está el pulgar.
  *
- * La cuenta va HACIA ABAJO desde lo que toca descansar en ese ejercicio y, al
- * llegar a 0:00, sigue hacia arriba diciendo cuánto te pasas: el número
- * sugerido es una propuesta, no una orden, y saber que llevas dos minutos de
- * más es más útil que un reloj que se apaga.
+ * Cuenta hacia abajo desde el minuto y medio de siempre. Pasado el cero sigue
+ * contando, pero cambia lo que dice: mientras baja es «Descanso» —y es verdad,
+ * estás descansando—, y al cruzar el cero pasa a «desde la última serie»,
+ * porque a partir de ahí el reloj no sabe si sigues sentado o ya estás
+ * levantando. Preferimos un número que no afirme nada falso a uno que presuma
+ * de medir lo que no puede.
  *
- * Lo que propone sale de la MISMA cuenta que el modo foco (`descansoSugerido`):
- * el descanso que tienes puesto en el ejercicio mezclado con tu media real en
- * él. Lo que NO hace es guardar este descanso como dato: aquí nadie dice cuándo
- * empieza la serie siguiente, así que el tiempo entre dos marcas incluye la
- * serie. Medirlo de verdad sigue siendo cosa del modo foco, donde tú cierras el
- * descanso al pulsar «Empezar la serie».
+ * Y si en el descanso anterior te pasaste de largo, aquí aparecen los botones
+ * para alargarlo. El portal no lo cambia solo: lo propone y decides tú.
  */
 function BarraDescanso({
   descanso,
+  base,
+  ofrecerMas,
+  onAlargar,
   onCerrar,
 }: {
-  descanso: { nombre: string; serie: number; desde: number; sugerido: number };
+  descanso: { nombre: string; serie: number; desde: number };
+  base: number;
+  ofrecerMas: boolean;
+  onAlargar: (minutos: number) => void;
   onCerrar: () => void;
 }) {
   const [transcurrido, setTranscurrido] = useState(() => Math.floor((Date.now() - descanso.desde) / 1000));
@@ -477,21 +508,37 @@ function BarraDescanso({
   // Un toque de vibración al llegar a cero: el móvil está en el banco, no en la
   // mano, y así no hace falta mirarlo.
   useEffect(() => {
-    if (avisadoRef.current || transcurrido < descanso.sugerido) return;
+    if (avisadoRef.current || transcurrido < base) return;
     avisadoRef.current = true;
     if ('vibrate' in navigator) navigator.vibrate?.([120, 60, 120]);
-  }, [transcurrido, descanso.sugerido]);
+  }, [transcurrido, base]);
 
-  const restante = descanso.sugerido - transcurrido;
+  const restante = base - transcurrido;
   const pasado = restante <= 0;
 
   return (
     <div className={`gy-desc${pasado ? ' pasado' : ''}`}>
       <div className="gy-desc-txt">
-        <span className="gy-desc-et">Descanso · {descanso.nombre} serie {descanso.serie}</span>
+        <span className="gy-desc-et">
+          {pasado ? `Ya toca · ${descanso.nombre}` : `Descanso · ${descanso.nombre} serie ${descanso.serie}`}
+        </span>
         <span className="gy-desc-reloj">{reloj(Math.abs(restante))}</span>
-        {pasado && <span className="gy-desc-mas">de más</span>}
+        {pasado && <span className="gy-desc-mas">desde la última serie</span>}
       </div>
+
+      {/* Se ofrece solo si el descanso anterior se te fue: si vas en hora, no
+          hay nada que preguntar. */}
+      {ofrecerMas && (
+        <div className="gy-desc-alargar">
+          <span className="gy-desc-alargar-t">¿Más descanso?</span>
+          {MAS_MINUTOS.map((m) => (
+            <button key={m} className="gy-desc-btn" onClick={() => onAlargar(m)}>
+              +{m} min
+            </button>
+          ))}
+        </div>
+      )}
+
       <button className="gy-desc-x" onClick={onCerrar} aria-label="Quitar el reloj de descanso">
         ✕
       </button>

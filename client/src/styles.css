@@ -2163,3 +2163,18 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
   font: inherit; font-size: 15px; cursor: pointer; padding: 4px 6px; flex: none;
 }
 .gy-desc-x:hover { opacity: 1; }
+
+/* «¿Más descanso?»: solo aparece si en el anterior te pasaste de largo */
+.gy-desc-alargar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.gy-desc-alargar-t { font-size: 11.5px; opacity: 0.7; }
+.gy-desc-btn {
+  background: none; color: inherit; font: inherit; font-size: 12px; cursor: pointer;
+  border: 1px solid currentColor; border-radius: 999px; padding: 3px 9px; opacity: 0.85;
+}
+.gy-desc-btn:hover { opacity: 1; }
+/* con los botones dentro, la barra necesita apilarse en pantallas estrechas */
+@media (max-width: 480px) {
+  .gy-desc { flex-wrap: wrap; row-gap: 8px; }
+  .gy-desc-txt { flex: 1 1 auto; }
+  .gy-desc-alargar { flex: 1 1 100%; order: 3; }
+}

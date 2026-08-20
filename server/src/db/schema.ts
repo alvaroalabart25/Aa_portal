@@ -49,6 +49,12 @@ export const users = mysqlTable('users', {
   // En el servidor a propósito: reinstalar la PWA no repite el tour.
   guidedSeen: varchar('guided_seen', { length: 600 }).notNull().default(''),
   lastSeenAt: datetime('last_seen_at'), // solo cuándo, nunca qué
+  // Cuánto se usa la cuenta: veces que ha entrado (una cada 15 min como mucho)
+  // y días distintos en los que ha entrado. `visitsSince` dice desde cuándo se
+  // cuenta, porque no hay histórico anterior que recuperar.
+  visits: int('visits').notNull().default(0),
+  activeDays: int('active_days').notNull().default(0),
+  visitsSince: date('visits_since', { mode: 'string' }),
   disabledAt: datetime('disabled_at'), // cortar el acceso sin borrar sus datos
   email: varchar('email', { length: 190 }), // destino de la recuperación de contraseña
   passwordHash: varchar('password_hash', { length: 255 }).notNull(),

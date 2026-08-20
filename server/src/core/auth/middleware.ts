@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { db } from '../../db';
 import { users } from '../../db/schema';
 import { logSecurityEvent } from '../../lib/security';
@@ -55,10 +55,18 @@ function anotarVisita(userId: number) {
   const ahora = Date.now();
   if (ahora - (ultimaVisita.get(userId) ?? 0) < VISITA_MS) return;
   ultimaVisita.set(userId, ahora);
+  // Todo en una sentencia y sin leer antes: la visita suma siempre, y el día
+  // solo cuando cambia la fecha de la última (con `last_seen_at` a nulo, la
+  // comparación da nulo y cuenta como día nuevo, que es lo correcto la primera
+  // vez). El día se compara en UTC, que para un contador de uso sobra.
   void db
-    .update(users)
-    .set({ lastSeenAt: new Date() })
-    .where(eq(users.id, userId))
+    .execute(
+      sql`update ${users} set
+            visits = visits + 1,
+            active_days = active_days + if(date(${users.lastSeenAt}) = utc_date(), 0, 1),
+            last_seen_at = now()
+          where ${users.id} = ${userId}`,
+    )
     .catch(() => {}); // que no tumbe la petición: es un dato de intendencia
 }
 

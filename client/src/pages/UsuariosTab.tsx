@@ -12,6 +12,10 @@ interface Usuario {
   /** qué módulos PUEDE usar (los decide el admin); de estos enciende los suyos */
   modulesAllowed: string[];
   lastSeenAt: string | null;
+  /** cuánto se usa la cuenta; `cuentaDesde` dice desde cuándo se cuenta */
+  visitas: number;
+  diasActivos: number;
+  cuentaDesde: string | null;
   disabledAt: string | null;
   createdAt: string;
   totpEnabled: boolean;
@@ -61,8 +65,17 @@ export default function UsuariosTab() {
 
   async function cargar() {
     const [u, i] = await Promise.all([get<Usuario[]>('/admin/usuarios'), get<Invitacion[]>('/admin/invitaciones')]);
-    // ?? por si la API aún no manda los disponibles a mitad de despliegue
-    setUsuarios(u.map((x) => ({ ...x, modulesAllowed: x.modulesAllowed ?? MODULOS_ACTIVABLES.map((m) => m.id) })));
+    // Valores por defecto por si el front se despliega antes que la API: sin
+    // esto, un `undefined` reventaría el .toLocaleString() de los contadores.
+    setUsuarios(
+      u.map((x) => ({
+        ...x,
+        modulesAllowed: x.modulesAllowed ?? MODULOS_ACTIVABLES.map((m) => m.id),
+        visitas: x.visitas ?? 0,
+        diasActivos: x.diasActivos ?? 0,
+        cuentaDesde: x.cuentaDesde ?? null,
+      })),
+    );
     setInvitaciones(i);
     setCargando(false);
   }
@@ -193,7 +206,8 @@ export default function UsuariosTab() {
                     {u.disabledAt && <span className="us-tag off">sin acceso</span>}
                   </span>
                   <span className="us-uso">
-                    {visto(u.lastSeenAt)} · {u.filas.toLocaleString('es-ES')} filas
+                    {visto(u.lastSeenAt)} · {u.diasActivos} {u.diasActivos === 1 ? 'día' : 'días'} ·{' '}
+                    {u.filas.toLocaleString('es-ES')} filas
                   </span>
                 </button>
 
@@ -207,6 +221,24 @@ export default function UsuariosTab() {
                       <span>Se dio de alta</span>
                       <b>{new Date(u.createdAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</b>
                     </p>
+                    <p className="us-dato">
+                      <span>Veces que ha entrado</span>
+                      <b>
+                        {u.visitas.toLocaleString('es-ES')} · {u.diasActivos}{' '}
+                        {u.diasActivos === 1 ? 'día distinto' : 'días distintos'}
+                      </b>
+                    </p>
+                    {u.cuentaDesde && (
+                      <p className="inv-pista" style={{ marginTop: -6 }}>
+                        Se cuenta desde el{' '}
+                        {new Date(`${u.cuentaDesde}T12:00:00`).toLocaleDateString('es-ES', {
+                          day: 'numeric',
+                          month: 'long',
+                        })}
+                        : antes solo se guardaba la última visita, así que no hay histórico anterior. Una entrada cada
+                        15 minutos como mucho.
+                      </p>
+                    )}
                     <p className="us-dato">
                       <span>Segundo factor</span>
                       <b>{u.totpEnabled ? 'activado' : 'sin activar'}</b>

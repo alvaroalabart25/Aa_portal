@@ -69,6 +69,9 @@ adminModule.get('/usuarios', ah(async (_req: AuthedRequest, res) => {
       modules: users.modules,
       modulesAllowed: users.modulesAllowed,
       lastSeenAt: users.lastSeenAt,
+      visits: users.visits,
+      activeDays: users.activeDays,
+      visitsSince: users.visitsSince,
       disabledAt: users.disabledAt,
       createdAt: users.createdAt,
       totpEnabled: users.totpEnabled,
@@ -107,6 +110,11 @@ adminModule.get('/usuarios', ah(async (_req: AuthedRequest, res) => {
       // qué módulos PUEDE usar la cuenta (los pone el admin; sin poner = todos)
       modulesAllowed: limpiarModulos(u.modulesAllowed) ?? [...MODULOS],
       lastSeenAt: u.lastSeenAt,
+      // cuánto se usa la cuenta: veces y días distintos, y desde cuándo se
+      // cuenta (no hay histórico anterior a la columna)
+      visitas: u.visits,
+      diasActivos: u.activeDays,
+      cuentaDesde: u.visitsSince,
       disabledAt: u.disabledAt,
       createdAt: u.createdAt,
       totpEnabled: u.totpEnabled === 1,

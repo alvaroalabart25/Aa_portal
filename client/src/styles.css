@@ -2113,3 +2113,25 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 @media (max-width: 560px) {
   .pr-idx-e { width: 78px; }
 }
+
+/* En una pantalla táctil el `:hover` SE QUEDA PEGADO después del toque: no hay
+   puntero que se vaya, así que la fila que tocas se queda gris hasta que tocas
+   otra cosa. Con una lista de filas parece que la app se ha colgado o que algo
+   no acaba de cargar. Aquí se apaga solo donde el fondo es la única señal de
+   hover; los botones conservan el suyo, que se entiende como pulsación.
+   (El `:not(.arrastrando)` respeta el gris del arrastre, que sí es informativo.) */
+@media (hover: none) {
+  .table tr.row:hover,
+  .roadmap-row:hover,
+  .mc-tarea-fila:hover,
+  .mc-candidata:hover,
+  .dr-wl-row:hover:not(.arrastrando),
+  .gy-hist-fila:hover,
+  .gy-ej:hover,
+  .cat-fila:hover,
+  .pr-fila:hover,
+  .pr-idx:hover,
+  .bk-banco:hover {
+    background: none;
+  }
+}

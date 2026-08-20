@@ -36,8 +36,20 @@ export default function TaskTable({
       </thead>
       <tbody>
         {tasks.map((t) => (
-          <tr key={t.id} className="row" onClick={() => navigate(`/tareas/${t.id}`)}>
-            <td onClick={(e) => e.stopPropagation()}>
+          <tr
+            key={t.id}
+            className="row"
+            onClick={(e) => {
+              // Los controles de la fila (estado, fecha, prioridad) se manejan
+              // solos. Antes esto se hacía parando la propagación en la CELDA
+              // entera, y en el móvil eso dejaba media tarjeta muerta: la celda
+              // del estado ocupa el ancho completo, así que tocar la primera
+              // línea de la tarjeta —donde cae el pulgar— no hacía nada.
+              if ((e.target as HTMLElement).closest('button, select, input, a, textarea')) return;
+              navigate(`/tareas/${t.id}`);
+            }}
+          >
+            <td>
               <StatusSelect value={t.status} onChange={(s) => changeStatus(t, s)} />
             </td>
             <td style={{ fontWeight: 500 }}>
@@ -49,7 +61,7 @@ export default function TaskTable({
               {t.title}
               <Aplazada veces={t.postponedCount} />
             </td>
-            <td onClick={(e) => e.stopPropagation()}>
+            <td>
               <DueDateEdit
                 value={t.dueDate}
                 onChange={async (dueDate) => {
@@ -58,7 +70,7 @@ export default function TaskTable({
                 }}
               />
             </td>
-            <td onClick={(e) => e.stopPropagation()}>
+            <td>
               <PrioritySelect
                 value={t.priority}
                 onChange={async (priority: Priority) => {

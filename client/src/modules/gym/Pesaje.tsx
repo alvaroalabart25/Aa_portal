@@ -27,13 +27,12 @@ function fechaCorta(s: string) {
   return `${Number(d)}/${Number(m)}`;
 }
 
-export function Pesaje({ metas }: { metas: MetaGym[] }) {
-  const meta = metas.find((m) => m.kind === 'peso' && m.status === 'activo') ?? null;
-  const objetivo = meta?.targetValue != null ? Number(meta.targetValue) : null;
-
+/**
+ * Las pesadas de los últimos meses. Vive en un hook porque ahora las piden dos
+ * sitios: el apunte (en Objetivo) y la gráfica (en Analíticas).
+ */
+function usePesadas() {
   const [pesadas, setPesadas] = useState<Pesada[] | null>(null);
-  const [valor, setValor] = useState('');
-  const [busy, setBusy] = useState(false);
 
   const cargar = useCallback(async () => {
     const hasta = new Date();
@@ -51,6 +50,63 @@ export function Pesaje({ metas }: { metas: MetaGym[] }) {
   useEffect(() => {
     cargar().catch(() => setPesadas([]));
   }, [cargar]);
+
+  return { pesadas, cargar };
+}
+
+/** El objetivo de peso activo, si lo hay. */
+function metaDePeso(metas: MetaGym[]): number | null {
+  const meta = metas.find((m) => m.kind === 'peso' && m.status === 'activo') ?? null;
+  return meta?.targetValue != null ? Number(meta.targetValue) : null;
+}
+
+/**
+ * La gráfica del peso: se mudó a Analíticas, que es donde vive la evolución.
+ * El apunte se quedó en Objetivo, que es donde él lo escribe cada mañana.
+ */
+export function GraficaPeso({ metas }: { metas: MetaGym[] }) {
+  const { pesadas } = usePesadas();
+  const objetivo = metaDePeso(metas);
+  const ultimo = pesadas?.at(-1) ?? null;
+  const distancia = ultimo != null && objetivo != null ? Math.round((ultimo.peso - objetivo) * 10) / 10 : null;
+
+  return (
+    <section className="section mc-bloque">
+      <h2>Peso</h2>
+      {pesadas == null ? (
+        <p className="muted mc-vacio">Cargando…</p>
+      ) : pesadas.length === 0 ? (
+        <p className="muted mc-vacio">Sin pesajes todavía. Apúntalos en la pestaña Objetivo.</p>
+      ) : (
+        <>
+          <div className="py-actual">
+            <span className="py-kg">{kg(ultimo!.peso)}</span>
+            <span className="py-sub">
+              pesado {hace(ultimo!.date)}
+              {objetivo != null &&
+                (distancia === 0
+                  ? ' · en tu objetivo'
+                  : ` · a ${kg(Math.abs(distancia!))} del objetivo (${kg(objetivo)})`)}
+            </span>
+          </div>
+          {pesadas.length >= 2 ? (
+            <Grafica pesadas={pesadas} objetivo={objetivo} />
+          ) : (
+            <p className="muted mc-vacio">Con un solo pesaje no hay línea que dibujar todavía.</p>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+export function Pesaje({ metas }: { metas: MetaGym[] }) {
+  const objetivo = metaDePeso(metas);
+  const meta = metas.find((m) => m.kind === 'peso' && m.status === 'activo') ?? null;
+
+  const { pesadas, cargar } = usePesadas();
+  const [valor, setValor] = useState('');
+  const [busy, setBusy] = useState(false);
 
   async function apuntar() {
     const v = Number(valor.replace(',', '.'));
@@ -99,8 +155,6 @@ export function Pesaje({ metas }: { metas: MetaGym[] }) {
               contra ese número.
             </p>
           )}
-
-          {pesadas.length >= 2 && <Grafica pesadas={pesadas} objetivo={objetivo} />}
 
           <div className="py-form">
             <input

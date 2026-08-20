@@ -2178,3 +2178,42 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
   .gy-desc-txt { flex: 1 1 auto; }
   .gy-desc-alargar { flex: 1 1 100%; order: 3; }
 }
+
+/* Analíticas: barras de constancia, mini-gráficas por día y la encuesta */
+.an-sub { font-size: 12.5px; color: var(--ink-soft); margin: -4px 0 14px; line-height: 1.5; max-width: 52ch; }
+.an-nota { font-size: 11.5px; margin: 12px 0 0; }
+
+/* Constancia: una barra por semana, con el objetivo como tope */
+.an-barras { display: flex; align-items: flex-end; gap: 10px; }
+.an-barra { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; min-width: 0; }
+.an-barra-caja {
+  width: 100%; max-width: 34px; height: 64px; display: flex; align-items: flex-end;
+  background: var(--paper-soft); border-radius: 6px; overflow: hidden;
+}
+.an-barra-fill { width: 100%; background: var(--ink-muted); border-radius: 6px; }
+.an-barra-fill.ok { background: var(--ink); }
+.an-barra-n { font-size: 12.5px; font-weight: 600; }
+.an-barra-et { font-size: 10.5px; color: var(--ink-muted); }
+
+/* Kilos movidos: un bloque por día de rutina */
+.an-dias { display: flex; flex-direction: column; gap: 16px; }
+.an-dia { display: flex; flex-direction: column; gap: 6px; }
+.an-dia-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.an-dia-n { font-size: 13.5px; font-weight: 500; }
+.an-dia-dif { font-size: 12.5px; color: var(--ink-muted); white-space: nowrap; }
+.an-dia-dif.sube { color: var(--ink); font-weight: 600; }
+.an-dia-dif.baja { color: var(--ink-soft); }
+.an-mini { display: flex; align-items: flex-end; gap: 4px; height: 44px; }
+.an-mini-b { flex: 1; max-width: 26px; height: 100%; display: flex; align-items: flex-end; }
+.an-mini-b span { width: 100%; background: var(--ink); border-radius: 4px 4px 0 0; }
+.an-dia-pie { font-size: 11px; color: var(--ink-muted); }
+
+/* Cómo sales de entrenar */
+.an-notas { display: flex; flex-direction: column; }
+.an-nota-fila {
+  display: flex; align-items: baseline; gap: 14px; padding: 8px 2px;
+  border-bottom: 1px solid var(--line); font-size: 13px;
+}
+.an-nota-fila:last-child { border-bottom: none; }
+.an-nota-f { color: var(--ink-muted); font-size: 12px; width: 42px; flex: none; }
+.an-nota-p b { font-weight: 500; font-size: 11.5px; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.04em; }

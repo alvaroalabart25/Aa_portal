@@ -127,9 +127,6 @@ export default function SesionPage() {
         </div>
       </div>
 
-      {/* El reloj de descanso, pegado arriba mientras haces scroll. */}
-      {!cerrada && descanso && <BarraDescanso descanso={descanso} onCerrar={() => setDescanso(null)} />}
-
       {/* Equivocarse de día al entrar es lo más fácil del mundo: mientras no
           haya nada apuntado, se cambia aquí mismo. */}
       {!cerrada && hechas === 0 && dias.length > 1 && (
@@ -157,12 +154,14 @@ export default function SesionPage() {
       )}
       {error && <div className="error-msg">{error}</div>}
 
-      {/* La lista entera vale para consultar; para entrenar, una cosa delante */}
+      {/* El modo foco queda OCULTO a petición suya («ahora mismo me molesta»):
+          el componente sigue entero y funcionando, lo único que se ha quitado
+          es este botón. Volver a enseñarlo es descomentar esto.
       {!cerrada && (
         <button className="btn gy-foco" onClick={() => setFoco(true)}>
           Modo foco · una serie cada vez
         </button>
-      )}
+      )} */}
 
       <ListaOrdenable
         ejercicios={datos.exercises}
@@ -274,6 +273,10 @@ export default function SesionPage() {
         </>
       )}
       {cerrada && <p className="muted mc-vacio">Sesión cerrada. Lo que ves es lo que quedó registrado.</p>}
+
+      {/* El reloj de descanso: flota abajo, encima del menú. Va al final del
+          árbol porque no ocupa sitio en el flujo, se superpone. */}
+      {!cerrada && descanso && <BarraDescanso descanso={descanso} onCerrar={() => setDescanso(null)} />}
 
       {editando && (
         <EjercicioModal

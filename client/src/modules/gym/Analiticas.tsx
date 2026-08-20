@@ -136,7 +136,10 @@ function VolumenPorDia({ sesiones }: { sesiones: SesionHistorial[] }) {
       e.puntos.push({ fecha: s.sessionDate, vol });
       m.set(s.dayId, e);
     }
-    return [...m.values()].filter((d) => d.puntos.length >= 2).sort((a, b) => b.puntos.length - a.puntos.length);
+    // Se enseñan TODOS los días con al menos una sesión medida. Antes se
+    // escondían los que solo tenían una —no hay nada que comparar— y el día
+    // desaparecía de la lista sin decir por qué, que es peor que decirlo.
+    return [...m.values()].filter((d) => d.puntos.length >= 1).sort((a, b) => b.puntos.length - a.puntos.length);
   }, [sesiones]);
 
   if (porDia.length === 0) {
@@ -144,7 +147,7 @@ function VolumenPorDia({ sesiones }: { sesiones: SesionHistorial[] }) {
       <section className="section mc-bloque">
         <h2>Kilos movidos</h2>
         <p className="muted mc-vacio">
-          Hace falta repetir un día de rutina al menos dos veces para poder comparar. Con una sola vez no hay con qué.
+          Todavía no hay ninguna sesión con kilos apuntados. En cuanto cierres una con pesos, aparece aquí.
         </p>
       </section>
     );
@@ -157,15 +160,19 @@ function VolumenPorDia({ sesiones }: { sesiones: SesionHistorial[] }) {
       <div className="an-dias">
         {porDia.map((d) => {
           const ultimo = d.puntos.at(-1)!;
-          const previo = d.puntos.at(-2)!;
-          const dif = ultimo.vol - previo.vol;
+          const previo = d.puntos.length > 1 ? d.puntos.at(-2)! : null;
+          const dif = previo ? ultimo.vol - previo.vol : null;
           const max = Math.max(...d.puntos.map((p) => p.vol));
           return (
             <div key={d.nombre} className="an-dia">
               <div className="an-dia-head">
                 <span className="an-dia-n">{d.nombre}</span>
-                <span className={`an-dia-dif${dif > 0 ? ' sube' : dif < 0 ? ' baja' : ''}`}>
-                  {dif === 0 ? 'igual' : `${dif > 0 ? '+' : '−'}${Math.abs(dif).toLocaleString('es-ES')} kg`}
+                <span className={`an-dia-dif${dif != null && dif > 0 ? ' sube' : dif != null && dif < 0 ? ' baja' : ''}`}>
+                  {dif == null
+                    ? 'una sola vez'
+                    : dif === 0
+                      ? 'igual'
+                      : `${dif > 0 ? '+' : '−'}${Math.abs(dif).toLocaleString('es-ES')} kg`}
                 </span>
               </div>
               <div className="an-mini">
@@ -176,7 +183,10 @@ function VolumenPorDia({ sesiones }: { sesiones: SesionHistorial[] }) {
                 ))}
               </div>
               <span className="an-dia-pie">
-                {d.puntos.map((p) => diaMes(p.fecha)).join(' · ')} — último {ultimo.vol.toLocaleString('es-ES')} kg
+                {d.puntos.map((p) => diaMes(p.fecha)).join(' · ')} —{' '}
+                {dif == null
+                  ? `${ultimo.vol.toLocaleString('es-ES')} kg, aún sin con qué comparar`
+                  : `último ${ultimo.vol.toLocaleString('es-ES')} kg`}
               </span>
             </div>
           );

@@ -2212,3 +2212,6 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .an-nota-fila:last-child { border-bottom: none; }
 .an-nota-f { color: var(--ink-muted); font-size: 12px; width: 42px; flex: none; }
 .an-nota-p b { font-weight: 500; font-size: 11.5px; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* «Hoy ya te has pesado»: quita la duda de si lo apuntaste o no */
+.py-hecho { font-size: 13px; color: var(--ink); margin: 0 0 12px; }

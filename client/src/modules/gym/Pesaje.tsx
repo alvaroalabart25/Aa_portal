@@ -22,11 +22,6 @@ function iso(d: Date) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-function fechaCorta(s: string) {
-  const [, m, d] = s.split('-');
-  return `${Number(d)}/${Number(m)}`;
-}
-
 /**
  * Las pesadas de los últimos meses. Vive en un hook porque ahora las piden dos
  * sitios: el apunte (en Objetivo) y la gráfica (en Analíticas).
@@ -122,7 +117,12 @@ export function Pesaje({ metas }: { metas: MetaGym[] }) {
   }
 
   const ultimo = pesadas?.at(-1) ?? null;
+  const anterior = pesadas && pesadas.length > 1 ? pesadas[pesadas.length - 2] : null;
+  const cambio = ultimo && anterior ? Math.round((ultimo.peso - anterior.peso) * 10) / 10 : null;
   const distancia = ultimo != null && objetivo != null ? Math.round((ultimo.peso - objetivo) * 10) / 10 : null;
+  // ¿ya te has pesado hoy? El aviso ahorra la duda de «¿lo apunté o no?»
+  const hoy = new Date();
+  const pesadoHoy = ultimo?.date === iso(hoy);
 
   return (
     <section className="section mc-bloque">
@@ -137,6 +137,7 @@ export function Pesaje({ metas }: { metas: MetaGym[] }) {
               <span className="py-kg">{kg(ultimo.peso)}</span>
               <span className="py-sub">
                 pesado {hace(ultimo.date)}
+                {cambio != null && cambio !== 0 && ` · ${cambio > 0 ? '+' : '−'}${kg(Math.abs(cambio))} desde el anterior`}
                 {objetivo != null &&
                   (distancia === 0
                     ? ' · en tu objetivo'
@@ -156,42 +157,20 @@ export function Pesaje({ metas }: { metas: MetaGym[] }) {
             </p>
           )}
 
+          {pesadoHoy && <p className="py-hecho">Hoy ya te has pesado ✅</p>}
+
           <div className="py-form">
             <input
               inputMode="decimal"
-              placeholder="kg de hoy"
+              placeholder={pesadoHoy ? 'corregirlo' : 'kg de hoy'}
               value={valor}
               onChange={(e) => setValor(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && apuntar()}
             />
             <button className="btn sm" disabled={busy || !valor.trim()} onClick={apuntar}>
-              {busy ? 'Apuntando…' : 'Apuntar pesaje'}
+              {busy ? 'Apuntando…' : pesadoHoy ? 'Corregir' : 'Apuntar pesaje'}
             </button>
           </div>
-
-          {pesadas.length > 0 && (
-            <div className="py-lista">
-              {pesadas
-                .slice(-6)
-                .reverse()
-                .map((p, i, arr) => {
-                  const anterior = arr[i + 1] ?? null;
-                  const dif = anterior ? Math.round((p.peso - anterior.peso) * 10) / 10 : null;
-                  return (
-                    <div key={p.date} className="py-fila">
-                      <span className="py-fila-f">{fechaCorta(p.date)}</span>
-                      <span className="py-fila-v">{kg(p.peso)}</span>
-                      {dif != null && dif !== 0 && (
-                        <span className={`py-fila-d ${dif > 0 ? 'sube' : 'baja'}`}>
-                          {dif > 0 ? '+' : '−'}
-                          {kg(Math.abs(dif))}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-            </div>
-          )}
 
           <p className="muted py-nota">
             Es el mismo dato que el peso del Diario: apuntarlo aquí o allí da igual, hay una sola serie de pesajes.

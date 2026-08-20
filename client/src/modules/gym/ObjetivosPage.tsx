@@ -30,7 +30,7 @@ export default function ObjetivosPage() {
   return (
     <div>
       <div className="page-head">
-        <h1>Objetivo & Analíticas</h1>
+        <h1>Obj. & Analítica</h1>
         <div className="head-acciones">
           <div className="seg" role="tablist">
             {([['objetivo', 'Objetivo'], ['analiticas', 'Analíticas']] as [Vista, string][]).map(([v, etiqueta]) => (
@@ -55,7 +55,7 @@ export default function ObjetivosPage() {
       </p>
 
       {vista === 'analiticas' ? (
-        <Analiticas />
+        <Analiticas rutina={rutina} />
       ) : !rutina ? (
         <p className="muted">Cargando…</p>
       ) : (

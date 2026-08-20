@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { gymApi, type MetaGym, type SesionHistorial } from './api';
+import { gymApi, type MetaGym, type Rutina, type SesionHistorial } from './api';
 import { GraficaPeso } from './Pesaje';
+import { Cobertura } from './GimnasioPage';
 
 /**
  * Analíticas: cómo van tus entrenamientos de verdad.
@@ -26,7 +27,7 @@ function lunesDe(iso: string): string {
 
 const diaMes = (iso: string) => `${Number(iso.slice(8, 10))}/${Number(iso.slice(5, 7))}`;
 
-export default function Analiticas() {
+export default function Analiticas({ rutina }: { rutina: Rutina | null }) {
   const [historial, setHistorial] = useState<SesionHistorial[] | null>(null);
   // las metas solo hacen falta para pintar la raya del objetivo de peso
   const [metas, setMetas] = useState<MetaGym[]>([]);
@@ -54,6 +55,11 @@ export default function Analiticas() {
       <Constancia sesiones={sesiones} />
       <VolumenPorDia sesiones={sesiones} />
       <ComoTeVes sesiones={sesiones} />
+
+      {/* Al final de la pantalla y sin plegar: es el bloque más largo y el que
+          se lee con calma, no de pasada. */}
+      {rutina && <Cobertura rutina={rutina} />}
+
       {sesiones.length === 0 && (
         <section className="section mc-bloque">
           <p className="muted mc-vacio">

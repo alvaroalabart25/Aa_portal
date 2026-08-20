@@ -775,8 +775,6 @@ export function Cobertura({ rutina }: { rutina: Rutina }) {
     }).filter((b) => b.partes.length > 0);
   }, [partes, trabajo]);
 
-  const [desplegado, setDesplegado] = useState(false);
-
   // Los bloques que CUBREN los objetivos declarados de las sesiones. Si algo
   // está declarado y no aparece nunca, ese es el peor aviso posible: dices que
   // lo entrenas y no está. Lo no declarado sin trabajo es solo información.
@@ -813,13 +811,11 @@ export function Cobertura({ rutina }: { rutina: Rutina }) {
 
   return (
     <section className="section mc-bloque">
-      {/* Trece bloques desplegados son media pantalla de scroll antes de llegar a
-          la rutina. Cerrado deja el titular, que es lo único que hay que saber
-          casi siempre: qué falta. */}
-      <button className="gy-cob-toggle" onClick={() => setDesplegado((v) => !v)} aria-expanded={desplegado}>
-        <span className="gy-cob-chev">{desplegado ? '▾' : '▸'}</span>
-        <h2>Cobertura</h2>
-        <span className="gy-cob-resumen">
+      {/* Sin conmutador: en Analíticas este es el bloque del final de la
+          pantalla y no compite con nada, así que se ve entero. El titular se
+          queda de subtítulo, que es lo que hay que saber de un vistazo. */}
+      <h2>Análisis de rutina &amp; Cobertura</h2>
+      <p className="gy-cob-resumen">
           {declaradoSinTocar.length === 0 &&
           sinTocar.length === 0 &&
           conHuecos.length === 0 &&
@@ -839,11 +835,8 @@ export function Cobertura({ rutina }: { rutina: Rutina }) {
               ]
                 .filter(Boolean)
                 .join(' · ')}
-        </span>
-      </button>
+      </p>
 
-      {desplegado && (
-      <>
       <div className="gy-cob">
         {bloques.map(({ bloque, partes: suyas, total, colateral, vacias }) => {
           const estado =
@@ -903,8 +896,6 @@ export function Cobertura({ rutina }: { rutina: Rutina }) {
         bíceps. Y «casi sin trabajo» compara cada bloque con la media de TUS bloques entrenados —ahora {media} series
         por vuelta— y avisa por debajo de un tercio de ella, no contra un número de manual.
       </p>
-      </>
-      )}
     </section>
   );
 }
@@ -968,10 +959,6 @@ export function Objetivo({ rutina }: { rutina: Rutina }) {
       {/* El seguimiento del pesaje mide contra la meta de peso activa; escribe
           en el mismo dato del Diario, no en uno nuevo. */}
       <Pesaje metas={metas} />
-
-      {/* La cobertura contesta a un objetivo («¿cubres toda la musculatura que
-          quieres cubrir?»), así que vive aquí y no en la edición de la tabla. */}
-      <Cobertura rutina={rutina} />
 
       {/* Los condicionantes no son metas: son con lo que se entrena. Por eso van
           en su propio bloque y no mezclados con lo que quieres conseguir. */}

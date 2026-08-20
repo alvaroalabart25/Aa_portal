@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Celebracion from './Celebracion';
 import { EjercicioModal } from './modals';
@@ -6,6 +6,7 @@ import ModoFoco from './ModoFoco';
 import { ElegirEjercicio } from './Catalogo';
 import { ListaOrdenable } from './Ordenable';
 import {
+  descansoSugerido,
   gymApi,
   kg,
   listaMusculos,
@@ -16,6 +17,8 @@ import {
   type EjercicioEnSesion,
   type SesionDetalle,
 } from './api';
+
+const reloj = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
 /**
  * Seguir el entrenamiento, serie a serie.
@@ -38,6 +41,14 @@ export default function SesionPage() {
   const [sustituyendo, setSustituyendo] = useState<EjercicioEnSesion | null>(null);
   const [celebrando, setCelebrando] = useState(false);
   const [improvisando, setImprovisando] = useState(false);
+  // El descanso en curso: nace al marcar una serie y muere al marcar la
+  // siguiente (o al cerrarlo a mano).
+  const [descanso, setDescanso] = useState<{
+    nombre: string;
+    serie: number;
+    desde: number;
+    sugerido: number;
+  } | null>(null);
 
   const cargar = useCallback(async () => setDatos(await gymApi.sesion(sesionId)), [sesionId]);
   useEffect(() => {
@@ -116,6 +127,9 @@ export default function SesionPage() {
         </div>
       </div>
 
+      {/* El reloj de descanso, pegado arriba mientras haces scroll. */}
+      {!cerrada && descanso && <BarraDescanso descanso={descanso} onCerrar={() => setDescanso(null)} />}
+
       {/* Equivocarse de día al entrar es lo más fácil del mundo: mientras no
           haya nada apuntado, se cambia aquí mismo. */}
       {!cerrada && hechas === 0 && dias.length > 1 && (
@@ -168,6 +182,21 @@ export default function SesionPage() {
             bloqueado={cerrada}
             condiciones={condiciones}
             onEditar={() => setEditando(e)}
+            onDescanso={(serie) =>
+              setDescanso({
+                nombre: e.name,
+                serie,
+                desde: Date.now(),
+                // la misma cuenta que el modo foco: lo que tienes puesto en el
+                // ejercicio mezclado con tu media real en él
+                sugerido: descansoSugerido({
+                  ultimoReal: null,
+                  ultimoSugerido: null,
+                  media: e.restAvg ?? null,
+                  objetivo: e.restSeconds,
+                }),
+              })
+            }
             onSustituir={() => setSustituyendo(e)}
             onQuitar={async () => {
               const aviso =
@@ -268,6 +297,7 @@ function BloqueEjercicio({
   bloqueado,
   condiciones,
   onEditar,
+  onDescanso,
   onSustituir,
   onQuitar,
   asa,
@@ -278,6 +308,8 @@ function BloqueEjercicio({
   bloqueado: boolean;
   condiciones: Condicionante[];
   onEditar: () => void;
+  /** al marcar una serie: arranca el reloj de descanso de la pantalla */
+  onDescanso: (serie: number) => void;
   onSustituir: () => void;
   onQuitar: () => void | Promise<void>;
   asa?: import('react').ReactNode;
@@ -373,6 +405,7 @@ function BloqueEjercicio({
             sesionId={sesionId}
             onCambio={onCambio}
             bloqueado={bloqueado}
+            onDescanso={onDescanso}
           />
         ))}
       </div>
@@ -401,18 +434,82 @@ function BloqueEjercicio({
   );
 }
 
+/**
+ * El reloj de descanso de la pantalla de entrenamiento.
+ *
+ * Aparece al marcar una serie y se queda pegado arriba mientras haces scroll,
+ * porque el descanso se mira de reojo entre series, no se busca.
+ *
+ * La cuenta va HACIA ABAJO desde lo que toca descansar en ese ejercicio y, al
+ * llegar a 0:00, sigue hacia arriba diciendo cuánto te pasas: el número
+ * sugerido es una propuesta, no una orden, y saber que llevas dos minutos de
+ * más es más útil que un reloj que se apaga.
+ *
+ * Lo que propone sale de la MISMA cuenta que el modo foco (`descansoSugerido`):
+ * el descanso que tienes puesto en el ejercicio mezclado con tu media real en
+ * él. Lo que NO hace es guardar este descanso como dato: aquí nadie dice cuándo
+ * empieza la serie siguiente, así que el tiempo entre dos marcas incluye la
+ * serie. Medirlo de verdad sigue siendo cosa del modo foco, donde tú cierras el
+ * descanso al pulsar «Empezar la serie».
+ */
+function BarraDescanso({
+  descanso,
+  onCerrar,
+}: {
+  descanso: { nombre: string; serie: number; desde: number; sugerido: number };
+  onCerrar: () => void;
+}) {
+  const [transcurrido, setTranscurrido] = useState(() => Math.floor((Date.now() - descanso.desde) / 1000));
+  const avisadoRef = useRef(false);
+
+  useEffect(() => {
+    // Se calcula desde la hora de arranque, no sumando: si el móvil bloquea la
+    // pantalla o cambias de app, el reloj vuelve con la cuenta correcta.
+    const id = window.setInterval(() => {
+      setTranscurrido(Math.floor((Date.now() - descanso.desde) / 1000));
+    }, 250);
+    return () => window.clearInterval(id);
+  }, [descanso.desde]);
+
+  // Un toque de vibración al llegar a cero: el móvil está en el banco, no en la
+  // mano, y así no hace falta mirarlo.
+  useEffect(() => {
+    if (avisadoRef.current || transcurrido < descanso.sugerido) return;
+    avisadoRef.current = true;
+    if ('vibrate' in navigator) navigator.vibrate?.([120, 60, 120]);
+  }, [transcurrido, descanso.sugerido]);
+
+  const restante = descanso.sugerido - transcurrido;
+  const pasado = restante <= 0;
+
+  return (
+    <div className={`gy-desc${pasado ? ' pasado' : ''}`}>
+      <div className="gy-desc-txt">
+        <span className="gy-desc-et">Descanso · {descanso.nombre} serie {descanso.serie}</span>
+        <span className="gy-desc-reloj">{reloj(Math.abs(restante))}</span>
+        {pasado && <span className="gy-desc-mas">de más</span>}
+      </div>
+      <button className="gy-desc-x" onClick={onCerrar} aria-label="Quitar el reloj de descanso">
+        ✕
+      </button>
+    </div>
+  );
+}
+
 function FilaSerie({
   n,
   ejercicio,
   sesionId,
   onCambio,
   bloqueado,
+  onDescanso,
 }: {
   n: number;
   ejercicio: EjercicioEnSesion;
   sesionId: number;
   onCambio: () => void;
   bloqueado: boolean;
+  onDescanso: (serie: number) => void;
 }) {
   const hecha = ejercicio.done.find((d) => d.setNumber === n);
   const antes = ejercicio.previous.sets.find((s) => s.setNumber === n);
@@ -442,6 +539,9 @@ function FilaSerie({
           seconds: porTiempo ? v : null,
           weight: peso === '' ? null : Number(String(peso).replace(',', '.')),
         });
+        // acabas de cerrar una serie: empieza el descanso. Al desmarcar no,
+        // que eso es corregir un dato, no terminar de levantar.
+        onDescanso(n);
       }
       onCambio();
     } finally {

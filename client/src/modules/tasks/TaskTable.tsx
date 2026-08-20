@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { tasksApi } from './api';
 import { Aplazada, DueDateEdit, PrioritySelect, SpaceTag, StatusSelect } from './components';
 import type { Priority, Task, TaskStatus } from './types';
@@ -15,6 +15,11 @@ export default function TaskTable({
   onChanged: () => void;
 }) {
   const navigate = useNavigate();
+  // Desde dónde se abre la tarea. La tabla no sabe en qué pantalla vive, pero
+  // sí sabe en qué dirección está: se la lleva consigo para que el «volver» de
+  // la tarea sepa a dónde regresar (a su proyecto, a Tareas, a la Agenda…).
+  const location = useLocation();
+  const volverA = location.pathname + location.search;
 
   async function changeStatus(task: Task, status: TaskStatus) {
     await tasksApi.update(task.id, { status });
@@ -46,7 +51,7 @@ export default function TaskTable({
               // del estado ocupa el ancho completo, así que tocar la primera
               // línea de la tarjeta —donde cae el pulgar— no hacía nada.
               if ((e.target as HTMLElement).closest('button, select, input, a, textarea')) return;
-              navigate(`/tareas/${t.id}`);
+              navigate(`/tareas/${t.id}`, { state: { volverA } });
             }}
           >
             <td>

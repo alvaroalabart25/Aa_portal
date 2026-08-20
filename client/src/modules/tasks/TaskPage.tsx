@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { tasksApi } from './api';
 import MelonesDeTarea from '../focus/MelonesDeTarea';
 import { EditableTitle, KebabMenu, NotesBox, StatusSelect } from './components';
@@ -13,6 +13,11 @@ export default function TaskPage() {
   const { id } = useParams();
   const taskId = Number(id);
   const navigate = useNavigate();
+  // De dónde vienes, si quien te trajo lo dijo. Sin eso (entrar por dirección
+  // directa, o recargar) se cae a la Agenda, que es de donde se viene casi
+  // siempre.
+  const location = useLocation();
+  const volverA = (location.state as { volverA?: string } | null)?.volverA ?? null;
 
   const [task, setTask] = useState<Task | null>(null);
 
@@ -37,18 +42,32 @@ export default function TaskPage() {
 
   if (!task) return <p className="muted">Cargando…</p>;
 
+  // El nombre del sitio se saca de la propia tarea cuando se puede: «‹ Web
+  // Residencia» dice mucho más que «‹ Proyecto».
+  const vuelta = !volverA
+    ? { to: '/agenda?tab=agenda', etiqueta: 'Agenda' }
+    : volverA.startsWith('/proyectos/')
+      ? { to: volverA, etiqueta: task.projectName || 'Proyecto' }
+      : volverA.startsWith('/proyectos')
+        ? { to: volverA, etiqueta: 'Proyectos' }
+        : volverA.startsWith('/tareas')
+          ? { to: volverA, etiqueta: 'Tareas' }
+          : volverA.startsWith('/macro')
+            ? { to: volverA, etiqueta: 'Macro' }
+            : { to: volverA, etiqueta: 'Agenda' };
+
   return (
     <div>
       {/* Una sola línea: volver + dónde estás. El proyecto no va aquí, va de
           antetítulo justo encima del nombre, y el nombre de la tarea no se
           repite: ya es el título. */}
       <div className="tk-crumbs">
-        {/* A la pestaña Agenda, no a Macro: se viene de una tarea, y lo que
-            se quiere es volver a la lista de tareas del día. Macro es para
-            mirar el mes, y obligaba a un toque más cada vez que se iba y
-            se volvía. */}
-        <Link to="/agenda?tab=agenda" className="btn ghost sm tk-back">
-          ‹ Agenda
+        {/* El volver lleva a DONDE VENÍAS. Si entraste desde un proyecto, al
+            proyecto: volver a la Agenda y tener que rehacer el camino era lo
+            farragoso. Sin origen conocido, a la pestaña Agenda —no a Macro,
+            que es para mirar el mes y obligaba a un toque más. */}
+        <Link to={vuelta.to} className="btn ghost sm tk-back">
+          ‹ {vuelta.etiqueta}
         </Link>
         <span className="tk-path">
           <Link to="/proyectos">Proyectos</Link>

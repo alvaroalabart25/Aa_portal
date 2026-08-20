@@ -194,7 +194,12 @@ function ListaTareas({ tareas, itemId, onCambio }: { tareas: FocusDetalle['tasks
       {tareas.map((x) => (
         <div key={x.id} className={`mc-tarea-fila${cerrada(x.status) ? ' cerrada' : ''}`}>
           <span className="dot" style={{ background: x.spaceColor }} />
-          <Link to={`/tareas/${x.id}`} className="mc-tarea-titulo">
+          {/* con el origen a cuestas: al volver de la tarea, aquí mismo */}
+          <Link
+            to={`/tareas/${x.id}`}
+            state={{ volverA: `${window.location.pathname}${window.location.search}` }}
+            className="mc-tarea-titulo"
+          >
             <span className="mc-tarea-espacio">{x.spaceName}</span>
             {x.title}
           </Link>

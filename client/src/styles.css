@@ -2066,3 +2066,50 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
   margin: 0 16px 2px; animation: fadein 220ms ease-out;
 }
 .foco-siguiente b { color: #f4f4f4; font-weight: 600; }
+
+/* Proyectos: el titular, la fila compacta y el índice completo */
+.pr-resumen {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  font-size: 12.5px; color: var(--ink-soft); margin: -8px 0 18px;
+}
+.pr-resumen b { color: var(--ink); }
+
+/* Proyecto de 1-2 tareas: una línea, no una tarjeta */
+.pr-filas { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; }
+.pr-fila {
+  display: flex; align-items: baseline; gap: 10px; width: 100%; text-align: left;
+  background: none; border: none; border-radius: 8px; padding: 9px 8px; cursor: pointer;
+  font: inherit; color: inherit;
+}
+.pr-fila:hover { background: var(--paper-soft); }
+.pr-fila-tic { color: var(--ink-muted); width: 12px; flex: none; }
+.pr-fila.hecho .pr-fila-tic { color: var(--ink); }
+.pr-fila.hecho .pr-fila-n { color: var(--ink-muted); }
+.pr-fila-n { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pr-fila-s { font-size: 12px; color: var(--ink-muted); flex: none; }
+
+/* Terminados, recogidos */
+.pr-hechos-t {
+  background: none; border: none; padding: 10px 8px 4px; margin-top: 6px; cursor: pointer;
+  font: inherit; font-size: 12.5px; color: var(--ink-muted); text-align: left;
+}
+.pr-hechos-t:hover { color: var(--ink-soft); }
+
+/* Índice: todos los proyectos que existen, denso y buscable */
+.pr-buscar { width: 100%; max-width: 420px; margin-bottom: 12px; }
+.pr-indice { display: flex; flex-direction: column; }
+.pr-idx {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  background: none; border: none; border-bottom: 1px solid var(--line); padding: 10px 4px;
+  cursor: pointer; font: inherit; color: inherit;
+}
+.pr-idx:last-child { border-bottom: none; }
+.pr-idx:hover { background: var(--paper-soft); }
+.pr-idx .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.pr-idx-e { font-size: 11.5px; color: var(--ink-muted); width: 108px; flex: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pr-idx-n { flex: 1; min-width: 0; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pr-idx-s { font-size: 12px; color: var(--ink-muted); flex: none; }
+.pr-idx.hecho .pr-idx-n { color: var(--ink-muted); }
+@media (max-width: 560px) {
+  .pr-idx-e { width: 78px; }
+}

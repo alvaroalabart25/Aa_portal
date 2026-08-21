@@ -252,10 +252,14 @@ bancoRouter.post('/sincronizar/:id(\\d+)', ah(async (req: AuthedRequest, res) =>
     .from(bankAccounts)
     .where(and(eq(bankAccounts.connectionId, id), isNull(bankAccounts.archivedAt)));
 
-  // Desde cuándo pedir: la primera vez, 90 días; después, desde el último
-  // movimiento menos una semana (los bancos a veces contabilizan con retraso).
+  // Desde cuándo pedir: la primera vez, 90 días; después, una semana (los
+  // bancos a veces contabilizan con retraso). Con ?dias= se puede forzar el
+  // historial entero, que es lo que hace falta cuando cambia la forma de
+  // clasificar: repasa lo viejo sin tener que volver a autorizar nada.
+  const pedidos = Number(req.query.dias ?? 0);
+  const ventana = pedidos > 0 ? Math.min(pedidos, DIAS_HISTORIAL) : conexion.lastSyncAt ? 7 : DIAS_HISTORIAL;
   const desde = new Date();
-  desde.setDate(desde.getDate() - (conexion.lastSyncAt ? 7 : DIAS_HISTORIAL));
+  desde.setDate(desde.getDate() - ventana);
   const desdeIso = desde.toISOString().slice(0, 10);
 
   let nuevos = 0;

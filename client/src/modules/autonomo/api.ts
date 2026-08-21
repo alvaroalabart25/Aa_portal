@@ -87,8 +87,13 @@ export const bancoApi = {
     post<{ url: string; conexionId: number }>('/autonomo/banco/conectar', { banco, pais }),
   vuelta: (code: string, state: string) =>
     post<{ ok: boolean; cuentas: number }>('/autonomo/banco/vuelta', { code, state }),
-  sincronizar: (id: number) =>
-    post<{ ok: boolean; nuevos: number; traspasos: number }>(`/autonomo/banco/sincronizar/${id}`, {}),
+  // `dias` fuerza el historial entero (90 como mucho): hace falta cuando cambia
+  // la forma de clasificar y hay que repasar lo que ya estaba guardado.
+  sincronizar: (id: number, dias?: number) =>
+    post<{ ok: boolean; nuevos: number; traspasos: number }>(
+      `/autonomo/banco/sincronizar/${id}${dias ? `?dias=${dias}` : ''}`,
+      {},
+    ),
   resumen: (mes?: string) => get<ResumenMes>(`/autonomo/banco/resumen${mes ? `?mes=${mes}` : ''}`),
   reclasificar: () =>
     post<{ ok: boolean; movimientos: number; traspasos: number; sinClasificar: number }>(

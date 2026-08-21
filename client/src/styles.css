@@ -2262,3 +2262,20 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
   background: #ffffff;
   color: #0a0a0a;
 }
+
+/* Privacidad y términos: páginas públicas, sin menú ni sesión. Sobrias y
+   legibles, que es lo único que se les pide. */
+.legal { max-width: 680px; margin: 0 auto; padding: 24px 18px 60px; }
+.legal-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; }
+.legal-logo { font-family: var(--font-title); font-size: 22px; font-weight: 700; }
+.legal h1 { font-family: var(--font-title); font-size: 30px; margin: 0 0 4px; }
+.legal-fecha { font-size: 12.5px; color: var(--ink-muted); margin: 0 0 28px; }
+.legal h2 { font-family: var(--font-title); font-size: 17px; margin: 28px 0 8px; }
+.legal p { font-size: 14.5px; line-height: 1.65; margin: 0 0 10px; }
+.legal ul { margin: 0 0 10px; padding-left: 20px; display: flex; flex-direction: column; gap: 7px; }
+.legal li { font-size: 14.5px; line-height: 1.6; }
+.legal a { color: var(--ink); text-decoration: underline; }
+.legal-pie {
+  display: flex; align-items: center; gap: 10px; margin-top: 44px;
+  padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-muted);
+}

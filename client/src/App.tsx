@@ -22,6 +22,7 @@ import SesionPage from './modules/gym/SesionPage';
 import Configuracion from './pages/Configuracion';
 import Recuperar from './pages/Recuperar';
 import Invitacion from './pages/Invitacion';
+import { Privacidad, Terminos } from './pages/Legal';
 import { PerfilProvider, usePerfil } from './lib/perfil';
 import Arranque from './components/Arranque';
 
@@ -62,6 +63,10 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/recuperar" element={<Recuperar />} />
         <Route path="/invitacion/:token" element={<Invitacion />} />
+        {/* Públicas a propósito: el banco las enlaza en su pantalla de
+            autorización, así que tienen que abrir sin iniciar sesión. */}
+        <Route path="/privacidad" element={<Privacidad />} />
+        <Route path="/terminos" element={<Terminos />} />
         <Route element={<RequireAuth />}>
           <Route element={<Layout />}>
             <Route path="/" element={<Portada />} />

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
-import { and, desc, eq, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm';
 import { ah } from '../../lib/async';
 import { db } from '../../db';
 import { bankAccounts, bankConnections, bankTransactions } from '../../db/schema';
@@ -17,6 +17,7 @@ import {
   movimientosDe,
   saldosDe,
 } from './banco';
+import { NOMBRE_TIPO, TIPOS, emparejarTraspasos, tipoDeMovimiento, type Tipo } from './tipos';
 
 /**
  * Las rutas del banco. Todo cuelga de /api/autonomo/banco y va con sesión
@@ -44,6 +45,64 @@ function fallo(e: unknown): { status: number; error: string } {
   }
   if (e instanceof ClaveIlegible) return { status: 503, error: (e as Error).message };
   return { status: 502, error: (e as Error).message || 'El banco no ha respondido' };
+}
+
+/** Los últimos 120 días: el emparejado necesita ver los dos lados, no el mes. */
+const VENTANA_TRASPASOS = 120;
+
+/**
+ * Recalcula qué movimientos son traspasos entre cuentas propias.
+ *
+ * Se hace aparte de la clasificación porque un traspaso no se puede ver
+ * mirando un movimiento solo: hace falta el cargo en un banco Y el abono en el
+ * otro. Es idempotente: cada vez borra las parejas de la ventana y las vuelve
+ * a calcular, así que arreglar la regla es volver a llamarla.
+ */
+async function recalcularTraspasos(userId: number): Promise<number> {
+  const desde = new Date();
+  desde.setDate(desde.getDate() - VENTANA_TRASPASOS);
+  const desdeIso = desde.toISOString().slice(0, 10);
+
+  const filas = await db
+    .select({
+      id: bankTransactions.id,
+      accountId: bankTransactions.accountId,
+      amount: bankTransactions.amount,
+      direction: bankTransactions.direction,
+      bookingDate: bankTransactions.bookingDate,
+      bankCode: bankTransactions.bankCode,
+      concept: bankTransactions.concept,
+      tipo: bankTransactions.tipo,
+    })
+    .from(bankTransactions)
+    .where(and(eq(bankTransactions.userId, userId), gte(bankTransactions.bookingDate, desdeIso)));
+
+  if (filas.length === 0) return 0;
+
+  // Se parte de cero: si ayer algo se emparejó mal, hoy se deshace.
+  await db
+    .update(bankTransactions)
+    .set({ pairId: null })
+    .where(
+      and(
+        eq(bankTransactions.userId, userId),
+        gte(bankTransactions.bookingDate, desdeIso),
+        sql`${bankTransactions.pairId} is not null`,
+      ),
+    );
+
+  const parejas = emparejarTraspasos(filas);
+  for (const [salida, entrada] of parejas) {
+    await db
+      .update(bankTransactions)
+      .set({ pairId: entrada, tipo: 'traspaso' })
+      .where(and(eq(bankTransactions.id, salida), eq(bankTransactions.userId, userId)));
+    await db
+      .update(bankTransactions)
+      .set({ pairId: salida, tipo: 'traspaso' })
+      .where(and(eq(bankTransactions.id, entrada), eq(bankTransactions.userId, userId)));
+  }
+  return parejas.length;
 }
 
 // GET /estado — qué hay montado: si el conector vive y qué conexiones tienes
@@ -221,6 +280,9 @@ bancoRouter.post('/sincronizar/:id(\\d+)', ah(async (req: AuthedRequest, res) =>
         const importe = m.transaction_amount?.amount;
         if (!importe) continue;
 
+        const concepto = (m.remittance_information ?? []).join(' ').slice(0, 500) || null;
+        const codigoBanco = m.bank_transaction_code?.code?.slice(0, 40) ?? null;
+
         const [r] = await db
           .insert(bankTransactions)
           .values({
@@ -233,22 +295,36 @@ bancoRouter.post('/sincronizar/:id(\\d+)', ah(async (req: AuthedRequest, res) =>
             currency: m.transaction_amount?.currency ?? cuenta.currency,
             direction: m.credit_debit_indicator === 'CRDT' ? 'CRDT' : 'DBIT',
             counterparty: (m.credit_debit_indicator === 'CRDT' ? m.debtor?.name : m.creditor?.name)?.slice(0, 200) ?? null,
-            concept: (m.remittance_information ?? []).join(' ').slice(0, 500) || null,
+            concept: concepto,
             status: (m.status ?? 'BOOK').slice(0, 8),
+            bankCode: codigoBanco,
+            tipo: tipoDeMovimiento({ bankCode: codigoBanco, concept: concepto }),
           })
           // ya lo teníamos: se refresca el estado (un PEND que pasa a BOOK) y
           // nada más. La clave única (cuenta, referencia) hace el trabajo.
-          .onDuplicateKeyUpdate({ set: { status: (m.status ?? 'BOOK').slice(0, 8) } });
+          // ya lo teníamos: además del estado se refrescan código y tipo, que
+          // es como se pone al día lo guardado antes de que esto existiera
+          .onDuplicateKeyUpdate({
+            set: {
+              status: (m.status ?? 'BOOK').slice(0, 8),
+              bankCode: codigoBanco,
+              tipo: tipoDeMovimiento({ bankCode: codigoBanco, concept: concepto }),
+            },
+          });
         // MySQL: 1 = insertado, 2 = ya estaba y se actualizó, 0 = ya estaba igual
         if (r.affectedRows === 1) nuevos += 1;
       }
     }
 
+    // Los traspasos solo se ven con los DOS lados delante, así que se
+    // recalculan al final y sobre todas las cuentas, no solo las de este banco.
+    const traspasos = await recalcularTraspasos(req.userId!);
+
     await db
       .update(bankConnections)
       .set({ lastSyncAt: new Date(), lastError: null })
       .where(eq(bankConnections.id, id));
-    res.json({ ok: true, nuevos });
+    res.json({ ok: true, nuevos, traspasos });
   } catch (e) {
     const f = fallo(e);
     await db.update(bankConnections).set({ lastError: f.error }).where(eq(bankConnections.id, id));
@@ -271,13 +347,182 @@ bancoRouter.get('/movimientos', ah(async (req: AuthedRequest, res) => {
       estado: bankTransactions.status,
       cuenta: bankAccounts.name,
       cuentaIban: bankAccounts.ibanTail,
+      tipo: bankTransactions.tipo,
     })
     .from(bankTransactions)
     .innerJoin(bankAccounts, eq(bankTransactions.accountId, bankAccounts.id))
     .where(eq(bankTransactions.userId, req.userId!))
     .orderBy(desc(bankTransactions.bookingDate), desc(bankTransactions.id))
     .limit(limite);
-  res.json(filas);
+  // el nombre del tipo lo pone el servidor: una sola lista de nombres, no dos
+  res.json(
+    filas.map((f) => ({
+      ...f,
+      tipoNombre: f.tipo && f.tipo in NOMBRE_TIPO ? NOMBRE_TIPO[f.tipo as Tipo] : null,
+    })),
+  );
+}));
+
+// POST /reclasificar — volver a poner el tipo a todo lo guardado
+//
+// Existe porque la regla va a mejorar: cuando se afine, esto lo aplica a lo que
+// ya está en casa sin volver a pedirle nada al banco. No toca importes ni
+// fechas, solo la etiqueta.
+bancoRouter.post('/reclasificar', ah(async (req: AuthedRequest, res) => {
+  const filas = await db
+    .select({
+      id: bankTransactions.id,
+      bankCode: bankTransactions.bankCode,
+      concept: bankTransactions.concept,
+    })
+    .from(bankTransactions)
+    .where(eq(bankTransactions.userId, req.userId!));
+
+  // Una sentencia por tipo en vez de una por movimiento: son 344 hoy, pero
+  // serán 4.000 en un año y la base está en Oregón.
+  const porTipo = new Map<Tipo, number[]>();
+  for (const f of filas) {
+    const t = tipoDeMovimiento(f);
+    (porTipo.get(t) ?? porTipo.set(t, []).get(t)!).push(f.id);
+  }
+  for (const [tipo, ids] of porTipo) {
+    for (let i = 0; i < ids.length; i += 200) {
+      await db
+        .update(bankTransactions)
+        .set({ tipo })
+        .where(and(eq(bankTransactions.userId, req.userId!), inArray(bankTransactions.id, ids.slice(i, i + 200))));
+    }
+  }
+
+  const traspasos = await recalcularTraspasos(req.userId!);
+  res.json({
+    ok: true,
+    movimientos: filas.length,
+    traspasos,
+    sinClasificar: porTipo.get('otro')?.length ?? 0,
+  });
+}));
+
+// GET /resumen?mes=YYYY-MM — el mes de verdad
+//
+// La pantalla 1. Su única razón de ser: los traspasos NO son ni ingreso ni
+// gasto. Sin descontarlos, 2.140 € que solo pasaron de Santander a Revolut se
+// cuentan dos veces y el mes miente. Se devuelven aparte y contados para que
+// eso se pueda auditar en pantalla, no para que haya que creerse el número.
+bancoRouter.get('/resumen', ah(async (req: AuthedRequest, res) => {
+  const hoy = new Date().toISOString().slice(0, 7);
+  const mes = /^\d{4}-(0[1-9]|1[0-2])$/.test(String(req.query.mes ?? '')) ? String(req.query.mes) : hoy;
+  const [anio, m] = mes.split('-').map(Number);
+  const ultimoDia = new Date(Date.UTC(anio, m, 0)).getUTCDate();
+  const desde = `${mes}-01`;
+  const hasta = `${mes}-${String(ultimoDia).padStart(2, '0')}`;
+
+  const cuentas = await db
+    .select({
+      id: bankAccounts.id,
+      nombre: bankAccounts.name,
+      iban: bankAccounts.ibanTail,
+      moneda: bankAccounts.currency,
+      saldo: bankAccounts.balance,
+      saldoAt: bankAccounts.balanceAt,
+      banco: bankConnections.aspspName,
+    })
+    .from(bankAccounts)
+    .innerJoin(bankConnections, eq(bankAccounts.connectionId, bankConnections.id))
+    .where(and(eq(bankAccounts.userId, req.userId!), isNull(bankAccounts.archivedAt)));
+
+  const filas = await db
+    .select({
+      importe: bankTransactions.amount,
+      direccion: bankTransactions.direction,
+      fecha: bankTransactions.bookingDate,
+      tipo: bankTransactions.tipo,
+    })
+    .from(bankTransactions)
+    .where(
+      and(
+        eq(bankTransactions.userId, req.userId!),
+        gte(bankTransactions.bookingDate, desde),
+        lte(bankTransactions.bookingDate, hasta),
+      ),
+    );
+
+  // En céntimos: con decimales en coma flotante, 0,1 + 0,2 no es 0,3.
+  const cent = (s: string) => Math.round(Number(s) * 100);
+  const euros = (c: number) => Number((c / 100).toFixed(2));
+
+  let entra = 0;
+  let sale = 0;
+  let traspasos = 0;
+  let nTraspasos = 0;
+  const semanas = [1, 8, 15, 22].map((d) => ({
+    etiqueta: `${d}–${d === 22 ? ultimoDia : d + 6}`,
+    entra: 0,
+    sale: 0,
+  }));
+  const tipos = new Map<string, { n: number; entra: number; sale: number }>();
+
+  for (const f of filas) {
+    const c = cent(f.importe);
+    const tipo = (f.tipo ?? 'otro') as Tipo;
+    const t = tipos.get(tipo) ?? { n: 0, entra: 0, sale: 0 };
+    t.n += 1;
+    if (f.direccion === 'CRDT') t.entra += c;
+    else t.sale += c;
+    tipos.set(tipo, t);
+
+    if (tipo === 'traspaso') {
+      // se cuentan aparte: es dinero cambiando de bolsillo, no del mes
+      if (f.direccion === 'DBIT') {
+        traspasos += c;
+        nTraspasos += 1;
+      } else nTraspasos += 1;
+      continue;
+    }
+
+    if (f.direccion === 'CRDT') entra += c;
+    else sale += c;
+
+    const dia = Number((f.fecha ?? `${desde}`).slice(8, 10));
+    const hueco = semanas[Math.min(3, Math.floor((dia - 1) / 7))];
+    if (f.direccion === 'CRDT') hueco.entra += c;
+    else hueco.sale += c;
+  }
+
+  const [primero] = await db
+    .select({ fecha: sql<string | null>`min(${bankTransactions.bookingDate})` })
+    .from(bankTransactions)
+    .where(eq(bankTransactions.userId, req.userId!));
+
+  res.json({
+    mes,
+    primerMes: primero?.fecha ? String(primero.fecha).slice(0, 7) : mes,
+    saldo: {
+      total: euros(cuentas.reduce((a, c) => a + (c.saldo ? cent(c.saldo) : 0), 0)),
+      at: cuentas.map((c) => c.saldoAt).filter(Boolean).sort().pop() ?? null,
+      cuentas: cuentas.map((c) => ({
+        id: c.id,
+        banco: c.banco,
+        nombre: c.nombre,
+        iban: c.iban,
+        moneda: c.moneda,
+        saldo: c.saldo ? Number(c.saldo) : null,
+      })),
+    },
+    movimientos: filas.length,
+    entra: euros(entra),
+    sale: euros(sale),
+    queda: euros(entra - sale),
+    traspasos: { n: nTraspasos, importe: euros(traspasos) },
+    semanas: semanas.map((s) => ({ ...s, entra: euros(s.entra), sale: euros(s.sale) })),
+    tipos: TIPOS.filter((t) => tipos.has(t)).map((t) => ({
+      tipo: t,
+      nombre: NOMBRE_TIPO[t],
+      n: tipos.get(t)!.n,
+      entra: euros(tipos.get(t)!.entra),
+      sale: euros(tipos.get(t)!.sale),
+    })),
+  });
 }));
 
 // GET /crudo — la respuesta del banco SIN interpretar, para poder mirarla.

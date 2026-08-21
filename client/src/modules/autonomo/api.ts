@@ -57,6 +57,26 @@ export interface MovimientoBanco {
   estado: string;
   cuenta: string | null;
   cuentaIban: string | null;
+  tipo: string | null;
+  tipoNombre: string | null;
+}
+
+/** El mes de verdad: lo que entra y sale sin contar traspasos entre cuentas. */
+export interface ResumenMes {
+  mes: string;
+  primerMes: string;
+  saldo: {
+    total: number;
+    at: string | null;
+    cuentas: { id: number; banco: string; nombre: string | null; iban: string | null; moneda: string; saldo: number | null }[];
+  };
+  movimientos: number;
+  entra: number;
+  sale: number;
+  queda: number;
+  traspasos: { n: number; importe: number };
+  semanas: { etiqueta: string; entra: number; sale: number }[];
+  tipos: { tipo: string; nombre: string; n: number; entra: number; sale: number }[];
 }
 
 export const bancoApi = {
@@ -67,7 +87,14 @@ export const bancoApi = {
     post<{ url: string; conexionId: number }>('/autonomo/banco/conectar', { banco, pais }),
   vuelta: (code: string, state: string) =>
     post<{ ok: boolean; cuentas: number }>('/autonomo/banco/vuelta', { code, state }),
-  sincronizar: (id: number) => post<{ ok: boolean; nuevos: number }>(`/autonomo/banco/sincronizar/${id}`, {}),
+  sincronizar: (id: number) =>
+    post<{ ok: boolean; nuevos: number; traspasos: number }>(`/autonomo/banco/sincronizar/${id}`, {}),
+  resumen: (mes?: string) => get<ResumenMes>(`/autonomo/banco/resumen${mes ? `?mes=${mes}` : ''}`),
+  reclasificar: () =>
+    post<{ ok: boolean; movimientos: number; traspasos: number; sinClasificar: number }>(
+      '/autonomo/banco/reclasificar',
+      {},
+    ),
   movimientos: (limite = 100) => get<MovimientoBanco[]>(`/autonomo/banco/movimientos?limite=${limite}`),
   desconectar: (id: number) => del<{ ok: boolean }>(`/autonomo/banco/conexiones/${id}`),
 };

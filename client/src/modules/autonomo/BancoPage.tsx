@@ -1,18 +1,32 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { bancoApi, type ConexionBanco, type MovimientoBanco } from './api';
+import MesDeVerdad from './MesDeVerdad';
 
 /**
- * Banco: BANCO DE PRUEBAS, no una pantalla terminada.
+ * Banco: el mes de verdad arriba, la fontanería debajo.
  *
- * Existe para contestar a una pregunta antes de diseñar nada: ¿qué datos da
- * de verdad cada banco? Por eso no está en el menú y se llega por dirección
- * directa (/autonomo/banco). Cuando sepamos qué llega de Ibercaja, Santander
- * y Revolut, se decide qué enseñar y esto se tira o se rehace.
+ * Nació como banco de pruebas para contestar una pregunta antes de diseñar
+ * nada: ¿qué datos da de verdad cada banco? Ya está contestada con Santander,
+ * Ibercaja y Revolut delante, y de ahí salió la primera pantalla (`MesDeVerdad`)
+ * y el tipo automático de cada movimiento.
  *
- * Lo que sí es definitivo es lo de debajo: se autoriza en la web del propio
- * banco, el portal nunca ve las claves y solo puede leer.
+ * Lo de debajo —conexiones, cuentas y últimos movimientos— sigue siendo lo que
+ * era: se autoriza en la web del propio banco, el portal nunca ve las claves y
+ * solo puede leer.
  */
+/**
+ * Tapa lo que el banco no debería estar mandando.
+ *
+ * Santander mete el número COMPLETO de la tarjeta dentro del concepto de
+ * algunas compras («…, TARJETA 5163…»). Es cosa suya, pero pintarlo en
+ * pantalla lo convierte en cosa nuestra: se deja solo la cola, como con el
+ * IBAN. No se toca lo guardado, solo lo que se ve.
+ */
+function sinNumerosLargos(texto: string): string {
+  return texto.replace(/\d{8,}/g, (n) => `···${n.slice(-4)}`);
+}
+
 export default function BancoPage() {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
@@ -21,6 +35,9 @@ export default function BancoPage() {
   const [bancos, setBancos] = useState<{ nombre: string; logo: string | null }[] | null>(null);
   const [eligiendo, setEligiendo] = useState(false);
   const [busy, setBusy] = useState('');
+  // sube cada vez que llegan datos nuevos: es la señal para que el mes se
+  // vuelva a calcular sin tener que pasarle el resumen desde aquí
+  const [refrescar, setRefrescar] = useState(0);
   const [aviso, setAviso] = useState('');
   const [error, setError] = useState('');
 
@@ -28,6 +45,7 @@ export default function BancoPage() {
     const [e, m] = await Promise.all([bancoApi.estado(), bancoApi.movimientos().catch(() => [])]);
     setEstado(e);
     setMovimientos(m);
+    setRefrescar((n) => n + 1);
   }, []);
 
   useEffect(() => {
@@ -86,7 +104,8 @@ export default function BancoPage() {
     setAviso('');
     try {
       const r = await bancoApi.sincronizar(id);
-      setAviso(r.nuevos > 0 ? `${r.nuevos} movimientos nuevos.` : 'Ya estabas al día: nada nuevo.');
+      const traspasos = r.traspasos > 0 ? ` · ${r.traspasos} traspasos entre tus cuentas` : '';
+      setAviso((r.nuevos > 0 ? `${r.nuevos} movimientos nuevos` : 'Ya estabas al día: nada nuevo') + traspasos + '.');
       await cargar();
     } catch (e) {
       setError((e as Error).message);
@@ -101,13 +120,15 @@ export default function BancoPage() {
         <h1>Banco</h1>
       </div>
       <p className="page-sub">
-        Banco de pruebas: sirve para ver qué datos da cada banco antes de diseñar nada. Solo lectura — el portal no
+        Lo que entra y sale de verdad, sin contar el dinero que solo cambia de bolsillo. Solo lectura — el portal no
         puede mover dinero ni ve tus claves.
       </p>
 
       {error && <div className="error-msg">{error}</div>}
       {aviso && <p className="bk-aviso">{aviso}</p>}
       {busy === 'vuelta' && <p className="muted">Terminando la conexión con tu banco…</p>}
+
+      {estado?.conexiones.length ? <MesDeVerdad refrescar={refrescar} /> : null}
 
       {estado && !estado.configurado && (
         <section className="section mc-bloque">
@@ -207,8 +228,11 @@ export default function BancoPage() {
               <div key={m.id} className="bk-mov">
                 <span className="bk-mov-f">{m.fecha ? m.fecha.slice(8, 10) + '/' + m.fecha.slice(5, 7) : '—'}</span>
                 <span className="bk-mov-t">
-                  <b>{m.contraparte || m.concepto || 'Movimiento'}</b>
-                  {m.contraparte && m.concepto && <span className="bk-mov-c">{m.concepto}</span>}
+                  <b>{sinNumerosLargos(m.contraparte || m.concepto || 'Movimiento')}</b>
+                  <span className="bk-mov-c">
+                    {m.tipoNombre && <em className="bk-mov-tipo">{m.tipoNombre}</em>}
+                    {m.contraparte && m.concepto ? sinNumerosLargos(m.concepto) : ''}
+                  </span>
                 </span>
                 <span className={`bk-mov-i ${m.direccion === 'CRDT' ? 'entra' : 'sale'}`}>
                   {m.direccion === 'CRDT' ? '+' : '−'}

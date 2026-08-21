@@ -1117,6 +1117,14 @@ export const bankTransactions = mysqlTable('bank_transactions', {
   status: varchar('status', { length: 8 }).notNull().default('BOOK'),
   invoiceId: bigint('invoice_id', { mode: 'number' }),
   category: varchar('category', { length: 60 }),
+  // El código que manda el banco tal cual (Revolut lo manda siempre): la señal
+  // más fiable para saber de qué clase es el movimiento.
+  bankCode: varchar('bank_code', { length: 40 }),
+  // La clase que calcula el portal, del código o del concepto. Ver `tipos.ts`.
+  tipo: varchar('tipo', { length: 30 }),
+  // El otro lado de un traspaso propio: sale de un banco y entra en otro, así
+  // que no es ni ingreso ni gasto.
+  pairId: bigint('pair_id', { mode: 'number' }),
   createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 

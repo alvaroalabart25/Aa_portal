@@ -235,6 +235,9 @@ export interface MovimientoApi {
   debtor?: { name?: string };
   remittance_information?: string[];
   reference_number?: string;
+  // Revolut lo manda en TODOS sus movimientos (TRANSFER, CARD_PAYMENT, TOPUP…);
+  // Santander e Ibercaja, nunca. Medido, no supuesto.
+  bank_transaction_code?: { code?: string; sub_code?: string; description?: string };
 }
 
 /**

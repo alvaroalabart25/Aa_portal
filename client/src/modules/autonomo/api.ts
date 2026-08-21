@@ -64,6 +64,11 @@ export interface MovimientoBanco {
 /** El mes de verdad: lo que entra y sale sin contar traspasos entre cuentas. */
 export interface ResumenMes {
   mes: string;
+  vigente: string;
+  /** true = periodo por ciclo de cobro (del 24 al 23); false = mes natural */
+  ciclo: boolean;
+  desde: string;
+  hasta: string;
   primerMes: string;
   saldo: {
     total: number;
@@ -94,7 +99,8 @@ export const bancoApi = {
       `/autonomo/banco/sincronizar/${id}${dias ? `?dias=${dias}` : ''}`,
       {},
     ),
-  resumen: (mes?: string) => get<ResumenMes>(`/autonomo/banco/resumen${mes ? `?mes=${mes}` : ''}`),
+  resumen: (mes?: string, ciclo = true) =>
+    get<ResumenMes>(`/autonomo/banco/resumen?ciclo=${ciclo ? 1 : 0}${mes ? `&mes=${mes}` : ''}`),
   reclasificar: () =>
     post<{ ok: boolean; movimientos: number; traspasos: number; sinClasificar: number }>(
       '/autonomo/banco/reclasificar',

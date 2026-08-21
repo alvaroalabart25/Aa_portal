@@ -11,6 +11,12 @@ import { bancoApi, type ResumenMes } from './api';
  * número de traspasos y su importe se enseñan debajo para que se pueda
  * comprobar, en vez de tener que fiarse.
  *
+ * Y el periodo NO es el mes del calendario, por una razón suya: cobra del 24 al
+ * 30. Un día 21, el mes natural enseña tres semanas de gasto y ningún ingreso, y
+ * parece un agujero de 859 € cuando el ciclo cerrado está en +349,97. Por eso se
+ * mira del 24 al 23, con el mes natural a un toque para cuando haga falta (los
+ * trimestres de Hacienda sí son naturales).
+ *
  * Lo que NO hay: categorías de gasto. La categoría de comercio viene vacía en
  * los tres bancos, así que etiquetar «cena» o «gasolina» sería trabajo a mano.
  */
@@ -19,6 +25,16 @@ const MESES = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
 ];
+
+const CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+/** «24 ago», para rotular el ciclo sin que haya que interpretarlo. */
+const diaMes = (iso: string) => {
+  const d = new Date(iso);
+  return `${d.getUTCDate()} ${CORTOS[d.getUTCMonth()]}`;
+};
+
+const RECUERDA_CICLO = 'aa_banco_ciclo';
 
 const eur = (n: number) => n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -33,10 +49,11 @@ const mover = (mes: string, pasos: number) => {
   return new Date(Date.UTC(a, m - 1 + pasos, 1)).toISOString().slice(0, 7);
 };
 
-const HOY = new Date().toISOString().slice(0, 7);
-
 export default function MesDeVerdad({ refrescar }: { refrescar: number }) {
-  const [mes, setMes] = useState(HOY);
+  // null = el periodo en curso, que lo decide el servidor: al cambiar de modo
+  // el periodo vigente no es el mismo y no se puede adivinar desde aquí
+  const [mes, setMes] = useState<string | null>(null);
+  const [ciclo, setCiclo] = useState(() => localStorage.getItem(RECUERDA_CICLO) !== 'no');
   const [r, setR] = useState<ResumenMes | null>(null);
   const [cargando, setCargando] = useState(true);
 
@@ -44,14 +61,20 @@ export default function MesDeVerdad({ refrescar }: { refrescar: number }) {
     let vivo = true;
     setCargando(true);
     bancoApi
-      .resumen(mes)
+      .resumen(mes ?? undefined, ciclo)
       .then((x) => vivo && setR(x))
       .catch(() => vivo && setR(null))
       .finally(() => vivo && setCargando(false));
     return () => {
       vivo = false;
     };
-  }, [mes, refrescar]);
+  }, [mes, ciclo, refrescar]);
+
+  function cambiarModo(aCiclo: boolean) {
+    localStorage.setItem(RECUERDA_CICLO, aCiclo ? 'si' : 'no');
+    setMes(null);
+    setCiclo(aCiclo);
+  }
 
   if (!r && cargando) return <section className="section mc-bloque"><p className="muted">Calculando el mes…</p></section>;
   if (!r) return null;
@@ -60,6 +83,10 @@ export default function MesDeVerdad({ refrescar }: { refrescar: number }) {
   const tope = Math.max(...r.semanas.flatMap((s) => [s.entra, s.sale]), 1);
   const tipos = r.tipos.filter((t) => t.tipo !== 'traspaso');
   const sinClasificar = tipos.find((t) => t.tipo === 'otro');
+  // La liquidación es gasto de ESTE periodo pero compras del anterior: si no se
+  // dice, el mes parece peor de lo que fue.
+  const credito = tipos.find((t) => t.tipo === 'liquidacion');
+  const rotulo = r.ciclo ? `${diaMes(r.desde)} → ${diaMes(r.hasta)}` : nombreMes(r.mes);
 
   return (
     <section className="section mc-bloque">
@@ -68,18 +95,18 @@ export default function MesDeVerdad({ refrescar }: { refrescar: number }) {
         <div className="mv-nav">
           <button
             className="mv-flecha"
-            disabled={mes <= r.primerMes}
-            aria-label="Mes anterior"
-            onClick={() => setMes(mover(mes, -1))}
+            disabled={r.mes <= r.primerMes}
+            aria-label="Periodo anterior"
+            onClick={() => setMes(mover(r.mes, -1))}
           >
             ‹
           </button>
-          <span className="mv-mes">{nombreMes(mes)}</span>
+          <span className="mv-mes">{rotulo}</span>
           <button
             className="mv-flecha"
-            disabled={mes >= HOY}
-            aria-label="Mes siguiente"
-            onClick={() => setMes(mover(mes, 1))}
+            disabled={r.mes >= r.vigente}
+            aria-label="Periodo siguiente"
+            onClick={() => setMes(mover(r.mes, 1))}
           >
             ›
           </button>
@@ -94,8 +121,12 @@ export default function MesDeVerdad({ refrescar }: { refrescar: number }) {
         </span>
       </div>
 
+      <button className="mv-modo" onClick={() => cambiarModo(!r.ciclo)}>
+        {r.ciclo ? 'Estás viendo tu ciclo de cobro · ver el mes natural' : 'Estás viendo el mes natural · ver tu ciclo de cobro'}
+      </button>
+
       {r.movimientos === 0 ? (
-        <p className="muted mc-vacio">Ningún movimiento en {nombreMes(mes)}.</p>
+        <p className="muted mc-vacio">Ningún movimiento entre {diaMes(r.desde)} y {diaMes(r.hasta)}.</p>
       ) : (
         <>
           <div className="mv-cifras">
@@ -108,7 +139,7 @@ export default function MesDeVerdad({ refrescar }: { refrescar: number }) {
               <b>{eur(r.sale)} €</b>
             </div>
             <div className={r.queda >= 0 ? 'mv-bien' : 'mv-mal'}>
-              <span>Queda</span>
+              <span>Diferencia</span>
               <b>
                 {r.queda < 0 && '−'}
                 {eur(Math.abs(r.queda))} €
@@ -157,6 +188,13 @@ export default function MesDeVerdad({ refrescar }: { refrescar: number }) {
               </div>
             ))}
           </div>
+
+          {credito && credito.sale > 0 && (
+            <p className="mv-nota">
+              De lo que sale, {eur(credito.sale)} € es la liquidación de la tarjeta de crédito: son compras del
+              periodo anterior, cobradas en este.
+            </p>
+          )}
 
           {sinClasificar && (
             <p className="mv-nota">

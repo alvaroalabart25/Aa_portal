@@ -47,6 +47,13 @@ function fallo(e: unknown): { status: number; error: string } {
   return { status: 502, error: (e as Error).message || 'El banco no ha respondido' };
 }
 
+/**
+ * El día en que empieza su mes de verdad. Suyo, dicho por él: «yo cobro del 24
+ * al 30 de cada mes». Si algún día cobra en otras fechas, esto es lo único que
+ * hay que cambiar.
+ */
+const CICLO_DIA = 24;
+
 /** Los últimos 120 días: el emparejado necesita ver los dos lados, no el mes. */
 const VENTANA_TRASPASOS = 120;
 
@@ -414,12 +421,26 @@ bancoRouter.post('/reclasificar', ah(async (req: AuthedRequest, res) => {
 // cuentan dos veces y el mes miente. Se devuelven aparte y contados para que
 // eso se pueda auditar en pantalla, no para que haya que creerse el número.
 bancoRouter.get('/resumen', ah(async (req: AuthedRequest, res) => {
-  const hoy = new Date().toISOString().slice(0, 7);
-  const mes = /^\d{4}-(0[1-9]|1[0-2])$/.test(String(req.query.mes ?? '')) ? String(req.query.mes) : hoy;
+  // Su mes NO es el del calendario: cobra del 24 al 30, así que un día 21 el mes
+  // natural enseña 21 días de gasto y ningún ingreso, y parece un socavón. Por
+  // ciclo, todos sus meses cerrados salen en positivo. El mes natural se queda
+  // disponible porque los trimestres de Hacienda sí son naturales.
+  const ciclo = req.query.ciclo === '1' || req.query.ciclo === 'true';
+  const ahora = new Date();
+  const vigente = new Date(
+    Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth() - (ciclo && ahora.getUTCDate() < CICLO_DIA ? 1 : 0), 1),
+  )
+    .toISOString()
+    .slice(0, 7);
+  const mes = /^\d{4}-(0[1-9]|1[0-2])$/.test(String(req.query.mes ?? '')) ? String(req.query.mes) : vigente;
   const [anio, m] = mes.split('-').map(Number);
-  const ultimoDia = new Date(Date.UTC(anio, m, 0)).getUTCDate();
-  const desde = `${mes}-01`;
-  const hasta = `${mes}-${String(ultimoDia).padStart(2, '0')}`;
+
+  // El ciclo se nombra por el mes en que ARRANCA, que es cuando entra el cobro
+  const inicio = new Date(Date.UTC(anio, m - 1, ciclo ? CICLO_DIA : 1));
+  const fin = ciclo ? new Date(Date.UTC(anio, m, CICLO_DIA - 1)) : new Date(Date.UTC(anio, m, 0));
+  const desde = inicio.toISOString().slice(0, 10);
+  const hasta = fin.toISOString().slice(0, 10);
+  const totalDias = Math.round((fin.getTime() - inicio.getTime()) / 86400000) + 1;
 
   const cuentas = await db
     .select({
@@ -459,11 +480,22 @@ bancoRouter.get('/resumen', ah(async (req: AuthedRequest, res) => {
   let sale = 0;
   let traspasos = 0;
   let nTraspasos = 0;
-  const semanas = [1, 8, 15, 22].map((d) => ({
-    etiqueta: `${d}–${d === 22 ? ultimoDia : d + 6}`,
+  // Cuatro tramos repartidos por el periodo, sea del 1 al 31 o del 24 al 23
+  const corte = (i: number) => Math.floor((i * totalDias) / 4);
+  const diaDelPeriodo = (offset: number) => {
+    const d = new Date(inicio.getTime() + offset * 86400000);
+    return d.getUTCDate();
+  };
+  const semanas = [0, 1, 2, 3].map((i) => ({
+    etiqueta: `${diaDelPeriodo(corte(i))}–${diaDelPeriodo(i === 3 ? totalDias - 1 : corte(i + 1) - 1)}`,
     entra: 0,
     sale: 0,
   }));
+  const tramoDe = (offset: number) => {
+    let i = 3;
+    while (i > 0 && offset < corte(i)) i -= 1;
+    return i;
+  };
   const tipos = new Map<string, { n: number; entra: number; sale: number }>();
 
   for (const f of filas) {
@@ -487,8 +519,8 @@ bancoRouter.get('/resumen', ah(async (req: AuthedRequest, res) => {
     if (f.direccion === 'CRDT') entra += c;
     else sale += c;
 
-    const dia = Number((f.fecha ?? `${desde}`).slice(8, 10));
-    const hueco = semanas[Math.min(3, Math.floor((dia - 1) / 7))];
+    const offset = Math.round((new Date(f.fecha ?? desde).getTime() - inicio.getTime()) / 86400000);
+    const hueco = semanas[tramoDe(Math.max(0, Math.min(totalDias - 1, offset)))];
     if (f.direccion === 'CRDT') hueco.entra += c;
     else hueco.sale += c;
   }
@@ -498,9 +530,25 @@ bancoRouter.get('/resumen', ah(async (req: AuthedRequest, res) => {
     .from(bankTransactions)
     .where(eq(bankTransactions.userId, req.userId!));
 
+  // El primer periodo con datos, para no dejar navegar hacia un vacío
+  let primerMes = mes;
+  if (primero?.fecha) {
+    const p = new Date(String(primero.fecha));
+    primerMes = ciclo
+      ? new Date(Date.UTC(p.getUTCFullYear(), p.getUTCMonth() - (p.getUTCDate() < CICLO_DIA ? 1 : 0), 1))
+          .toISOString()
+          .slice(0, 7)
+      : String(primero.fecha).slice(0, 7);
+  }
+
   res.json({
     mes,
-    primerMes: primero?.fecha ? String(primero.fecha).slice(0, 7) : mes,
+    // el periodo en curso, para que la pantalla sepa hasta dónde puede avanzar
+    vigente,
+    ciclo,
+    desde,
+    hasta,
+    primerMes,
     saldo: {
       total: euros(cuentas.reduce((a, c) => a + (c.saldo ? cent(c.saldo) : 0), 0)),
       at: cuentas.map((c) => c.saldoAt).filter(Boolean).sort().pop() ?? null,

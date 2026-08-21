@@ -2073,6 +2073,13 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .mv-total { margin: 12px 0 14px; }
 .mv-total b { display: block; font-family: var(--font-title); font-size: 30px; font-weight: 600; letter-spacing: -.01em; }
 .mv-total span { font-size: 12px; color: var(--ink-muted); }
+/* El conmutador de periodo: es una aclaración con acción, no un botón */
+.mv-modo {
+  background: none; border: none; padding: 0; margin: -6px 0 12px; cursor: pointer;
+  font: inherit; font-size: 12px; color: var(--ink-muted); text-align: left;
+  text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px;
+}
+.mv-modo:hover { color: var(--ink); }
 .mv-cifras {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; align-items: end;
   border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 12px 0;

@@ -44,7 +44,7 @@ export const NOMBRE_TIPO: Record<Tipo, string> = {
   bizum: 'Bizum',
   transferencia: 'Transferencia',
   recibo: 'Recibo domiciliado',
-  liquidacion: 'Liquidación de tarjeta',
+  liquidacion: 'Liquidación de tarjeta de crédito',
   comision: 'Comisión',
   intereses: 'Intereses',
   cambio: 'Cambio de divisa',

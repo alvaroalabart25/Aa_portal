@@ -153,6 +153,15 @@ bancoRouter.get('/estado', ah(async (req: AuthedRequest, res) => {
 bancoRouter.get('/bancos', ah(async (req: AuthedRequest, res) => {
   try {
     const lista = await bancosDisponibles(String(req.query.pais ?? 'ES'));
+    // ?crudo= devuelve lo que el banco anuncia DE SÍ MISMO (qué productos
+    // expone, qué métodos de autorización, cuánto dura el consentimiento). No
+    // hay ni un dato personal ahí, y es la única forma de contestar a «¿se
+    // puede leer la tarjeta de crédito?» sin ir preguntando por ahí.
+    const buscado = String(req.query.crudo ?? '').trim();
+    if (buscado) {
+      const uno = lista.find((b) => b.name.toLowerCase() === buscado.toLowerCase());
+      return res.json(uno ?? { error: 'ese banco no está en la lista', hay: lista.length });
+    }
     res.json(
       lista.map((b) => ({ nombre: b.name, pais: b.country, logo: b.logo ?? null })),
     );
@@ -591,6 +600,12 @@ bancoRouter.get('/crudo/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
   desde.setDate(desde.getDate() - Number(req.query.dias ?? DIAS_HISTORIAL));
   const uid = encodeURIComponent(cuenta.accountUid);
   try {
+    // ?que=details pregunta QUÉ es esta cuenta (producto, tipo, uso). Es lo que
+    // dice si el banco expone tarjetas de crédito como cuenta o solo la
+    // corriente.
+    if (String(req.query.que ?? '') === 'details') {
+      return res.json({ cuenta: cuenta.name, detalles: await crudo(`/accounts/${uid}/details`) });
+    }
     const [saldos, movimientos] = await Promise.all([
       crudo(`/accounts/${uid}/balances`),
       crudo(`/accounts/${uid}/transactions?date_from=${desde.toISOString().slice(0, 10)}`),

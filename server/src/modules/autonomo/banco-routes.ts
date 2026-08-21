@@ -8,6 +8,7 @@ import { bankAccounts, bankConnections, bankTransactions } from '../../db/schema
 import type { AuthedRequest } from '../../core/auth/middleware';
 import {
   BancoApagado,
+  ClaveIlegible,
   bancoConfigurado,
   bancosDisponibles,
   canjearSesion,
@@ -41,6 +42,7 @@ function fallo(e: unknown): { status: number; error: string } {
   if (e instanceof BancoApagado) {
     return { status: 503, error: 'La conexión con el banco no está configurada todavía' };
   }
+  if (e instanceof ClaveIlegible) return { status: 503, error: (e as Error).message };
   return { status: 502, error: (e as Error).message || 'El banco no ha respondido' };
 }
 

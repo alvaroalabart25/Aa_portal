@@ -26,9 +26,45 @@ export function bancoConfigurado(): boolean {
   return Boolean(process.env.ENABLEBANKING_APP_ID && process.env.ENABLEBANKING_KEY);
 }
 
-/** La clave llega de Render en una sola línea: los \n vienen escapados. */
+/**
+ * La clave privada, reconstruida venga como venga.
+ *
+ * Al pegarla en el panel de Render los saltos de línea sobreviven de tres
+ * formas distintas: reales, escapados como \n, o directamente convertidos en
+ * espacios. OpenSSL solo acepta la primera y con las otras dos responde
+ * «DECODER routines::unsupported», que no dice nada de lo que pasa de verdad.
+ * Así que no confiamos en el formato: nos quedamos con el tipo de clave y su
+ * base64, y volvemos a montar el PEM a 64 caracteres por línea.
+ */
 function clavePrivada(): string {
-  return (process.env.ENABLEBANKING_KEY ?? '').replace(/\\n/g, '\n');
+  const bruto = process.env.ENABLEBANKING_KEY ?? '';
+  const crudo = bruto.replace(/\\n/g, '\n').trim();
+  const m = /-----BEGIN ([A-Z ]+?)-----([\s\S]*?)-----END \1-----/.exec(crudo);
+  if (!m) throw new ClaveIlegible(formaDeLaClave(bruto));
+  const cuerpo = m[2].replace(/[^A-Za-z0-9+/=]/g, '');
+  if (!cuerpo) throw new ClaveIlegible(formaDeLaClave(bruto));
+  const lineas = cuerpo.match(/.{1,64}/g) ?? [];
+  return `-----BEGIN ${m[1]}-----\n${lineas.join('\n')}\n-----END ${m[1]}-----\n`;
+}
+
+/**
+ * Cómo es la clave que ha llegado, SIN decir lo que dice.
+ *
+ * Cuando el PEM no se puede leer hay que saber si llegó cortada, con la
+ * cabecera de otro formato o vacía, y eso no se puede averiguar desde fuera.
+ * Se cuentan caracteres y se mira la cabecera —que no es secreta—; nunca sale
+ * un solo carácter del cuerpo de la clave.
+ */
+function formaDeLaClave(bruto: string): string {
+  const cabecera = /-----BEGIN ([A-Z ]+?)-----/.exec(bruto);
+  const base64 = (bruto.match(/[A-Za-z0-9+/=]/g) ?? []).length;
+  return [
+    `${bruto.length} caracteres`,
+    cabecera ? `cabecera «${cabecera[1]}»` : 'sin cabecera BEGIN',
+    /-----END /.test(bruto) ? 'con cierre END' : 'SIN cierre END (llegó cortada)',
+    `${base64} caracteres de clave`,
+    bruto.includes('\n') ? 'con saltos reales' : bruto.includes('\\n') ? 'con saltos escapados' : 'sin saltos',
+  ].join(', ');
 }
 
 const base64url = (b: Buffer | string) =>
@@ -49,8 +85,23 @@ function firmarJwt(): string {
     exp: ahora + 3600,
   };
   const cuerpo = `${base64url(JSON.stringify(header))}.${base64url(JSON.stringify(payload))}`;
-  const firma = createSign('RSA-SHA256').update(cuerpo).sign(clavePrivada());
+  let firma: Buffer;
+  try {
+    firma = createSign('RSA-SHA256').update(cuerpo).sign(clavePrivada());
+  } catch (e) {
+    if (e instanceof ClaveIlegible) throw e;
+    throw new ClaveIlegible(formaDeLaClave(process.env.ENABLEBANKING_KEY ?? ''));
+  }
   return `${cuerpo}.${base64url(firma)}`;
+}
+
+/** La clave está puesta pero no se puede leer: casi siempre, mal pegada. */
+export class ClaveIlegible extends Error {
+  constructor(forma?: string) {
+    super(
+      `La clave privada del banco no se lee${forma ? ` (${forma})` : ''}: revisa que esté pegada completa, desde BEGIN hasta END`,
+    );
+  }
 }
 
 export class BancoApagado extends Error {

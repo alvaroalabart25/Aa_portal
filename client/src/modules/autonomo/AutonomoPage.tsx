@@ -71,6 +71,7 @@ export default function AutonomoPage() {
     <div>
       <div className="page-head">
         <h1>Autónomo</h1>
+        <div className="page-acciones">
         <div className="seg" role="tablist">
           {SECCIONES.map((s) => (
             <button
@@ -85,6 +86,7 @@ export default function AutonomoPage() {
           ))}
         </div>
         <OjoPrivacidad />
+        </div>
       </div>
 
       <p className="page-sub">{seccion.lema}</p>

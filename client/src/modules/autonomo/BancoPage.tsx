@@ -32,6 +32,8 @@ export default function BancoPage() {
   const [aviso, setAviso] = useState('');
   const [error, setError] = useState('');
 
+  const tab = params.get('tab') === 'movimientos' ? 'movimientos' : 'cuentas';
+
   const cargar = useCallback(async () => {
     const e = await bancoApi.estado();
     setEstado(e);
@@ -106,10 +108,27 @@ export default function BancoPage() {
     <div>
       <div className="page-head">
         <h1>Bancos</h1>
-        <OjoPrivacidad />
+        <div className="page-acciones">
+          <div className="seg" role="tablist">
+            {(['cuentas', 'movimientos'] as const).map((t) => (
+              <button
+                key={t}
+                role="tab"
+                aria-selected={tab === t}
+                className={tab === t ? 'active' : ''}
+                onClick={() => setParams(t === 'cuentas' ? {} : { tab: t }, { replace: true })}
+              >
+                {t === 'cuentas' ? 'Cuentas' : 'Movimientos'}
+              </button>
+            ))}
+          </div>
+          <OjoPrivacidad />
+        </div>
       </div>
       <p className="page-sub">
-        Tus bancos y el libro entero de movimientos. Solo lectura — el portal no puede mover dinero ni ve tus claves.
+        {tab === 'cuentas'
+          ? 'Tus bancos conectados y sus saldos. Solo lectura — el portal no puede mover dinero ni ve tus claves.'
+          : 'El libro entero, con búsqueda y filtros.'}
       </p>
 
       {error && <div className="error-msg">{error}</div>}
@@ -125,7 +144,8 @@ export default function BancoPage() {
         </section>
       )}
 
-      <>
+      {tab === 'cuentas' && (
+        <>
           {estado?.conexiones.map((c) => (
             <section key={c.id} className="section mc-bloque">
               <div className="mc-head">
@@ -214,13 +234,14 @@ export default function BancoPage() {
             </section>
           )}
 
-          <section className="section mc-bloque">
-            <div className="mc-head">
-              <h2>Movimientos</h2>
-            </div>
-            <MovimientosTab />
-          </section>
-      </>
+        </>
+      )}
+
+      {tab === 'movimientos' && (
+        <section className="section mc-bloque">
+          <MovimientosTab />
+        </section>
+      )}
 
     </div>
   );

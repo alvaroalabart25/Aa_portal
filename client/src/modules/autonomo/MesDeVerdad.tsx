@@ -96,7 +96,7 @@ export default function MesDeVerdad({ refrescar }: { refrescar: number }) {
 
       <section className="section mc-bloque">
         <div className="mc-head">
-          <h2>El ciclo</h2>
+          <h2>Cómo va el ciclo</h2>
           <div className="mv-nav">
             <button className="mv-flecha" disabled={r.mes <= r.primerMes} aria-label="Anterior" onClick={() => setMes(mover(r.mes, -1))}>
               ‹
@@ -138,6 +138,7 @@ export default function MesDeVerdad({ refrescar }: { refrescar: number }) {
                 { nombre: 'Sale', puntos: acumular(r.dias.map((d) => d.sale)), secundaria: true },
               ]}
               etiquetas={[diaMes(r.desde), diaMes(r.hasta)]}
+              fechas={r.dias.map((d) => d.fecha)}
               formato={(n) => `${Math.round(n)} €`}
             />
 
@@ -156,7 +157,7 @@ export default function MesDeVerdad({ refrescar }: { refrescar: number }) {
 
       <section className="section mc-bloque">
         <div className="mc-head">
-          <h2>Tus espacios</h2>
+          <h2>Dónde está tu dinero</h2>
         </div>
         <div className="wg-espacios">
           {r.saldo.cuentas.map((c) => (

@@ -16,17 +16,40 @@ import { useDinero } from './dinero';
 
 const dm = (iso: string) => new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 
+/** Los últimos meses naturales, para el selector. */
+function mesesRecientes(cuantos: number) {
+  const hoy = new Date();
+  return Array.from({ length: cuantos }, (_, i) => {
+    const d = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth() - i, 1));
+    const fin = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0));
+    return {
+      id: `mes-${d.toISOString().slice(0, 7)}`,
+      titulo: d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }),
+      desde: d.toISOString().slice(0, 10),
+      hasta: fin.toISOString().slice(0, 10),
+    };
+  });
+}
+
 export default function AnaliticasTab() {
   const { eur, corto } = useDinero();
   const [a, setA] = useState<Analitica | null>(null);
-  const [dias, setDias] = useState(90);
+  // «90» es días hacia atrás; cualquier otra cosa es un rango concreto
+  const [periodo, setPeriodo] = useState<string>('90');
 
   useEffect(() => {
+    const meses = mesesRecientes(6);
+    const mes = meses.find((m) => m.id === periodo);
+    const ciclo = a?.ciclos.find((c) => `ciclo-${c.id}` === periodo);
+    const rango = mes ?? ciclo;
     analiticaApi
-      .ver(dias)
+      .ver(rango ? { desde: rango.desde, hasta: rango.hasta } : { dias: Number(periodo) })
       .then(setA)
       .catch(() => setA(null));
-  }, [dias]);
+    // `a` no entra en las dependencias a propósito: solo se usa para resolver
+    // el ciclo elegido, y meterlo provocaría una recarga por cada respuesta.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [periodo]);
 
   if (!a) return <p className="muted">Calculando…</p>;
 
@@ -41,21 +64,38 @@ export default function AnaliticasTab() {
           {eur(Math.abs(a.cambio.diferencia))} €
         </b>
         <span className="wg-pie">
-          de {eur(a.cambio.desde)} € a {eur(a.cambio.hasta)} € en {a.dias} días
+          de {eur(a.cambio.desde)} € a {eur(a.cambio.hasta)} € · {dm(a.periodo.desde)} → {dm(a.periodo.hasta)}
         </span>
 
         <Grafica
           series={[{ nombre: 'Patrimonio', puntos: a.curva.map((p) => p.total) }]}
           etiquetas={[dm(a.curva[0]?.fecha ?? ''), dm(a.curva[a.curva.length - 1]?.fecha ?? '')]}
+          fechas={a.curva.map((p) => p.fecha)}
           formato={corto}
         />
 
         <div className="an-rango">
-          {[30, 90, 180].map((d) => (
-            <button key={d} className={d === dias ? 'active' : ''} onClick={() => setDias(d)}>
-              {d} días
-            </button>
-          ))}
+          <select value={periodo} onChange={(e) => setPeriodo(e.target.value)}>
+            <optgroup label="Hacia atrás">
+              <option value="30">Últimos 30 días</option>
+              <option value="90">Últimos 90 días</option>
+              <option value="180">Últimos 180 días</option>
+            </optgroup>
+            <optgroup label="Por ciclo de cobro">
+              {[...a.ciclos].reverse().map((c) => (
+                <option key={c.id} value={`ciclo-${c.id}`}>
+                  {dm(c.desde)} → {dm(c.hasta)}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Por mes natural">
+              {mesesRecientes(6).map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.titulo}
+                </option>
+              ))}
+            </optgroup>
+          </select>
         </div>
 
         {a.fotos === 0 && (
@@ -68,7 +108,7 @@ export default function AnaliticasTab() {
 
       <section className="section mc-bloque">
         <div className="mc-head">
-          <h2>Ciclo a ciclo</h2>
+          <h2>Cuánto creciste cada ciclo</h2>
         </div>
         <div className="an-ciclos">
           {a.ciclos.map((c) => (

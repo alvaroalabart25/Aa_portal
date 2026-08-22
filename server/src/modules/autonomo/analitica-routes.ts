@@ -95,7 +95,16 @@ const euros = (c: number) => Number((c / 100).toFixed(2));
 
 analiticaRouter.get('/', ah(async (req: AuthedRequest, res) => {
   const userId = req.userId!;
-  const dias = Math.min(Math.max(Number(req.query.dias ?? 90), 30), 400);
+  // El periodo se puede pedir de dos maneras: por días hacia atrás (lo rápido)
+  // o por un rango concreto —un ciclo, un mes— que es lo que se compara de
+  // verdad. El rango manda si viene.
+  const esFecha = (v: unknown) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+  const rango = esFecha(req.query.desde) && esFecha(req.query.hasta)
+    ? { desde: String(req.query.desde), hasta: String(req.query.hasta) }
+    : null;
+  const dias = rango
+    ? Math.max(1, Math.round((new Date(rango.hasta).getTime() - new Date(rango.desde).getTime()) / 86400000) + 1)
+    : Math.min(Math.max(Number(req.query.dias ?? 90), 30), 400);
 
   const cuentas = await db
     .select({ saldo: bankAccounts.balance, escrow: bankAccounts.escrow })
@@ -119,7 +128,10 @@ analiticaRouter.get('/', ah(async (req: AuthedRequest, res) => {
     .where(eq(bankTransactions.userId, userId));
 
   const hoy = new Date(new Date().toISOString().slice(0, 10));
-  const desde = new Date(hoy.getTime() - dias * 86400000);
+  // La curva se reconstruye SIEMPRE desde hoy hacia atrás —es la única forma,
+  // partiendo del saldo actual—, y luego se recorta al rango pedido.
+  const desde = rango ? new Date(rango.desde) : new Date(hoy.getTime() - dias * 86400000);
+  const hasta = rango ? new Date(rango.hasta) : hoy;
 
   // El movimiento de un día cambia el saldo DE ESE DÍA, así que para saber el
   // saldo al cierre de un día hay que quitar lo de los días posteriores.
@@ -145,7 +157,8 @@ analiticaRouter.get('/', ah(async (req: AuthedRequest, res) => {
   for (let t = hoy.getTime(); t >= desde.getTime(); t -= 86400000) {
     const fecha = new Date(t).toISOString().slice(0, 10);
     const foto = fotos.get(fecha);
-    curva.unshift({ fecha, total: euros(foto ?? saldo), real: foto !== undefined });
+    // fuera lo posterior al rango: se ha recorrido para llegar hasta aquí
+    if (t <= hasta.getTime()) curva.unshift({ fecha, total: euros(foto ?? saldo), real: foto !== undefined });
     saldo -= porDia.get(fecha) ?? 0; // deshaciendo el día para llegar al anterior
   }
 
@@ -199,9 +212,10 @@ analiticaRouter.get('/', ah(async (req: AuthedRequest, res) => {
 
   // De dónde viene el dinero, en la ventana pedida
   const desdeIso = desde.toISOString().slice(0, 10);
+  const hastaIso = hasta.toISOString().slice(0, 10);
   const origenes = new Map<string, { n: number; importe: number }>();
   for (const m of movimientos) {
-    if (!m.fecha || m.fecha < desdeIso || m.direccion !== 'CRDT' || m.tipo === 'traspaso') continue;
+    if (!m.fecha || m.fecha < desdeIso || m.fecha > hastaIso || m.direccion !== 'CRDT' || m.tipo === 'traspaso') continue;
     const quien = quienPaga(m.concepto, m.contraparte);
     const x = origenes.get(quien) ?? { n: 0, importe: 0 };
     x.n += 1;
@@ -216,7 +230,7 @@ analiticaRouter.get('/', ah(async (req: AuthedRequest, res) => {
   // Y en qué se va
   const destinos = new Map<string, { n: number; importe: number }>();
   for (const m of movimientos) {
-    if (!m.fecha || m.fecha < desdeIso || m.direccion !== 'DBIT' || m.tipo === 'traspaso') continue;
+    if (!m.fecha || m.fecha < desdeIso || m.fecha > hastaIso || m.direccion !== 'DBIT' || m.tipo === 'traspaso') continue;
     const donde = enQueGasto(m.concepto, m.contraparte);
     const x = destinos.get(donde) ?? { n: 0, importe: 0 };
     x.n += 1;
@@ -233,6 +247,7 @@ analiticaRouter.get('/', ah(async (req: AuthedRequest, res) => {
 
   res.json({
     dias,
+    periodo: { desde: desdeIso, hasta: hastaIso },
     curva,
     // cuántos puntos son foto guardada y cuántos reconstrucción
     fotos: curva.filter((p) => p.real).length,

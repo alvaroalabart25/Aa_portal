@@ -206,6 +206,7 @@ export const obligacionesApi = {
 /** Analíticas: ¿crece el patrimonio, de dónde entra y en qué se va? */
 export interface Analitica {
   dias: number;
+  periodo: { desde: string; hasta: string };
   curva: { fecha: string; total: number; real: boolean }[];
   fotos: number;
   desdeQueHay: string | null;
@@ -228,7 +229,15 @@ export interface Analitica {
 }
 
 export const analiticaApi = {
-  ver: (dias = 90) => get<Analitica>(`/autonomo/analitica?dias=${dias}`),
+  /** por días hacia atrás, o por un rango concreto (un ciclo, un mes) */
+  ver: (p: { dias?: number; desde?: string; hasta?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (p.desde && p.hasta) {
+      q.set('desde', p.desde);
+      q.set('hasta', p.hasta);
+    } else q.set('dias', String(p.dias ?? 90));
+    return get<Analitica>(`/autonomo/analitica?${q}`);
+  },
 };
 
 export const bancoApi = {

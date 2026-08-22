@@ -2177,12 +2177,30 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
   align-items: center; justify-content: center; flex: none;
 }
 .ojo:hover { color: var(--ink); border-color: var(--ink-soft); }
-.page-head .ojo { margin-left: auto; }
+/* Las pestañas y el ojo viajan juntos a la derecha: sueltos junto al título
+   se leían como parte de él. */
+.page-acciones { display: flex; align-items: center; gap: 10px; margin-left: auto; flex-wrap: wrap; }
 
 /* Gráfica de líneas: monocroma, sin ejes ni rejilla. Las series se distinguen
    por peso, no por color, que el portal no tiene paleta para eso. */
 .gf { margin-top: 18px; }
+.gf-lienzo { position: relative; touch-action: pan-y; }
 .gf-svg { width: 100%; height: 120px; display: block; overflow: visible; }
+/* La guía y el punto van en HTML: el SVG se estira y deformaría un círculo */
+.gf-guia { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line); pointer-events: none; }
+.gf-punto {
+  position: absolute; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--ink); border: 1.5px solid var(--paper);
+  transform: translate(-50%, -50%); pointer-events: none;
+}
+.gf-punto.secundaria { background: var(--ink-muted); }
+.gf-tip {
+  position: absolute; top: -6px; pointer-events: none; white-space: nowrap;
+  background: var(--paper); color: var(--ink); border: 1px solid var(--line); border-radius: 8px;
+  padding: 6px 9px; font-size: 11.5px; line-height: 1.45; display: flex; flex-direction: column;
+}
+.gf-tip em { font-style: normal; color: var(--ink-muted); }
+.gf-tip b { font-family: var(--font-title); font-size: 13px; font-weight: 600; }
 .gf-linea { fill: none; stroke: var(--ink); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
 .gf-linea.secundaria { stroke: var(--ink-muted); stroke-width: 1.5; }
 .gf-cero { stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
@@ -2197,19 +2215,23 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .gf-rango { margin-left: auto; }
 
 /* Analíticas: crecimiento, de dónde entra y en qué se va */
-.an-rango { display: flex; gap: 8px; margin-top: 16px; }
-.an-rango button {
-  font: inherit; font-size: 12px; cursor: pointer; color: var(--ink-soft);
-  background: none; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px;
+.an-rango { margin-top: 16px; }
+.an-rango select {
+  font: inherit; font-size: 12.5px; cursor: pointer; color: var(--ink);
+  background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: 7px 12px;
+  max-width: 100%;
 }
-.an-rango button.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .an-ciclos { display: flex; flex-direction: column; margin-top: 14px; }
+/* Todo en una línea: fecha, desglose y la cifra que manda. Solo se parte en
+   dos filas cuando la pantalla es tan estrecha que no cabe. */
 .an-ciclo {
-  display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: baseline;
+  display: grid; grid-template-columns: auto 1fr auto; gap: 4px 14px; align-items: baseline;
   padding: 12px 0; border-bottom: 1px solid var(--line);
 }
-/* el desglose va debajo, en pequeño: la cifra que manda es el patrimonio */
-.an-ciclo-d { grid-column: 1 / -1; }
+@media (max-width: 640px) {
+  .an-ciclo { grid-template-columns: 1fr auto; }
+  .an-ciclo-d { grid-column: 1 / -1; }
+}
 .an-ciclo:last-child { border-bottom: none; }
 .an-ciclo-f { font-size: 12.5px; color: var(--ink-soft); }
 .an-ciclo-d { font-size: 11.5px; color: var(--ink-muted); }

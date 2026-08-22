@@ -34,20 +34,22 @@ export default function ResumenPage() {
     <div>
       <div className="page-head">
         <h1>Resumen</h1>
-        <div className="seg" role="tablist">
-          {PESTANAS.map((p) => (
-            <button
-              key={p.id}
-              role="tab"
-              aria-selected={p.id === pestana.id}
-              className={p.id === pestana.id ? 'active' : ''}
-              onClick={() => setParams(p.id === 'resumen' ? {} : { tab: p.id }, { replace: true })}
-            >
-              {p.titulo}
-            </button>
-          ))}
+        <div className="page-acciones">
+          <div className="seg" role="tablist">
+            {PESTANAS.map((p) => (
+              <button
+                key={p.id}
+                role="tab"
+                aria-selected={p.id === pestana.id}
+                className={p.id === pestana.id ? 'active' : ''}
+                onClick={() => setParams(p.id === 'resumen' ? {} : { tab: p.id }, { replace: true })}
+              >
+                {p.titulo}
+              </button>
+            ))}
+          </div>
+          <OjoPrivacidad />
         </div>
-        <OjoPrivacidad />
       </div>
       <p className="page-sub">{pestana.lema}</p>
 

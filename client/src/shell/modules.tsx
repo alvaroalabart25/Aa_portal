@@ -201,8 +201,10 @@ export const MODULES: PortalModule[] = [
     icon: icons.autonomo,
     children: [
       {
+        // Facturas y Cuentas eran dos entradas del mismo papeleo: ahora es una
+        // con dos niveles dentro (Facturas · Cuentas).
         id: 'facturas',
-        title: 'Facturas',
+        title: 'Autónomo',
         path: '/autonomo/facturas',
         icon: (
           <svg width="16" height="16" viewBox="0 0 24 24" {...stroke}>
@@ -221,17 +223,6 @@ export const MODULES: PortalModule[] = [
         icon: (
           <svg width="16" height="16" viewBox="0 0 24 24" {...stroke}>
             <path d="M3 10h18M4 10 12 4l8 6M6 10v8M10 10v8M14 10v8M18 10v8M3 21h18" />
-          </svg>
-        ),
-      },
-      {
-        id: 'cuentas',
-        title: 'Cuentas',
-        path: '/autonomo/cuentas',
-        icon: (
-          <svg width="16" height="16" viewBox="0 0 24 24" {...stroke}>
-            <rect x="4" y="3" width="16" height="18" rx="2" />
-            <path d="M8 7h8M8 11h3M8 15h3M13 11h3M13 15h3" />
           </svg>
         ),
       },

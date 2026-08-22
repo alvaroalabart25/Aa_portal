@@ -130,6 +130,8 @@ export interface Obligaciones {
     faltanDias: number | null;
     dormido: boolean;
     ultimo: string;
+    /** cuándo vuelve a cargarse */
+    proxima: string;
     nota: string | null;
     /** apartar el IVA sale de la cuenta, pero no es un gasto */
     provision: boolean;

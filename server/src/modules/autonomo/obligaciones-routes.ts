@@ -31,6 +31,31 @@ const cent = (s: string | number) => Math.round(Number(s) * 100);
 const euros = (c: number) => Number((c / 100).toFixed(2));
 const hoyIso = () => new Date().toISOString().slice(0, 10);
 
+/**
+ * La próxima vez que va a caer un cargo que se repite.
+ *
+ * Mensual: el mismo día del mes que viene, con cuidado de los meses cortos —un
+ * recibo del día 31 cae el 28 en febrero, no se salta el mes—. Semanal: siete
+ * días desde el último, avanzando hasta pasar de hoy.
+ */
+function proximaVez(ultimo: string, cadencia: 'mensual' | 'semanal', dia: number): string {
+  const hoy = new Date(hoyIso());
+  if (cadencia === 'semanal') {
+    const d = new Date(ultimo);
+    while (d <= hoy) d.setUTCDate(d.getUTCDate() + 7);
+    return d.toISOString().slice(0, 10);
+  }
+  const base = new Date(ultimo);
+  for (let salto = 1; salto <= 24; salto += 1) {
+    const anio = base.getUTCFullYear();
+    const mes = base.getUTCMonth() + salto;
+    const ultimoDia = new Date(Date.UTC(anio, mes + 1, 0)).getUTCDate();
+    const candidato = new Date(Date.UTC(anio, mes, Math.min(dia, ultimoDia)));
+    if (candidato > hoy) return candidato.toISOString().slice(0, 10);
+  }
+  return ultimo;
+}
+
 /** Cuánto queda para una fecha, en días. Negativo si ya pasó. */
 const faltanDias = (iso: string) =>
   Math.ceil((new Date(iso).getTime() - new Date(hoyIso()).getTime()) / 86400000);
@@ -170,6 +195,8 @@ obligacionesRouter.get('/', ah(async (req: AuthedRequest, res) => {
       // pasó con nomadesim al volver de Bali): se sigue enseñando, pero dicho.
       dormido: faltanDias(f.ultimo) < (f.cadencia === 'mensual' ? -45 : -21),
       ultimo: f.ultimo,
+      // cuándo vuelve: lo que convierte la lista en algo que se puede prever
+      proxima: proximaVez(f.ultimo, f.cadencia, f.dia),
       nota: null as string | null,
       // apartar el IVA sale de la cuenta, pero no es un gasto: es dinero que
       // devuelves. No puede sumar en el total de costes.
@@ -250,6 +277,7 @@ obligacionesRouter.get('/', ah(async (req: AuthedRequest, res) => {
       faltanDias: hecho ? null : 0,
       dormido: false,
       ultimo: ciclo.desde,
+      proxima: ciclo.hasta,
       nota: hecho
         ? `apartado ${euros(apartadoEnCiclo)} € este ciclo`
         : cobrosDelCiclo.length

@@ -139,7 +139,8 @@ bancoRouter.get('/estado', ah(async (req: AuthedRequest, res) => {
         .filter((a) => a.connectionId === c.id)
         .map((a) => ({
           id: a.id,
-          nombre: a.name,
+          // el nombre del banco manda: «Hacienda 💶» dice más que el titular
+          nombre: a.alias ?? a.name,
           iban: a.ibanTail,
           moneda: a.currency,
           saldo: a.balance,
@@ -278,9 +279,30 @@ bancoRouter.post('/sincronizar/:id(\\d+)', ah(async (req: AuthedRequest, res) =>
   desde.setDate(desde.getDate() - ventana);
   const desdeIso = desde.toISOString().slice(0, 10);
 
+  // ?nombres=1 vuelve a preguntar cómo llama el banco a cada cuenta. Por defecto
+  // solo se pregunta si falta: es una llamada más por cuenta y Enable Banking
+  // limita los accesos por consentimiento (HUB046).
+  const refrescarNombres = req.query.nombres === '1';
+
   let nuevos = 0;
   try {
     for (const cuenta of cuentas) {
+      if (refrescarNombres || !cuenta.alias) {
+        try {
+          const d = (await crudo(`/accounts/${encodeURIComponent(cuenta.accountUid)}/details`)) as {
+            details?: string | null;
+          };
+          if (d?.details) {
+            await db
+              .update(bankAccounts)
+              .set({ alias: d.details.slice(0, 80) })
+              .where(eq(bankAccounts.id, cuenta.id));
+          }
+        } catch {
+          // que no se sepa el nombre no puede tumbar una sincronización
+        }
+      }
+
       const saldos = await saldosDe(cuenta.accountUid);
       const principal = saldos[0]?.balance_amount?.amount;
       if (principal != null) {
@@ -365,7 +387,7 @@ bancoRouter.get('/movimientos', ah(async (req: AuthedRequest, res) => {
       contraparte: bankTransactions.counterparty,
       concepto: bankTransactions.concept,
       estado: bankTransactions.status,
-      cuenta: bankAccounts.name,
+      cuenta: sql<string | null>`coalesce(${bankAccounts.alias}, ${bankAccounts.name})`,
       cuentaIban: bankAccounts.ibanTail,
       tipo: bankTransactions.tipo,
     })
@@ -455,6 +477,7 @@ bancoRouter.get('/resumen', ah(async (req: AuthedRequest, res) => {
     .select({
       id: bankAccounts.id,
       nombre: bankAccounts.name,
+      alias: bankAccounts.alias,
       iban: bankAccounts.ibanTail,
       moneda: bankAccounts.currency,
       saldo: bankAccounts.balance,
@@ -564,7 +587,7 @@ bancoRouter.get('/resumen', ah(async (req: AuthedRequest, res) => {
       cuentas: cuentas.map((c) => ({
         id: c.id,
         banco: c.banco,
-        nombre: c.nombre,
+        nombre: c.alias ?? c.nombre,
         iban: c.iban,
         moneda: c.moneda,
         saldo: c.saldo ? Number(c.saldo) : null,

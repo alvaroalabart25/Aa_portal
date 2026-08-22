@@ -1087,6 +1087,9 @@ export const bankAccounts = mysqlTable('bank_accounts', {
   accountUid: varchar('account_uid', { length: 120 }).notNull(),
   name: varchar('name', { length: 160 }),
   ibanTail: varchar('iban_tail', { length: 8 }),
+  // Cómo llama el BANCO a esta cuenta: es lo que distingue «Hacienda 💶» de
+  // «Inversiones 🏗️», porque de los pockets solo llega el titular en `name`.
+  alias: varchar('alias', { length: 80 }),
   currency: varchar('currency', { length: 3 }).notNull().default('EUR'),
   balance: decimal('balance', { precision: 14, scale: 2 }),
   balanceAt: datetime('balance_at'),

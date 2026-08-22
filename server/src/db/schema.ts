@@ -1169,6 +1169,29 @@ export const financialCommitments = mysqlTable('financial_commitments', {
 
 export type FinancialCommitment = typeof financialCommitments.$inferSelect;
 
+/**
+ * La foto diaria del patrimonio.
+ *
+ * `bank_accounts.balance` guarda el saldo de HOY y lo pisa en cada
+ * sincronización. La curva se puede reconstruir hacia atrás restando los
+ * movimientos, pero solo hasta donde llegan —PSD2 da 90 días—. Esto no caduca.
+ */
+export const bankBalanceDaily = mysqlTable('bank_balance_daily', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  onDate: date('on_date', { mode: 'string' }).notNull(),
+  total: decimal('total', { precision: 14, scale: 2 }).notNull(),
+  escrow: decimal('escrow', { precision: 14, scale: 2 }).notNull().default('0'),
+  accounts: int('accounts').notNull().default(0),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`)
+    .$onUpdateFn(() => new Date()),
+});
+
 export type BankConnection = typeof bankConnections.$inferSelect;
 export type BankAccount = typeof bankAccounts.$inferSelect;
 export type BankTransaction = typeof bankTransactions.$inferSelect;

@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { bancoApi, type ConexionBanco } from './api';
 import MesDeVerdad from './MesDeVerdad';
 import MovimientosTab from './MovimientosTab';
+import AnaliticasTab from './AnaliticasTab';
 
 /**
  * Banco, en dos mitades.
@@ -31,7 +32,8 @@ export default function BancoPage() {
   const [aviso, setAviso] = useState('');
   const [error, setError] = useState('');
 
-  const tab = params.get('tab') === 'cuentas' ? 'cuentas' : 'resumen';
+  const pedida = params.get('tab');
+  const tab = pedida === 'cuentas' || pedida === 'analiticas' ? pedida : 'resumen';
   const irA = (t: string) => setParams(t === 'resumen' ? {} : { tab: t }, { replace: true });
 
   const cargar = useCallback(async () => {
@@ -110,18 +112,19 @@ export default function BancoPage() {
       <div className="page-head">
         <h1>Banco</h1>
         <div className="seg" role="tablist">
-          <button role="tab" aria-selected={tab === 'resumen'} className={tab === 'resumen' ? 'active' : ''} onClick={() => irA('resumen')}>
-            Resumen
-          </button>
-          <button role="tab" aria-selected={tab === 'cuentas'} className={tab === 'cuentas' ? 'active' : ''} onClick={() => irA('cuentas')}>
-            Cuentas
-          </button>
+          {(['resumen', 'analiticas', 'cuentas'] as const).map((t) => (
+            <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'active' : ''} onClick={() => irA(t)}>
+              {t === 'resumen' ? 'Resumen' : t === 'analiticas' ? 'Analíticas' : 'Cuentas'}
+            </button>
+          ))}
         </div>
       </div>
       <p className="page-sub">
         {tab === 'resumen'
           ? 'Lo que tienes y cómo va el ciclo, sin contar el dinero que solo cambia de bolsillo.'
-          : 'Tus bancos y el libro entero de movimientos. Solo lectura — el portal no puede mover dinero.'}
+          : tab === 'analiticas'
+            ? '¿Crece tu patrimonio? ¿De dónde entra el dinero y en qué se va?'
+            : 'Tus bancos y el libro entero de movimientos. Solo lectura — el portal no puede mover dinero.'}
       </p>
 
       {error && <div className="error-msg">{error}</div>}
@@ -137,6 +140,8 @@ export default function BancoPage() {
         </section>
       )}
 
+      {tab === 'analiticas' && <AnaliticasTab />}
+
       {tab === 'resumen' ? (
         <>
           {estado?.conexiones.length ? <MesDeVerdad refrescar={refrescar} /> : null}
@@ -151,7 +156,7 @@ export default function BancoPage() {
             </p>
           </section>
         </>
-      ) : (
+      ) : tab === 'cuentas' ? (
         <>
           {estado?.conexiones.map((c) => (
             <section key={c.id} className="section mc-bloque">
@@ -248,7 +253,7 @@ export default function BancoPage() {
             <MovimientosTab />
           </section>
         </>
-      )}
+      ) : null}
 
       <button className="btn ghost sm" style={{ marginTop: 8 }} onClick={() => navigate('/autonomo/obligaciones')}>
         ← Obligaciones

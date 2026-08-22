@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { bancoApi, type ResumenMes } from './api';
+import Grafica from './Grafica';
 
 /**
  * El resumen del dinero: cuánto tienes y cómo va el ciclo.
@@ -41,6 +42,15 @@ const mover = (mes: string, pasos: number) => {
 
 const RECUERDA_CICLO = 'aa_banco_ciclo';
 
+/** El acumulado del periodo: lo que se dibuja, no el pico de cada día. */
+const acumular = (xs: number[]): number[] => {
+  let total = 0;
+  return xs.map((x) => {
+    total += x;
+    return Number(total.toFixed(2));
+  });
+};
+
 export default function MesDeVerdad({ refrescar }: { refrescar: number }) {
   const [mes, setMes] = useState<string | null>(null);
   const [ciclo, setCiclo] = useState(() => localStorage.getItem(RECUERDA_CICLO) !== 'no');
@@ -69,7 +79,6 @@ export default function MesDeVerdad({ refrescar }: { refrescar: number }) {
   if (!r && cargando) return <section className="section mc-bloque"><p className="muted">Calculando…</p></section>;
   if (!r) return null;
 
-  const tope = Math.max(...r.semanas.flatMap((s) => [s.entra, s.sale]), 1);
   const rotulo = r.ciclo ? `${diaMes(r.desde)} → ${diaMes(r.hasta)}` : nombreMes(r.mes);
 
   return (
@@ -120,21 +129,16 @@ export default function MesDeVerdad({ refrescar }: { refrescar: number }) {
               </div>
             </div>
 
-            <div className="mv-semanas">
-              {r.semanas.map((s) => (
-                <div key={s.etiqueta} className="mv-semana">
-                  <span className="mv-dias">{s.etiqueta}</span>
-                  <div className="mv-barras">
-                    {s.entra > 0 && <div className="mv-barra entra" style={{ width: `${(100 * s.entra) / tope}%` }} />}
-                    {s.sale > 0 && <div className="mv-barra sale" style={{ width: `${(100 * s.sale) / tope}%` }} />}
-                  </div>
-                  <span className="mv-cifra-semana">
-                    {s.entra > 0 && <em className="entra">+{eur(s.entra)}</em>}
-                    {s.sale > 0 && <em className="sale">−{eur(s.sale)}</em>}
-                  </span>
-                </div>
-              ))}
-            </div>
+            {/* Acumulado: la pendiente dice a qué ritmo entra y sale el dinero, y
+                la distancia entre las dos líneas es lo que llevas de ciclo. */}
+            <Grafica
+              series={[
+                { nombre: 'Entra', puntos: acumular(r.dias.map((d) => d.entra)) },
+                { nombre: 'Sale', puntos: acumular(r.dias.map((d) => d.sale)), secundaria: true },
+              ]}
+              etiquetas={[diaMes(r.desde), diaMes(r.hasta)]}
+              formato={(n) => `${Math.round(n)} €`}
+            />
 
             {r.traspasos.n > 0 && (
               <p className="wg-nota">

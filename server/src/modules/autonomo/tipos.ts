@@ -84,6 +84,8 @@ const POR_CODIGO: Record<string, Tipo> = {
  */
 const POR_TEXTO: [RegExp, Tipo][] = [
   [/^(to eur|traspaso|entre cuentas|enviada desde revolut)/, 'traspaso'],
+  // recargar Revolut desde la tarjeta del Santander es dinero propio
+  [/^compra revolut\*/, 'traspaso'],
   [/^bizum/, 'bizum'],
   [/^pago movil/, 'movil'],
   [/^(liquidacion|abono) intereses/, 'intereses'],

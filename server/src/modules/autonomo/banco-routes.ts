@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { and, desc, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm';
 import { ah } from '../../lib/async';
 import { db } from '../../db';
-import { bankAccounts, bankConnections, bankTransactions } from '../../db/schema';
+import { bankAccounts, bankBalanceDaily, bankConnections, bankTransactions } from '../../db/schema';
 import type { AuthedRequest } from '../../core/auth/middleware';
 import {
   BancoApagado,
@@ -76,6 +76,43 @@ function fallo(e: unknown): { status: number; error: string } {
     };
   }
   return { status: 502, error: (e as Error).message || 'El banco no ha respondido' };
+}
+
+/**
+ * Guarda la foto de hoy: cuánto hay en total y cuánto de eso no es suyo.
+ *
+ * Se hace al terminar cada sincronización. Una foto por día —la última manda—,
+ * y así el patrimonio tiene histórico de verdad en vez de depender de que los
+ * movimientos sigan estando ahí.
+ */
+async function retratarPatrimonio(userId: number): Promise<void> {
+  const cuentas = await db
+    .select({ saldo: bankAccounts.balance, escrow: bankAccounts.escrow })
+    .from(bankAccounts)
+    .where(and(eq(bankAccounts.userId, userId), isNull(bankAccounts.archivedAt)));
+  if (cuentas.length === 0) return;
+
+  const suma = (cuales: typeof cuentas) =>
+    cuales.reduce((a, c) => a + (c.saldo ? Math.round(Number(c.saldo) * 100) : 0), 0);
+  const propias = cuentas.filter((c) => !c.escrow);
+  const hoy = new Date().toISOString().slice(0, 10);
+
+  await db
+    .insert(bankBalanceDaily)
+    .values({
+      userId,
+      onDate: hoy,
+      total: (suma(propias) / 100).toFixed(2),
+      escrow: (suma(cuentas.filter((c) => c.escrow)) / 100).toFixed(2),
+      accounts: propias.length,
+    })
+    .onDuplicateKeyUpdate({
+      set: {
+        total: (suma(propias) / 100).toFixed(2),
+        escrow: (suma(cuentas.filter((c) => c.escrow)) / 100).toFixed(2),
+        accounts: propias.length,
+      },
+    });
 }
 
 /** Los últimos 120 días: el emparejado necesita ver los dos lados, no el mes. */
@@ -427,6 +464,7 @@ bancoRouter.post('/sincronizar/:id(\\d+)', ah(async (req: AuthedRequest, res) =>
     // Los traspasos solo se ven con los DOS lados delante, así que se
     // recalculan al final y sobre todas las cuentas, no solo las de este banco.
     const traspasos = await recalcularTraspasos(req.userId!);
+    await retratarPatrimonio(req.userId!);
 
     await db
       .update(bankConnections)
@@ -675,6 +713,15 @@ bancoRouter.get('/resumen', ah(async (req: AuthedRequest, res) => {
     while (i > 0 && offset < corte(i)) i -= 1;
     return i;
   };
+
+  // Serie día a día del periodo: es lo que dibuja la gráfica. Se rellenan TODOS
+  // los días, también los vacíos, porque una línea con huecos miente sobre el
+  // ritmo al que entra y sale el dinero.
+  const dias = Array.from({ length: totalDias }, (_, i) => ({
+    fecha: new Date(inicio.getTime() + i * 86400000).toISOString().slice(0, 10),
+    entra: 0,
+    sale: 0,
+  }));
   const tipos = new Map<string, { n: number; entra: number; sale: number }>();
 
   for (const f of filas) {
@@ -698,10 +745,18 @@ bancoRouter.get('/resumen', ah(async (req: AuthedRequest, res) => {
     if (f.direccion === 'CRDT') entra += c;
     else sale += c;
 
-    const offset = Math.round((new Date(f.fecha ?? desde).getTime() - inicio.getTime()) / 86400000);
-    const hueco = semanas[tramoDe(Math.max(0, Math.min(totalDias - 1, offset)))];
-    if (f.direccion === 'CRDT') hueco.entra += c;
-    else hueco.sale += c;
+    const offset = Math.max(
+      0,
+      Math.min(totalDias - 1, Math.round((new Date(f.fecha ?? desde).getTime() - inicio.getTime()) / 86400000)),
+    );
+    const hueco = semanas[tramoDe(offset)];
+    if (f.direccion === 'CRDT') {
+      hueco.entra += c;
+      dias[offset].entra += c;
+    } else {
+      hueco.sale += c;
+      dias[offset].sale += c;
+    }
   }
 
   const [primero] = await db
@@ -754,6 +809,7 @@ bancoRouter.get('/resumen', ah(async (req: AuthedRequest, res) => {
     queda: euros(entra - sale),
     traspasos: { n: nTraspasos, importe: euros(traspasos) },
     semanas: semanas.map((s) => ({ ...s, entra: euros(s.entra), sale: euros(s.sale) })),
+    dias: dias.map((d) => ({ ...d, entra: euros(d.entra), sale: euros(d.sale) })),
     tipos: TIPOS.filter((t) => tipos.has(t)).map((t) => ({
       tipo: t,
       nombre: NOMBRE_TIPO[t],

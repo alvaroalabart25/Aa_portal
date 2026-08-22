@@ -9,6 +9,7 @@ import { buildInvoicePdf } from './pdf';
 import { sendInvoiceEmail, smtpConfigured } from './mailer';
 import { bancoRouter } from './banco-routes';
 import { obligacionesRouter } from './obligaciones-routes';
+import { analiticaRouter } from './analitica-routes';
 
 // Módulo "Autónomo": facturación, cuentas y trimestrales.
 export const autonomoModule = Router();
@@ -20,6 +21,10 @@ autonomoModule.use('/banco', bancoRouter);
 // Obligaciones cruza las dos mitades del módulo: las facturas dicen lo que
 // debes a Hacienda y el banco dice lo que tienes apartado para pagarlo.
 autonomoModule.use('/obligaciones', obligacionesRouter);
+
+// Analíticas: si el patrimonio crece o no. Cuelga del banco porque de ahí salen
+// todos sus datos.
+autonomoModule.use('/analitica', analiticaRouter);
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida (YYYY-MM-DD)');
 const money = z.number().positive().max(9_999_999);

@@ -118,6 +118,7 @@ export interface ResumenMes {
   queda: number;
   traspasos: { n: number; importe: number };
   semanas: { etiqueta: string; entra: number; sale: number }[];
+  dias: { fecha: string; entra: number; sale: number }[];
   tipos: { tipo: string; nombre: string; n: number; entra: number; sale: number }[];
 }
 
@@ -186,6 +187,24 @@ export interface DeudaFicha {
 export const obligacionesApi = {
   ver: () => get<Obligaciones>('/autonomo/obligaciones'),
   deuda: (id: number) => get<DeudaFicha>(`/autonomo/obligaciones/deudas/${id}`),
+};
+
+/** Analíticas: ¿crece el patrimonio, de dónde entra y en qué se va? */
+export interface Analitica {
+  dias: number;
+  curva: { fecha: string; total: number; real: boolean }[];
+  fotos: number;
+  desdeQueHay: string | null;
+  cambio: { desde: number; hasta: number; diferencia: number };
+  ciclos: { id: string; desde: string; hasta: string; entra: number; sale: number; diferencia: number }[];
+  ingresos: { nombre: string; n: number; importe: number; porcentaje: number }[];
+  totalIngresos: number;
+  gastos: { nombre: string; n: number; importe: number; porcentaje: number }[];
+  totalGastos: number;
+}
+
+export const analiticaApi = {
+  ver: (dias = 90) => get<Analitica>(`/autonomo/analitica?dias=${dias}`),
 };
 
 export const bancoApi = {

@@ -2038,6 +2038,35 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .subseg button:hover { color: var(--ink-soft); }
 .subseg button.active { color: var(--ink); border-bottom-color: var(--ink); }
 
+/* Movimientos: buscar y filtrar. Los filtros caben en una fila en móvil
+   porque son tres y se pueden abreviar; el buscador manda y va arriba. */
+.mv-buscar {
+  width: 100%; font: inherit; font-size: 14px; color: var(--ink);
+  border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px;
+  background: var(--paper);
+}
+.mv-buscar:focus { outline: none; border-color: var(--ink-soft); }
+.mv-filtros { display: flex; flex-wrap: wrap; gap: 8px; }
+.mv-filtros select {
+  font: inherit; font-size: 12.5px; color: var(--ink); cursor: pointer;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: 7px 12px;
+  max-width: 100%;
+}
+.mv-toggle {
+  font: inherit; font-size: 12.5px; color: var(--ink); cursor: pointer;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: 7px 12px;
+}
+.mv-toggle.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.mv-cuantos span { color: var(--ink-muted); }
+.mv-cuantos {
+  font-size: 12px; color: var(--ink-muted); margin: 12px 0 4px;
+  display: flex; align-items: baseline; gap: 10px;
+}
+.mv-limpiar {
+  background: none; border: none; padding: 0; cursor: pointer; font: inherit; font-size: 12px;
+  color: var(--ink); text-decoration: underline; text-underline-offset: 3px;
+}
+
 /* Obligaciones: compromisos con fecha, comparados contra dinero real */
 .ob-cuando { font-size: 12px; color: var(--ink-muted); text-align: right; flex: none; }
 .ob-cuenta {

@@ -416,9 +416,50 @@ bancoRouter.post('/sincronizar/:id(\\d+)', ah(async (req: AuthedRequest, res) =>
   }
 }));
 
-// GET /movimientos — lo que hay guardado, que es lo que se pinta
+/**
+ * GET /movimientos — el libro, con filtros.
+ *
+ * Ordenado por fecha porque es como se busca un movimiento («eso fue por
+ * agosto»), pero se puede ordenar por importe para encontrar lo gordo. Los
+ * filtros y la búsqueda van en el servidor y no en la pantalla: hoy son 344
+ * movimientos, en dos años serán 4.000 y no se pueden mandar todos al móvil.
+ *
+ * Devuelve también QUÉ se puede filtrar —los bancos y los tipos que existen de
+ * verdad en sus datos— para que la pantalla no ofrezca filtros vacíos.
+ */
 bancoRouter.get('/movimientos', ah(async (req: AuthedRequest, res) => {
-  const limite = Math.min(Number(req.query.limite ?? 100), 300);
+  const limite = Math.min(Number(req.query.limite ?? 100), 500);
+  const pagina = Math.max(0, Number(req.query.pagina ?? 0));
+  const banco = String(req.query.banco ?? '').trim();
+  const tipo = String(req.query.tipo ?? '').trim();
+  const busca = String(req.query.q ?? '').trim();
+  const orden = req.query.orden === 'importe' ? 'importe' : 'fecha';
+  const asc = req.query.dir === 'asc';
+
+  const condiciones = [eq(bankTransactions.userId, req.userId!)];
+  if (banco) condiciones.push(eq(bankConnections.aspspName, banco));
+  if (tipo) condiciones.push(eq(bankTransactions.tipo, tipo));
+  // Casi la mitad de sus movimientos son traspasos entre cuentas propias —los
+  // redondeos de Revolut son céntimos— y ahogan el listado. Se esconden salvo
+  // que se pidan, igual que no cuentan en el mes.
+  if (!tipo && req.query.traspasos !== '1') {
+    condiciones.push(sql`${bankTransactions.tipo} <> 'traspaso'`);
+  }
+  if (busca) {
+    // TiDB compara distinguiendo mayúsculas (utf8mb4_bin), así que buscar
+    // «apple» no encontraría «COMPRA APPLE.COM/BILL». Se iguala a mano.
+    const patron = `%${busca.toUpperCase()}%`;
+    condiciones.push(
+      sql`(upper(${bankTransactions.concept}) like ${patron} or upper(${bankTransactions.counterparty}) like ${patron})`,
+    );
+  }
+  const donde = and(...condiciones);
+
+  const columnaOrden =
+    orden === 'importe'
+      ? sql`${bankTransactions.amount} + 0`
+      : sql`${bankTransactions.bookingDate}`;
+
   const filas = await db
     .select({
       id: bankTransactions.id,
@@ -431,20 +472,53 @@ bancoRouter.get('/movimientos', ah(async (req: AuthedRequest, res) => {
       estado: bankTransactions.status,
       cuenta: sql<string | null>`coalesce(${bankAccounts.alias}, ${bankAccounts.name})`,
       cuentaIban: bankAccounts.ibanTail,
+      banco: bankConnections.aspspName,
       tipo: bankTransactions.tipo,
     })
     .from(bankTransactions)
     .innerJoin(bankAccounts, eq(bankTransactions.accountId, bankAccounts.id))
+    .innerJoin(bankConnections, eq(bankAccounts.connectionId, bankConnections.id))
+    .where(donde)
+    .orderBy(asc ? sql`${columnaOrden} asc` : sql`${columnaOrden} desc`, desc(bankTransactions.id))
+    .limit(limite)
+    .offset(pagina * limite);
+
+  const [{ total }] = await db
+    .select({ total: sql<number>`count(*)` })
+    .from(bankTransactions)
+    .innerJoin(bankAccounts, eq(bankTransactions.accountId, bankAccounts.id))
+    .innerJoin(bankConnections, eq(bankAccounts.connectionId, bankConnections.id))
+    .where(donde);
+
+  // Lo que se puede filtrar, sacado de sus datos y no de una lista inventada
+  const bancos = await db
+    .selectDistinct({ nombre: bankConnections.aspspName })
+    .from(bankTransactions)
+    .innerJoin(bankAccounts, eq(bankTransactions.accountId, bankAccounts.id))
+    .innerJoin(bankConnections, eq(bankAccounts.connectionId, bankConnections.id))
+    .where(eq(bankTransactions.userId, req.userId!));
+
+  const tipos = await db
+    .select({ tipo: bankTransactions.tipo, n: sql<number>`count(*)` })
+    .from(bankTransactions)
     .where(eq(bankTransactions.userId, req.userId!))
-    .orderBy(desc(bankTransactions.bookingDate), desc(bankTransactions.id))
-    .limit(limite);
-  // el nombre del tipo lo pone el servidor: una sola lista de nombres, no dos
-  res.json(
-    filas.map((f) => ({
+    .groupBy(bankTransactions.tipo);
+
+  res.json({
+    total: Number(total),
+    pagina,
+    limite,
+    movimientos: filas.map((f) => ({
       ...f,
       tipoNombre: f.tipo && f.tipo in NOMBRE_TIPO ? NOMBRE_TIPO[f.tipo as Tipo] : null,
     })),
-  );
+    bancos: bancos.map((b) => b.nombre).sort(),
+    tipos: TIPOS.filter((t) => tipos.some((x) => x.tipo === t)).map((t) => ({
+      tipo: t,
+      nombre: NOMBRE_TIPO[t],
+      n: Number(tipos.find((x) => x.tipo === t)?.n ?? 0),
+    })),
+  });
 }));
 
 // POST /reclasificar — volver a poner el tipo a todo lo guardado

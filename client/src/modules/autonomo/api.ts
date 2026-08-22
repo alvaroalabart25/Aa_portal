@@ -49,6 +49,27 @@ export interface ConexionBanco {
   cuentas: CuentaBanco[];
 }
 
+export interface PaginaMovimientos {
+  total: number;
+  pagina: number;
+  limite: number;
+  movimientos: MovimientoBanco[];
+  bancos: string[];
+  tipos: { tipo: string; nombre: string; n: number }[];
+}
+
+export interface FiltroMovimientos {
+  banco?: string;
+  /** 1 = incluir los traspasos entre cuentas propias, que por defecto se ocultan */
+  traspasos?: 1;
+  tipo?: string;
+  q?: string;
+  orden?: 'fecha' | 'importe';
+  dir?: 'asc' | 'desc';
+  limite?: number;
+  pagina?: number;
+}
+
 export interface MovimientoBanco {
   id: number;
   fecha: string | null;
@@ -60,6 +81,7 @@ export interface MovimientoBanco {
   estado: string;
   cuenta: string | null;
   cuentaIban: string | null;
+  banco: string;
   tipo: string | null;
   tipoNombre: string | null;
 }
@@ -188,6 +210,10 @@ export const bancoApi = {
       '/autonomo/banco/reclasificar',
       {},
     ),
-  movimientos: (limite = 100) => get<MovimientoBanco[]>(`/autonomo/banco/movimientos?limite=${limite}`),
+  movimientos: (f: FiltroMovimientos = {}) => {
+    const q = new URLSearchParams();
+    for (const [k, v] of Object.entries(f)) if (v !== undefined && v !== '') q.set(k, String(v));
+    return get<PaginaMovimientos>(`/autonomo/banco/movimientos?${q}`);
+  },
   desconectar: (id: number) => del<{ ok: boolean }>(`/autonomo/banco/conexiones/${id}`),
 };

@@ -2028,8 +2028,9 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 
 /* Subpestañas: el segundo nivel se pinta más ligero que el primero, para que
    se vea de un vistazo cuál manda. Nada de dos controles idénticos apilados. */
-/* Va justo encima de lo que cambia, no de la cabecera */
-.subseg { display: flex; gap: 18px; margin: 0 0 16px; }
+/* Va justo encima de lo que cambia. Con aire de sobra por arriba: pegada al
+   aviso de plazos parecía parte de él. */
+.subseg { display: flex; gap: 20px; margin: 30px 0 18px; }
 .subseg button {
   background: none; border: none; padding: 2px 0; cursor: pointer;
   font: inherit; font-size: 13px; color: var(--ink-muted);
@@ -2204,15 +2205,24 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .an-rango button.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .an-ciclos { display: flex; flex-direction: column; margin-top: 14px; }
 .an-ciclo {
-  display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: baseline;
-  padding: 11px 0; border-bottom: 1px solid var(--line);
+  display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: baseline;
+  padding: 12px 0; border-bottom: 1px solid var(--line);
 }
+/* el desglose va debajo, en pequeño: la cifra que manda es el patrimonio */
+.an-ciclo-d { grid-column: 1 / -1; }
 .an-ciclo:last-child { border-bottom: none; }
 .an-ciclo-f { font-size: 12.5px; color: var(--ink-soft); }
-.an-ciclo-d { font-size: 11.5px; color: var(--ink-muted); white-space: nowrap; }
-.an-ciclo-d em { font-style: normal; margin-left: 6px; }
+.an-ciclo-d { font-size: 11.5px; color: var(--ink-muted); }
 .an-ciclo-r { font-family: var(--font-title); font-size: 15px; font-weight: 600; white-space: nowrap; }
 .an-ciclo-r.mal { color: var(--ink-muted); }
+/* Las dos caras del dinero, enfrentadas cuando hay sitio */
+.an-dos { display: grid; grid-template-columns: 1fr; gap: 0 28px; }
+@media (min-width: 880px) {
+  .an-dos { grid-template-columns: 1fr 1fr; align-items: start; }
+  /* las dos con el mismo margen: si no, la primera hereda el de «primer
+     bloque» y las cabeceras quedan a distinta altura */
+  .an-dos > .mc-bloque { margin-top: 40px; }
+}
 .an-reparto { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
 .an-fila { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: baseline; }
 .an-fila-n { font-size: 13px; text-transform: capitalize; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

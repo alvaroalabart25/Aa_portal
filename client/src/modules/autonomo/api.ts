@@ -210,7 +210,17 @@ export interface Analitica {
   fotos: number;
   desdeQueHay: string | null;
   cambio: { desde: number; hasta: number; diferencia: number };
-  ciclos: { id: string; desde: string; hasta: string; entra: number; sale: number; diferencia: number }[];
+  ciclos: {
+    id: string;
+    desde: string;
+    hasta: string;
+    entra: number;
+    sale: number;
+    diferencia: number;
+    aHacienda: number;
+    /** lo que de verdad cambió tu bolsillo: cuadra con la curva, entra−sale no */
+    patrimonio: number;
+  }[];
   ingresos: { nombre: string; n: number; importe: number; porcentaje: number }[];
   totalIngresos: number;
   gastos: { nombre: string; n: number; importe: number; porcentaje: number }[];

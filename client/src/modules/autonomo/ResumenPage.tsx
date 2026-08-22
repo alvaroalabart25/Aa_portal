@@ -7,7 +7,10 @@ import { OjoPrivacidad } from './dinero';
 /**
  * Tu dinero en el tiempo, en tres pestañas.
  *
- *   Resumen     cuánto tienes y cómo va el ciclo
+ * La primera se llama «Hoy» y no «Resumen» a propósito: la pantalla ya se
+ * llama así, y «Resumen › Resumen» no dice nada.
+ *
+ *   Hoy         cuánto tienes y cómo va el ciclo
  *   Analíticas  si el patrimonio crece, de dónde entra y en qué se va
  *   Objetivos   hacia dónde va lo que no se gasta
  *
@@ -18,7 +21,7 @@ import { OjoPrivacidad } from './dinero';
  */
 
 const PESTANAS = [
-  { id: 'resumen', titulo: 'Resumen', lema: 'Lo que tienes y cómo va el ciclo, sin contar el dinero que solo cambia de bolsillo.' },
+  { id: 'resumen', titulo: 'Hoy', lema: 'Lo que tienes y cómo va el ciclo, sin contar el dinero que solo cambia de bolsillo.' },
   { id: 'analiticas', titulo: 'Analíticas', lema: '¿Crece tu patrimonio? ¿De dónde entra el dinero y en qué se va?' },
   { id: 'objetivos', titulo: 'Objetivos', lema: 'Hacia dónde va el dinero que no te gastas.' },
 ];

@@ -76,33 +76,42 @@ export default function AnaliticasTab() {
               <span className="an-ciclo-f">
                 {dm(c.desde)} → {dm(c.hasta)}
               </span>
-              <span className="an-ciclo-d">
-                +{eur(c.entra)} <em>−{eur(c.sale)}</em>
+              <span className={`an-ciclo-r${c.patrimonio < 0 ? ' mal' : ''}`}>
+                {c.patrimonio < 0 ? '−' : '+'}
+                {eur(Math.abs(c.patrimonio))}
               </span>
-              <span className={`an-ciclo-r${c.diferencia < 0 ? ' mal' : ''}`}>
-                {c.diferencia < 0 ? '−' : '+'}
-                {eur(Math.abs(c.diferencia))}
+              <span className="an-ciclo-d">
+                entra {eur(c.entra)} · sale {eur(c.sale)}
+                {c.aHacienda > 0 && ` · ${eur(c.aHacienda)} apartados`}
               </span>
             </div>
           ))}
         </div>
+        <p className="wg-nota">
+          La cifra grande es lo que cambió tu patrimonio, no la resta de arriba: el dinero que apartas para Hacienda
+          sale de tu bolsillo sin ser un gasto, y lo que mandas a inversión tampoco se puede leer.
+        </p>
       </section>
 
-      <section className="section mc-bloque">
-        <div className="mc-head">
-          <h2>De dónde entra</h2>
-          <span className="ob-cuando">{eur(a.totalIngresos)} €</span>
-        </div>
-        <Reparto filas={a.ingresos} />
-      </section>
+      {/* Enfrentadas: entra a la izquierda, sale a la derecha. En móvil se
+          apilan solas, que en 375 px dos columnas no se leen. */}
+      <div className="an-dos">
+        <section className="section mc-bloque">
+          <div className="mc-head">
+            <h2>De dónde entra</h2>
+            <span className="ob-cuando">{eur(a.totalIngresos)} €</span>
+          </div>
+          <Reparto filas={a.ingresos} />
+        </section>
 
-      <section className="section mc-bloque">
-        <div className="mc-head">
-          <h2>En qué se va</h2>
-          <span className="ob-cuando">{eur(a.totalGastos)} €</span>
-        </div>
-        <Reparto filas={a.gastos} />
-      </section>
+        <section className="section mc-bloque">
+          <div className="mc-head">
+            <h2>En qué se va</h2>
+            <span className="ob-cuando">{eur(a.totalGastos)} €</span>
+          </div>
+          <Reparto filas={a.gastos} />
+        </section>
+      </div>
     </>
   );
 }

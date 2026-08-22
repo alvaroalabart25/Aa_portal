@@ -151,19 +151,50 @@ analiticaRouter.get('/', ah(async (req: AuthedRequest, res) => {
 
   // Por ciclo: lo que de verdad contesta «¿crezco?». Los traspasos no cuentan.
   const cicloActual = cicloDe();
-  const ciclos: { id: string; desde: string; hasta: string; entra: number; sale: number; diferencia: number }[] = [];
+  const ciclos: {
+    id: string;
+    desde: string;
+    hasta: string;
+    entra: number;
+    sale: number;
+    diferencia: number;
+    aHacienda: number;
+    patrimonio: number;
+  }[] = [];
   for (let i = 5; i >= 0; i -= 1) {
     const [anio, mes] = cicloActual.id.split('-').map(Number);
     const c = cicloPorId(new Date(Date.UTC(anio, mes - 1 - i, 1)).toISOString().slice(0, 7));
     let entra = 0;
     let sale = 0;
+    let aHacienda = 0;
+    let patrimonio = 0;
     for (const m of movimientos) {
-      if (!m.fecha || m.fecha < c.desde || m.fecha > c.hasta || m.tipo === 'traspaso') continue;
-      if (m.direccion === 'CRDT') entra += cent(m.importe);
-      else sale += cent(m.importe);
+      if (!m.fecha || m.fecha < c.desde || m.fecha > c.hasta) continue;
+      const importe = cent(m.importe);
+      if (m.escrow) {
+        // lo que entra en el pocket de Hacienda sale de su bolsillo aunque no
+        // sea un gasto: es dinero que debe
+        if (m.direccion === 'CRDT') aHacienda += importe;
+        continue;
+      }
+      // El patrimonio se mueve con TODO lo que pasa por sus cuentas, traspasos
+      // incluidos: si el dinero se va a un sitio que no leemos, se ha ido.
+      patrimonio += m.direccion === 'CRDT' ? importe : -importe;
+      if (m.tipo === 'traspaso') continue;
+      if (m.direccion === 'CRDT') entra += importe;
+      else sale += importe;
     }
-    if (entra === 0 && sale === 0) continue;
-    ciclos.push({ ...c, entra: euros(entra), sale: euros(sale), diferencia: euros(entra - sale) });
+    if (entra === 0 && sale === 0 && patrimonio === 0) continue;
+    ciclos.push({
+      ...c,
+      entra: euros(entra),
+      sale: euros(sale),
+      diferencia: euros(entra - sale),
+      aHacienda: euros(aHacienda),
+      // lo que de verdad cambió tu bolsillo: es lo que tiene que cuadrar con la
+      // curva de arriba, y no coincide con entra − sale
+      patrimonio: euros(patrimonio),
+    });
   }
 
   // De dónde viene el dinero, en la ventana pedida

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { bancoApi, type ConexionBanco } from './api';
 import MovimientosTab from './MovimientosTab';
 import { OjoPrivacidad, useDinero } from './dinero';
@@ -25,7 +25,6 @@ function enEspera(c: ConexionBanco): boolean {
 export default function BancoPage() {
   const { eur } = useDinero();
   const [params, setParams] = useSearchParams();
-  const navigate = useNavigate();
   const [estado, setEstado] = useState<{ configurado: boolean; conexiones: ConexionBanco[] } | null>(null);
   const [bancos, setBancos] = useState<{ nombre: string; logo: string | null }[] | null>(null);
   const [eligiendo, setEligiendo] = useState(false);
@@ -223,9 +222,6 @@ export default function BancoPage() {
           </section>
       </>
 
-      <button className="btn ghost sm" style={{ marginTop: 8 }} onClick={() => navigate('/autonomo/obligaciones')}>
-        ← Obligaciones
-      </button>
     </div>
   );
 }

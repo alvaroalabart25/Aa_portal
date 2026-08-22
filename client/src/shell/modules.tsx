@@ -80,10 +80,11 @@ const iconoSub = (d: string) => (
  *
  * En el ordenador manda la jerarquía (las metas primero, que es lo que da
  * sentido al resto). En el móvil manda la frecuencia: se abre para ver qué toca
- * hoy, así que delante va lo del día a día y las metas quedan en cuarto lugar.
+ * hoy, así que delante va lo del día a día. Finanzas subió al cuarto puesto
+ * cuando dejó de ser cuatro facturas y pasó a ser el dinero entero.
  * Lo que no esté aquí va detrás, en el orden en que esté declarado.
  */
-export const ORDEN_MOVIL = ['agenda', 'org', 'salud', 'suenos'];
+export const ORDEN_MOVIL = ['agenda', 'org', 'salud', 'autonomo', 'suenos'];
 
 export const MODULES: PortalModule[] = [
   { id: 'agenda', title: 'Agenda', path: '/agenda', icon: icons.agenda },
@@ -212,6 +213,19 @@ export const MODULES: PortalModule[] = [
         ),
       },
       {
+        // La fontanería: conexiones, saldos y el libro de movimientos. Se
+        // toca una vez al mes; lo de mirar a diario está en Resumen.
+        id: 'banco',
+        title: 'Bancos',
+        path: '/autonomo/banco',
+        // edificio con columnas: el banco
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" {...stroke}>
+            <path d="M3 10h18M4 10 12 4l8 6M6 10v8M10 10v8M14 10v8M18 10v8M3 21h18" />
+          </svg>
+        ),
+      },
+      {
         // Lo que debes y cuándo. La pregunta que más veces te haces.
         id: 'obligaciones',
         title: 'Obligaciones y Deuda',
@@ -234,19 +248,6 @@ export const MODULES: PortalModule[] = [
           <svg width="16" height="16" viewBox="0 0 24 24" {...stroke}>
             <path d="M14 3v4a1 1 0 0 0 1 1h4" />
             <path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z" />
-          </svg>
-        ),
-      },
-      {
-        // La fontanería: conexiones, saldos y el libro de movimientos. Se
-        // toca una vez al mes; lo de mirar a diario está en Resumen.
-        id: 'banco',
-        title: 'Bancos',
-        path: '/autonomo/banco',
-        // edificio con columnas: el banco
-        icon: (
-          <svg width="16" height="16" viewBox="0 0 24 24" {...stroke}>
-            <path d="M3 10h18M4 10 12 4l8 6M6 10v8M10 10v8M14 10v8M18 10v8M3 21h18" />
           </svg>
         ),
       },

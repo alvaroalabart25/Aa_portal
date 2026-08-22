@@ -33,12 +33,13 @@ export default function ObligacionesPage() {
   if (error) return <div className="error-msg">{error}</div>;
   if (!o) return <p className="muted">Calculando lo que debes…</p>;
 
-  const pagados = o.fijos.filter((f) => f.pagado && !f.provision).length;
+  const pagados = o.fijos.filter((f) => f.pagado).length;
   // El total son los COSTES: lo que se aparta para Hacienda no es un gasto, es
   // dinero que devuelves, y sumarlo aquí inflaría lo que te cuesta vivir.
+  // El total son los COSTES: lo que se aparta para Hacienda sale de la cuenta
+  // pero no es un gasto, es dinero que devuelves.
   const costes = o.fijos.filter((f) => !f.provision);
   const totalCostes = costes.reduce((a, f) => a + f.importe, 0);
-  const provision = o.fijos.find((f) => f.provision);
 
   return (
     <div>
@@ -129,37 +130,27 @@ export default function ObligacionesPage() {
         <div className="mc-head">
           <h2>Costes fijos del ciclo</h2>
           <span className="ob-cuando">
-            {pagados} de {costes.length} pagados
+            {pagados} de {o.fijos.length} pagados
           </span>
         </div>
 
-        {provision && (
-          <div className={`ob-aparta${provision.pagado ? ' hecho' : ''}`}>
-            <span className="ob-aparta-l">Apartar el IVA</span>
-            <b>{eur(provision.importe)} €</b>
-            <span className="ob-aparta-e">
-              {provision.pagado ? '✓ ' : ''}
-              {provision.nota}
-              {provision.cuenta && provision.pagado ? ` · en ${provision.cuenta}` : ''}
-            </span>
-          </div>
-        )}
-
-        {costes.length === 0 ? (
+        {o.fijos.length === 0 ? (
           <p className="muted mc-vacio">Todavía no hay gastos que se repitan lo suficiente para reconocerlos.</p>
         ) : (
           <div className="ob-fijos">
-            {costes.map((f) => {
+            {o.fijos.map((f) => {
               const corto = !f.pagado && f.saldoCuenta != null && f.saldoCuenta < f.importe;
               return (
-                <div key={f.nombre} className="ob-fijo">
+                <div key={f.nombre} className={`ob-fijo${f.provision ? ' ob-destacado' : ''}`}>
                   <span className="ob-fijo-mark">{f.pagado ? '✓' : '·'}</span>
                   <span className="ob-fijo-t">
                     <b>{f.nombre}</b>
                     <span className="ob-fijo-c">
-                      {f.pagado
-                        ? `pagado el ${fecha(f.fecha)} · vuelve el ${fecha(f.proxima)}`
-                        : `sale el ${fecha(f.fecha)}${f.cuenta ? ` · en ${f.cuenta} hay ${eur(f.saldoCuenta ?? 0)} €` : ''}`}
+                      {f.provision
+                        ? `${f.nota}${f.cuenta && f.pagado ? ` · en ${f.cuenta}` : ''}`
+                        : f.pagado
+                          ? `pagado el ${fecha(f.fecha)} · vuelve el ${fecha(f.proxima)}`
+                          : `sale el ${fecha(f.fecha)}${f.cuenta ? ` · en ${f.cuenta} hay ${eur(f.saldoCuenta ?? 0)} €` : ''}`}
                     </span>
                   </span>
                   <span className={`ob-fijo-i${corto ? ' ob-falta' : ''}`}>{eur(f.importe)}</span>
@@ -171,10 +162,13 @@ export default function ObligacionesPage() {
 
 
         {costes.length > 0 && (
-          <div className="ob-total">
-            <span>Total en costes fijos</span>
-            <b>{eur(totalCostes)} €</b>
-          </div>
+          <>
+            <div className="ob-total">
+              <span>Total en costes fijos</span>
+              <b>{eur(totalCostes)} €</b>
+            </div>
+            <p className="ob-nota">El IVA no suma en el total: no es un gasto, es dinero que devuelves.</p>
+          </>
         )}
       </section>
     </div>

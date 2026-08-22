@@ -2059,23 +2059,18 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .ob-fijos { display: flex; flex-direction: column; margin-top: 4px; }
 .ob-fijo { display: flex; align-items: baseline; gap: 10px; padding: 10px 2px; border-bottom: 1px solid var(--line); }
 .ob-fijo:last-child { border-bottom: none; }
+/* Apartar el IVA es una fila más, pero enmarcada: sale de la cuenta igual que
+   los demás, solo que no es un gasto sino dinero que dejas de tener. */
+.ob-fijo.ob-destacado {
+  border: 1px solid var(--ink); background: var(--paper-soft); border-radius: 12px;
+  padding: 12px 14px; margin-bottom: 10px;
+}
 .ob-fijo-mark { width: 12px; flex: none; color: var(--ink-muted); font-size: 13px; }
 .ob-fijo-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .ob-fijo-t b { font-size: 13.5px; font-weight: 500; }
 .ob-fijo-c { font-size: 11.5px; color: var(--ink-muted); }
 .ob-fijo-i { font-size: 14px; font-weight: 600; white-space: nowrap; }
 .ob-fijo-i.ob-falta { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
-/* Apartar el IVA no es un coste más de la lista: es dinero que dejas de tener.
-   Se le da su propio bloque para que se vea de un vistazo que está hecho. */
-.ob-aparta {
-  border: 1px dashed var(--ink-muted); border-radius: 12px; padding: 12px 14px; margin: 4px 0 16px;
-  display: flex; flex-direction: column; gap: 2px;
-}
-.ob-aparta.hecho { border-style: solid; border-color: var(--ink); background: var(--paper-soft); }
-.ob-aparta-l { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-muted); }
-.ob-aparta b { font-family: var(--font-title); font-size: 22px; font-weight: 600; }
-.ob-aparta-e { font-size: 12px; color: var(--ink-soft); }
-
 .ob-total {
   display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
   border-top: 1px solid var(--ink); padding-top: 10px; margin-top: 2px;

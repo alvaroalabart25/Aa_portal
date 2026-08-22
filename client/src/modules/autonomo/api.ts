@@ -150,8 +150,20 @@ export interface Obligaciones {
   }[];
 }
 
+/** La ficha de una deuda: lo que el portal sabe, para poder amortizarla. */
+export interface DeudaFicha {
+  id: number;
+  nombre: string;
+  total: number;
+  mensual: number;
+  desde: string;
+  declarado: { hasta: string; importe: number };
+  pagos: { fecha: string; importe: number }[];
+}
+
 export const obligacionesApi = {
   ver: () => get<Obligaciones>('/autonomo/obligaciones'),
+  deuda: (id: number) => get<DeudaFicha>(`/autonomo/obligaciones/deudas/${id}`),
 };
 
 export const bancoApi = {

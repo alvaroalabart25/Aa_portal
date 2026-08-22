@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { obligacionesApi, type Obligaciones } from './api';
 
 /**
@@ -20,6 +21,7 @@ const fecha = (iso: string) =>
   new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 
 export default function ObligacionesPage() {
+  const navigate = useNavigate();
   const [o, setO] = useState<Obligaciones | null>(null);
   const [error, setError] = useState('');
 
@@ -50,7 +52,14 @@ export default function ObligacionesPage() {
 
       {/* ---------------------------------------------------------- deudas */}
       {o.deudas.map((d) => (
-        <section key={d.id} className="section mc-bloque">
+        <section
+          key={d.id}
+          className="section mc-bloque ob-pulsable"
+          role="link"
+          tabIndex={0}
+          onClick={() => navigate(`/autonomo/obligaciones/deuda/${d.id}`)}
+          onKeyDown={(e) => e.key === 'Enter' && navigate(`/autonomo/obligaciones/deuda/${d.id}`)}
+        >
           <div className="mc-head">
             <h2>Deuda · {d.nombre}</h2>
             {d.termina && (
@@ -76,7 +85,8 @@ export default function ObligacionesPage() {
           <p className="ob-nota">
             {d.esteCiclo.pagado
               ? `Este ciclo ya has pagado ${eur(d.esteCiclo.importe)} €.`
-              : 'Este ciclo todavía no has pagado.'}
+              : 'Este ciclo todavía no has pagado.'}{' '}
+            <span className="ob-mas">Ver el cuadro de amortización →</span>
           </p>
         </section>
       ))}

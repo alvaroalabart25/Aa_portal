@@ -74,6 +74,60 @@ function ivaSegunCobros(importes: number[], ivaPct: number, irpfPct: number): nu
   return importes.reduce((total, importe) => total + Math.round((importe / factor) * (ivaPct / 100) * 100), 0);
 }
 
+/**
+ * La ficha de una deuda: su cuadro de amortización.
+ *
+ * Devuelve lo que el portal SABE (los pagos reconocidos en el banco, más el
+ * bloque declarado de antes de que hubiera histórico) y deja la proyección para
+ * la pantalla, que es donde se puede jugar con la cuota sin ir y volver.
+ */
+obligacionesRouter.get('/deudas/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
+  const [deuda] = await db
+    .select()
+    .from(financialCommitments)
+    .where(
+      and(
+        eq(financialCommitments.id, Number(req.params.id)),
+        eq(financialCommitments.userId, req.userId!),
+        isNull(financialCommitments.archivedAt),
+      ),
+    );
+  if (!deuda) return res.status(404).json({ error: 'No existe esa deuda' });
+
+  const pagos = deuda.matcher
+    ? await db
+        .select({
+          fecha: bankTransactions.bookingDate,
+          importe: bankTransactions.amount,
+          concepto: bankTransactions.concept,
+        })
+        .from(bankTransactions)
+        .where(
+          and(
+            eq(bankTransactions.userId, req.userId!),
+            eq(bankTransactions.direction, 'DBIT'),
+            sql`${bankTransactions.tipo} <> 'traspaso'`,
+            gte(bankTransactions.bookingDate, deuda.declaredOn),
+            sql`upper(${bankTransactions.concept}) like ${'%' + deuda.matcher.toUpperCase() + '%'}`,
+          ),
+        )
+        .orderBy(bankTransactions.bookingDate)
+    : [];
+
+  res.json({
+    id: deuda.id,
+    nombre: deuda.name,
+    total: euros(cent(deuda.total)),
+    mensual: euros(cent(deuda.monthly)),
+    desde: deuda.startedOn,
+    // lo pagado antes de que el banco tuviera histórico: declarado, no visto
+    declarado: { hasta: deuda.declaredOn, importe: euros(cent(deuda.paidBefore)) },
+    pagos: pagos
+      .filter((p) => p.fecha)
+      .map((p) => ({ fecha: p.fecha!, importe: Number(p.importe) })),
+  });
+}));
+
 obligacionesRouter.get('/', ah(async (req: AuthedRequest, res) => {
   const userId = req.userId!;
   const ciclo = cicloDe();

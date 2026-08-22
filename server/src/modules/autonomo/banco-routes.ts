@@ -18,7 +18,7 @@ import {
   saldoPrincipal,
   saldosDe,
 } from './banco';
-import { NOMBRE_TIPO, TIPOS, emparejarTraspasos, tipoDeMovimiento, type Tipo } from './tipos';
+import { NOMBRE_TIPO, TIPOS, emparejarTraspasos, nombraAlTitular, tipoDeMovimiento, type Tipo } from './tipos';
 import { CICLO_DIA } from './ciclo';
 
 /**
@@ -110,6 +110,33 @@ async function recalcularTraspasos(userId: number): Promise<number> {
 
   if (filas.length === 0) return 0;
 
+  // Lo que el banco llama «titular»: si su nombre está en el concepto, el
+  // dinero no ha salido de su patrimonio, solo ha cambiado de sitio.
+  const titulares = (
+    await db
+      .selectDistinct({ nombre: bankAccounts.name })
+      .from(bankAccounts)
+      .where(eq(bankAccounts.userId, userId))
+  )
+    .map((c) => c.nombre)
+    .filter((n): n is string => Boolean(n));
+
+  const propios = filas.filter((f) => f.tipo !== 'traspaso' && nombraAlTitular(f.concept, titulares));
+  for (let i = 0; i < propios.length; i += 200) {
+    await db
+      .update(bankTransactions)
+      .set({ tipo: 'traspaso' })
+      .where(
+        and(
+          eq(bankTransactions.userId, userId),
+          inArray(
+            bankTransactions.id,
+            propios.slice(i, i + 200).map((f) => f.id),
+          ),
+        ),
+      );
+  }
+
   // Se parte de cero: si ayer algo se emparejó mal, hoy se deshace.
   await db
     .update(bankTransactions)
@@ -122,7 +149,10 @@ async function recalcularTraspasos(userId: number): Promise<number> {
       ),
     );
 
-  const parejas = emparejarTraspasos(filas);
+  const marcados = new Set(propios.map((f) => f.id));
+  const parejas = emparejarTraspasos(
+    filas.map((f) => (marcados.has(f.id) ? { ...f, tipo: 'traspaso' } : f)),
+  );
   for (const [salida, entrada] of parejas) {
     await db
       .update(bankTransactions)

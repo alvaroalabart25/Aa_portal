@@ -117,12 +117,11 @@ export default function DeudaPage() {
         Debes {eur(pendienteHoy)} € de {eur(d.total)} €, desde {mesLargo(d.desde)}.
       </p>
 
-      <section className="section mc-bloque">
-        <div className="ob-deuda">
-          <b>{eur(pendienteHoy)} €</b>
-          <span>pendientes · {porcentaje}% pagado</span>
-        </div>
-        <div className="ob-barra" aria-hidden>
+      <section className="section mc-bloque oscuro">
+        <span className="wg-etiqueta">Pendiente</span>
+        <b className="wg-grande">{eur(pendienteHoy)} €</b>
+        <span className="wg-pie">de {eur(d.total)} € · {porcentaje}% pagado</span>
+        <div className="ob-barra" aria-hidden style={{ marginTop: 16 }}>
           <div style={{ width: `${porcentaje}%` }} />
         </div>
         <p className="ob-nota">
@@ -169,10 +168,7 @@ export default function DeudaPage() {
             </div>
           ))}
         </div>
-        <p className="ob-nota">
-          Las filas en negro ya han pasado: el bloque declarado y los pagos que el portal reconoce en tu banco. Las
-          grises son previsión a {eur(cuota)} €/mes.
-        </p>
+        <p className="ob-nota">En negro lo pagado, en gris la previsión.</p>
       </section>
 
       <button className="btn ghost sm" style={{ marginTop: 8 }} onClick={() => navigate('/autonomo/obligaciones')}>

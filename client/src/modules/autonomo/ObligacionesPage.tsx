@@ -79,20 +79,15 @@ export default function ObligacionesPage() {
             <div style={{ width: `${d.porcentaje}%` }} />
           </div>
           <p className="ob-nota">
-            Pagado {eur(d.pagado)} € · el {d.porcentaje}%. A {eur(d.mensual)} €/mes desde{' '}
-            {new Date(d.desde).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}.
+            Pagado {eur(d.pagado)} € · {d.porcentaje}% · {eur(d.mensual)} €/mes ·{' '}
+            {d.esteCiclo.pagado ? `este ciclo, ${eur(d.esteCiclo.importe)} €` : 'este ciclo, nada aún'}
           </p>
-          <p className="ob-nota">
-            {d.esteCiclo.pagado
-              ? `Este ciclo ya has pagado ${eur(d.esteCiclo.importe)} €.`
-              : 'Este ciclo todavía no has pagado.'}{' '}
-            <span className="ob-mas">Ver el cuadro de amortización →</span>
-          </p>
+          <p className="ob-mas">Ver el cuadro de amortización →</p>
         </section>
       ))}
 
       {/* ------------------------------------------------------------- IVA */}
-      <section className="section mc-bloque">
+      <section className="section mc-bloque oscuro">
         <div className="mc-head">
           <h2>IVA · {o.iva.trimestre}</h2>
           <span className="ob-cuando">
@@ -101,38 +96,16 @@ export default function ObligacionesPage() {
           </span>
         </div>
 
-        <div className="ob-cuenta">
-          <div>
-            <span>{o.iva.cerrado ? 'A pagar' : 'Generado hasta hoy'}</span>
-            <b>{eur(o.iva.aPagar)} €</b>
-          </div>
-          <div>
-            <span>Apartado</span>
-            <b>{eur(o.iva.apartado)} €</b>
-          </div>
-          <div className={o.iva.faltan > 0 ? 'ob-falta' : ''}>
-            <span>{o.iva.faltan > 0 ? 'Faltan' : 'Cubierto'}</span>
-            <b>{o.iva.faltan > 0 ? `${eur(o.iva.faltan)} €` : '✓'}</b>
-          </div>
-        </div>
+        <span className="wg-etiqueta" style={{ marginTop: 18 }}>
+          {o.iva.faltan > 0 ? 'Te falta apartar' : 'Cubierto'}
+        </span>
+        <b className="wg-grande">{o.iva.faltan > 0 ? `${eur(o.iva.faltan)} €` : '✓'}</b>
+        <span className="wg-pie">
+          Debes {eur(o.iva.aPagar)} € y tienes apartados {eur(o.iva.apartado)} €.
+        </span>
 
-        <p className="ob-nota">
-          {o.iva.donde.filter(Boolean).length > 0 && `Lo apartado está en ${o.iva.donde.filter(Boolean).join(' y ')}. `}
-          El cargo cae el {fecha(o.iva.cobra)}, pero el importe queda fijado el {fecha(o.iva.presenta)}.
-        </p>
-
-        {!o.iva.cerrado && (
-          <p className="ob-nota">
-            El trimestre sigue abierto: a esto le faltan las facturas que emitas hasta el {fecha(o.iva.hasta)}.
-          </p>
-        )}
-
-        {o.iva.faltanFacturas && (
-          <p className="ob-nota ob-aviso">
-            Hay cobros en el banco sin factura registrada en el portal, así que esta cifra es una estimación
-            deducida de los importes. Registra las facturas y será exacta.
-          </p>
-        )}
+        {!o.iva.cerrado && <p className="wg-nota">Trimestre abierto: faltan las facturas que emitas hasta septiembre.</p>}
+        {o.iva.faltanFacturas && <p className="wg-nota">Estimado: hay cobros sin factura registrada.</p>}
       </section>
 
       {/* ----------------------------------------------------------- fijos */}
@@ -177,7 +150,7 @@ export default function ObligacionesPage() {
               <span>Total en costes fijos</span>
               <b>{eur(totalCostes)} €</b>
             </div>
-            <p className="ob-nota">El IVA no suma en el total: no es un gasto, es dinero que devuelves.</p>
+            <p className="ob-nota">El IVA no suma: no es un gasto, es dinero que devuelves.</p>
           </>
         )}
       </section>

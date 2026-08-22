@@ -144,14 +144,10 @@ export default function BancoPage() {
           <section className="section mc-bloque">
             <div className="mc-head">
               <h2>Inversiones</h2>
+              <span className="ob-cuando">sin conectar</span>
             </div>
-            <p className="muted" style={{ fontSize: 13, lineHeight: 1.6, margin: 0 }}>
-              Todavía no hay ninguna conectada. PSD2 no da acceso a inversiones —eso llegará con FiDA, por fases
-              desde 2027—, así que Revolut Invest habrá que declararlo a mano. Coinbase sí tiene API propia de solo
-              lectura y está pendiente de conectar.
-            </p>
-            <p className="muted" style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 0 }}>
-              El pocket «Inversiones 🏗️» sí se lee y ya cuenta en el patrimonio de arriba: es ahorro, no inversión.
+            <p className="wg-nota">
+              Coinbase entra por su API. Revolut Invest no lo da PSD2: habrá que declararlo.
             </p>
           </section>
         </>

@@ -67,7 +67,9 @@ function llano(s: string): string {
 /** Lo que manda el banco cuando se digna a mandarlo (Revolut, siempre). */
 const POR_CODIGO: Record<string, Tipo> = {
   CARD_PAYMENT: 'tarjeta',
-  TOPUP: 'recarga',
+  // Una recarga de Revolut viene de TU propia tarjeta: es dinero cambiando de
+  // bolsillo, nunca un ingreso. Contarla como tal inflaba el ciclo en 315 €.
+  TOPUP: 'traspaso',
   EXCHANGE: 'cambio',
   FEE: 'comision',
   INTEREST: 'intereses',
@@ -130,6 +132,28 @@ export interface FilaEmparejable {
   bookingDate: string | null;
   bankCode?: string | null;
   concept?: string | null;
+  /** lo que ya se sabe de él: si un lado es traspaso, el otro también lo es */
+  tipo?: string | null;
+}
+
+/**
+ * ¿El concepto nombra al TITULAR de la cuenta?
+ *
+ * Es la señal más obvia de un traspaso propio y se me había pasado: una
+ * transferencia «a favor de Álvaro Alabart» es dinero suyo yendo de un bolsillo
+ * a otro. Se exigen TODAS las palabras del nombre, no una: si bastara el
+ * apellido, un bizum a su padre —Jorge Enrique Alabart Ferrer— se tomaría por
+ * un traspaso.
+ */
+export function nombraAlTitular(concepto: string | null, titulares: string[]): boolean {
+  const texto = llano(concepto ?? '');
+  if (!texto) return false;
+  return titulares.some((titular) => {
+    const palabras = llano(titular)
+      .split(/[\s,]+/)
+      .filter((p) => p.length > 2);
+    return palabras.length >= 2 && palabras.every((p) => texto.includes(p));
+  });
 }
 
 /** Céntimos, que con decimales en coma flotante 0,1 + 0,2 no es 0,3. */
@@ -145,6 +169,10 @@ const dias = (a: string, b: string) => Math.abs(new Date(a).getTime() - new Date
  * el código de Revolut, o el concepto nombrando al otro banco.
  */
 function pintaDeTraspaso(f: FilaEmparejable): boolean {
+  // Si ya se sabe que ese lado es un traspaso —porque el concepto nombra al
+  // titular, por ejemplo—, su pareja lo es por definición. Sin esto se marcaba
+  // un lado y no el otro, y el ciclo perdía un ingreso sin perder su gasto.
+  if (f.tipo === 'traspaso') return true;
   const codigo = (f.bankCode ?? '').toUpperCase();
   if (codigo === 'TOPUP' || codigo === 'TRANSFER' || codigo === 'EXCHANGE') return true;
   return /revolut|traspaso|entre cuentas|mismo titular|a mi favor/.test(llano(f.concept ?? ''));

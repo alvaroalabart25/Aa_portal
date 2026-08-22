@@ -2065,6 +2065,12 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .ob-fijo-c { font-size: 11.5px; color: var(--ink-muted); }
 .ob-fijo-i { font-size: 14px; font-weight: 600; white-space: nowrap; }
 .ob-fijo-i.ob-falta { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.ob-total {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  border-top: 1px solid var(--ink); padding-top: 10px; margin-top: 2px;
+}
+.ob-total span { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-muted); }
+.ob-total b { font-family: var(--font-title); font-size: 17px; font-weight: 600; }
 
 /* Banco: conexiones, cuentas con saldo y movimientos */
 .bk-aviso { font-size: 13px; color: var(--ink-soft); margin: 0 0 12px; }

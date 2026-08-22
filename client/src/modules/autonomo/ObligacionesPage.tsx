@@ -34,6 +34,11 @@ export default function ObligacionesPage() {
   if (!o) return <p className="muted">Calculando lo que debes…</p>;
 
   const pagados = o.fijos.filter((f) => f.pagado).length;
+  // El total son los COSTES: lo que se aparta para Hacienda no es un gasto, es
+  // dinero que devuelves, y sumarlo aquí inflaría lo que te cuesta vivir.
+  const costes = o.fijos.filter((f) => !f.provision);
+  const totalCostes = costes.reduce((a, f) => a + f.importe, 0);
+  const totalProvision = o.fijos.filter((f) => f.provision).reduce((a, f) => a + f.importe, 0);
 
   return (
     <div>
@@ -122,7 +127,7 @@ export default function ObligacionesPage() {
       {/* ----------------------------------------------------------- fijos */}
       <section className="section mc-bloque">
         <div className="mc-head">
-          <h2>Fijos del ciclo</h2>
+          <h2>Costes fijos del ciclo</h2>
           <span className="ob-cuando">
             {pagados} de {o.fijos.length} pagados
           </span>
@@ -154,6 +159,19 @@ export default function ObligacionesPage() {
           </div>
         )}
 
+
+        {costes.length > 0 && (
+          <div className="ob-total">
+            <span>Total en costes fijos</span>
+            <b>{eur(totalCostes)} €</b>
+          </div>
+        )}
+        {totalProvision > 0 && (
+          <p className="ob-nota">
+            Aparte, {eur(totalProvision)} € de IVA apartado. No suma aquí porque no es un gasto: es dinero que
+            devuelves.
+          </p>
+        )}
       </section>
     </div>
   );

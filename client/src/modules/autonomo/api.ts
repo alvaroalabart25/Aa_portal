@@ -131,6 +131,8 @@ export interface Obligaciones {
     dormido: boolean;
     ultimo: string;
     nota: string | null;
+    /** apartar el IVA sale de la cuenta, pero no es un gasto */
+    provision: boolean;
   }[];
   deudas: {
     id: number;

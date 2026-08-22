@@ -171,6 +171,9 @@ obligacionesRouter.get('/', ah(async (req: AuthedRequest, res) => {
       dormido: faltanDias(f.ultimo) < (f.cadencia === 'mensual' ? -45 : -21),
       ultimo: f.ultimo,
       nota: null as string | null,
+      // apartar el IVA sale de la cuenta, pero no es un gasto: es dinero que
+      // devuelves. No puede sumar en el total de costes.
+      provision: false,
     };
   });
 
@@ -252,6 +255,7 @@ obligacionesRouter.get('/', ah(async (req: AuthedRequest, res) => {
         : cobrosDelCiclo.length
           ? 'el cobro ya entró: esto es lo primero que sale'
           : 'cuando entre el cobro, antes que nada',
+      provision: true,
     });
   }
 

@@ -33,6 +33,7 @@ export interface CuentaBanco {
   moneda: string;
   saldo: string | null;
   saldoAt: string | null;
+  ajena: boolean;
 }
 
 export interface ConexionBanco {
@@ -43,6 +44,8 @@ export interface ConexionBanco {
   validoHasta: string | null;
   ultimaSync: string | null;
   error: string | null;
+  /** el banco no acepta más consultas hasta esta hora (PSD2 limita el número) */
+  reintentarDesde: string | null;
   cuentas: CuentaBanco[];
 }
 
@@ -71,9 +74,21 @@ export interface ResumenMes {
   hasta: string;
   primerMes: string;
   saldo: {
+    /** lo que es SUYO: no incluye lo que solo guarda (el IVA) */
     total: number;
+    ajeno: number;
+    cuentasAjenas: (string | null)[];
+    propias: number;
     at: string | null;
-    cuentas: { id: number; banco: string; nombre: string | null; iban: string | null; moneda: string; saldo: number | null }[];
+    cuentas: {
+      id: number;
+      banco: string;
+      nombre: string | null;
+      iban: string | null;
+      moneda: string;
+      saldo: number | null;
+      ajena: boolean;
+    }[];
   };
   movimientos: number;
   entra: number;

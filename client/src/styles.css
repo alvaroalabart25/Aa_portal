@@ -2030,6 +2030,7 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .bk-aviso { font-size: 13px; color: var(--ink-soft); margin: 0 0 12px; }
 .bk-error { font-size: 12.5px; color: var(--ink); background: var(--paper-soft); border-radius: 8px; padding: 8px 10px; }
 .bk-meta { font-size: 12.5px; color: var(--ink-muted); margin: -4px 0 12px; }
+.bk-espera { font-size: 12px; color: var(--ink-muted); white-space: nowrap; flex: none; }
 .bk-cuentas { display: flex; flex-direction: column; gap: 8px; }
 .bk-cuenta {
   display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
@@ -2073,6 +2074,8 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .mv-total { margin: 12px 0 14px; }
 .mv-total b { display: block; font-family: var(--font-title); font-size: 30px; font-weight: 600; letter-spacing: -.01em; }
 .mv-total span { font-size: 12px; color: var(--ink-muted); }
+.mv-total span { display: block; }
+.mv-ajeno { margin-top: 3px; line-height: 1.45; }
 /* El conmutador de periodo: es una aclaración con acción, no un botón */
 .mv-modo {
   background: none; border: none; padding: 0; margin: -6px 0 12px; cursor: pointer;

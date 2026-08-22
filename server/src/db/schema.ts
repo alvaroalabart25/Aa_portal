@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   bigint,
+  boolean,
   customType,
   datetime,
   date,
@@ -1069,6 +1070,9 @@ export const bankConnections = mysqlTable('bank_connections', {
   validUntil: datetime('valid_until'),
   lastSyncAt: datetime('last_sync_at'),
   lastError: varchar('last_error', { length: 300 }),
+  // Hasta cuándo no vale la pena volver a preguntar: PSD2 limita las consultas
+  // sin el usuario delante, y la pantalla esconde el botón mientras tanto.
+  retryAfter: datetime('retry_after'),
   createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime('updated_at')
     .notNull()
@@ -1090,6 +1094,9 @@ export const bankAccounts = mysqlTable('bank_accounts', {
   // Cómo llama el BANCO a esta cuenta: es lo que distingue «Hacienda 💶» de
   // «Inversiones 🏗️», porque de los pockets solo llega el titular en `name`.
   alias: varchar('alias', { length: 80 }),
+  // Esta cuenta guarda dinero que NO es suyo: el pocket de Hacienda tiene el IVA
+  // de cada factura, que se debe y solo está en depósito. No suma al patrimonio.
+  escrow: boolean('escrow').notNull().default(false),
   currency: varchar('currency', { length: 3 }).notNull().default('EUR'),
   balance: decimal('balance', { precision: 14, scale: 2 }),
   balanceAt: datetime('balance_at'),

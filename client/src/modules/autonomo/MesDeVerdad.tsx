@@ -116,9 +116,15 @@ export default function MesDeVerdad({ refrescar }: { refrescar: number }) {
       <div className="mv-total">
         <b>{eur(r.saldo.total)} €</b>
         <span>
-          en {r.saldo.cuentas.length} {r.saldo.cuentas.length === 1 ? 'cuenta' : 'cuentas'}
+          tuyo, en {r.saldo.propias} {r.saldo.propias === 1 ? 'cuenta' : 'cuentas'}
           {r.saldo.at && ` · al día ${new Date(r.saldo.at).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
         </span>
+        {r.saldo.ajeno > 0 && (
+          <span className="mv-ajeno">
+            + {eur(r.saldo.ajeno)} € en {r.saldo.cuentasAjenas.filter(Boolean).join(' y ') || 'depósito'}, que no es tuyo:
+            está guardado para pagarlo
+          </span>
+        )}
       </div>
 
       <button className="mv-modo" onClick={() => cambiarModo(!r.ciclo)}>

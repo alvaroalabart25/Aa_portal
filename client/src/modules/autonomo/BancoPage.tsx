@@ -23,6 +23,17 @@ import MesDeVerdad from './MesDeVerdad';
  * pantalla lo convierte en cosa nuestra: se deja solo la cola, como con el
  * IBAN. No se toca lo guardado, solo lo que se ve.
  */
+/**
+ * ¿Tiene sentido enseñar el botón de sincronizar?
+ *
+ * Cuando el banco dice que ya no acepta más consultas hoy, un botón que se sabe
+ * que va a fallar solo sirve para que lo pulses y te lleves el mismo aviso. Se
+ * esconde hasta la hora que dijo el servidor, y vuelve solo.
+ */
+function enEspera(c: ConexionBanco): boolean {
+  return Boolean(c.reintentarDesde && new Date(c.reintentarDesde) > new Date());
+}
+
 function sinNumerosLargos(texto: string): string {
   return texto.replace(/\d{8,}/g, (n) => `···${n.slice(-4)}`);
 }
@@ -144,9 +155,16 @@ export default function BancoPage() {
         <section key={c.id} className="section mc-bloque">
           <div className="mc-head">
             <h2>{c.banco}</h2>
-            <button className="btn ghost sm" disabled={busy === `sync-${c.id}`} onClick={() => sincronizar(c.id)}>
-              {busy === `sync-${c.id}` ? 'Sincronizando…' : 'Sincronizar'}
-            </button>
+            {enEspera(c) ? (
+              <span className="bk-espera">
+                en espera hasta las{' '}
+                {new Date(c.reintentarDesde!).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            ) : (
+              <button className="btn ghost sm" disabled={busy === `sync-${c.id}`} onClick={() => sincronizar(c.id)}>
+                {busy === `sync-${c.id}` ? 'Sincronizando…' : 'Sincronizar'}
+              </button>
+            )}
           </div>
 
           <p className="bk-meta">

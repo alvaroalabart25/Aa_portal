@@ -34,6 +34,17 @@ export const bancoRouter = Router();
 
 const DIAS_HISTORIAL = 90; // lo que se pide la primera vez
 
+/**
+ * Cuánto se espera cuando el banco dice que ya no hay más consultas hoy.
+ *
+ * No se puede saber a qué hora reponen el cupo —cada banco lo hace a su manera—,
+ * así que en vez de adivinar se espera un rato y se vuelve a probar. Si sigue
+ * agotado, otro rato. Nunca se queda bloqueado para siempre.
+ */
+const HORAS_DE_ESPERA = 3;
+
+const esCupoAgotado = (mensaje: string) => /HUB046|\(429\)/.test(mensaje);
+
 function urlDeVuelta(): string {
   const base = (process.env.FRONT_URL ?? 'http://localhost:5173').replace(/\/$/, '');
   return `${base}/autonomo/banco/vuelta`;
@@ -154,6 +165,7 @@ bancoRouter.get('/estado', ah(async (req: AuthedRequest, res) => {
       validoHasta: c.validUntil,
       ultimaSync: c.lastSyncAt,
       error: c.lastError,
+      reintentarDesde: c.retryAfter,
       cuentas: cuentas
         .filter((a) => a.connectionId === c.id)
         .map((a) => ({
@@ -164,6 +176,7 @@ bancoRouter.get('/estado', ah(async (req: AuthedRequest, res) => {
           moneda: a.currency,
           saldo: a.balance,
           saldoAt: a.balanceAt,
+          ajena: a.escrow,
         })),
     })),
   });
@@ -283,6 +296,15 @@ bancoRouter.post('/sincronizar/:id(\\d+)', ah(async (req: AuthedRequest, res) =>
   if (!conexion) return res.status(404).json({ error: 'No existe esa conexión' });
   if (conexion.status !== 'activa') return res.status(400).json({ error: 'Esa conexión no está activa' });
 
+  // Si el banco ya dijo que no hay más consultas, no se le vuelve a molestar:
+  // gastaría otra llamada para recibir el mismo no.
+  if (conexion.retryAfter && conexion.retryAfter > new Date()) {
+    return res.status(429).json({
+      error: 'El banco no acepta más consultas por ahora. Se puede volver a intentar más tarde.',
+      reintentarDesde: conexion.retryAfter,
+    });
+  }
+
   const cuentas = await db
     .select()
     .from(bankAccounts)
@@ -384,13 +406,19 @@ bancoRouter.post('/sincronizar/:id(\\d+)', ah(async (req: AuthedRequest, res) =>
 
     await db
       .update(bankConnections)
-      .set({ lastSyncAt: new Date(), lastError: null })
+      .set({ lastSyncAt: new Date(), lastError: null, retryAfter: null })
       .where(eq(bankConnections.id, id));
     res.json({ ok: true, nuevos, traspasos });
   } catch (e) {
     const f = fallo(e);
-    await db.update(bankConnections).set({ lastError: f.error }).where(eq(bankConnections.id, id));
-    res.status(f.status).json({ error: f.error });
+    const espera = esCupoAgotado((e as Error).message ?? '')
+      ? new Date(Date.now() + HORAS_DE_ESPERA * 3600_000)
+      : null;
+    await db
+      .update(bankConnections)
+      .set({ lastError: f.error, ...(espera ? { retryAfter: espera } : {}) })
+      .where(eq(bankConnections.id, id));
+    res.status(f.status).json({ error: f.error, ...(espera ? { reintentarDesde: espera } : {}) });
   }
 }));
 
@@ -502,6 +530,7 @@ bancoRouter.get('/resumen', ah(async (req: AuthedRequest, res) => {
       moneda: bankAccounts.currency,
       saldo: bankAccounts.balance,
       saldoAt: bankAccounts.balanceAt,
+      escrow: bankAccounts.escrow,
       banco: bankConnections.aspspName,
     })
     .from(bankAccounts)
@@ -602,7 +631,14 @@ bancoRouter.get('/resumen', ah(async (req: AuthedRequest, res) => {
     hasta,
     primerMes,
     saldo: {
-      total: euros(cuentas.reduce((a, c) => a + (c.saldo ? cent(c.saldo) : 0), 0)),
+      // El total es lo que es SUYO. El pocket de Hacienda guarda el IVA de cada
+      // factura: es dinero que debe, no que tiene, y sumarlo sería mentir.
+      total: euros(
+        cuentas.filter((c) => !c.escrow).reduce((a, c) => a + (c.saldo ? cent(c.saldo) : 0), 0),
+      ),
+      ajeno: euros(cuentas.filter((c) => c.escrow).reduce((a, c) => a + (c.saldo ? cent(c.saldo) : 0), 0)),
+      cuentasAjenas: cuentas.filter((c) => c.escrow).map((c) => c.alias ?? c.nombre),
+      propias: cuentas.filter((c) => !c.escrow).length,
       at: cuentas.map((c) => c.saldoAt).filter(Boolean).sort().pop() ?? null,
       cuentas: cuentas.map((c) => ({
         id: c.id,
@@ -611,6 +647,7 @@ bancoRouter.get('/resumen', ah(async (req: AuthedRequest, res) => {
         iban: c.iban,
         moneda: c.moneda,
         saldo: c.saldo ? Number(c.saldo) : null,
+        ajena: c.escrow,
       })),
     },
     movimientos: filas.length,

@@ -99,6 +99,56 @@ export interface ResumenMes {
   tipos: { tipo: string; nombre: string; n: number; entra: number; sale: number }[];
 }
 
+/** Obligaciones: lo que debes, cuándo se paga y si tienes con qué. */
+export interface Obligaciones {
+  ciclo: { id: string; desde: string; hasta: string };
+  iva: {
+    trimestre: string;
+    desde: string;
+    hasta: string;
+    presenta: string;
+    cobra: string;
+    faltanDias: number;
+    cerrado: boolean;
+    repercutido: number;
+    soportado: number;
+    aPagar: number;
+    segunBanco: number;
+    faltanFacturas: boolean;
+    apartado: number;
+    faltan: number;
+    donde: (string | null)[];
+  };
+  fijos: {
+    nombre: string;
+    importe: number;
+    cadencia: 'mensual' | 'semanal';
+    cuenta: string | null;
+    saldoCuenta: number | null;
+    pagado: boolean;
+    fecha: string;
+    faltanDias: number | null;
+    dormido: boolean;
+    ultimo: string;
+  }[];
+  deudas: {
+    id: number;
+    nombre: string;
+    total: number;
+    pagado: number;
+    queda: number;
+    porcentaje: number;
+    mensual: number;
+    desde: string;
+    termina: string | null;
+    esteCiclo: { pagado: boolean; importe: number };
+  }[];
+}
+
+export const obligacionesApi = {
+  ver: () => get<Obligaciones>('/autonomo/obligaciones'),
+};
+
 export const bancoApi = {
   estado: () => get<{ configurado: boolean; conexiones: ConexionBanco[] }>('/autonomo/banco/estado'),
   bancos: (pais = 'ES') =>

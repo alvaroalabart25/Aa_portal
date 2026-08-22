@@ -2038,6 +2038,34 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .subseg button:hover { color: var(--ink-soft); }
 .subseg button.active { color: var(--ink); border-bottom-color: var(--ink); }
 
+/* Obligaciones: compromisos con fecha, comparados contra dinero real */
+.ob-cuando { font-size: 12px; color: var(--ink-muted); text-align: right; flex: none; }
+.ob-cuenta {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; align-items: end;
+  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 12px 0; margin-top: 4px;
+}
+.ob-cuenta > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ob-cuenta span { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-muted); }
+.ob-cuenta b { font-family: var(--font-title); font-size: 17px; font-weight: 600; }
+/* Lo que falta no se dice con color, que el portal es monocromo: se levanta del papel */
+.ob-cuenta > .ob-falta { background: var(--paper-soft); border-radius: 8px; padding: 6px 8px; margin: -6px -8px; }
+.ob-nota { font-size: 12px; line-height: 1.55; color: var(--ink-muted); margin: 10px 0 0; }
+.ob-aviso { color: var(--ink-soft); }
+.ob-deuda { display: flex; align-items: baseline; gap: 8px; margin: 10px 0 8px; flex-wrap: wrap; }
+.ob-deuda b { font-family: var(--font-title); font-size: 26px; font-weight: 600; }
+.ob-deuda span { font-size: 12.5px; color: var(--ink-muted); }
+.ob-barra { height: 6px; border-radius: 3px; background: var(--paper-soft); overflow: hidden; }
+.ob-barra div { height: 100%; background: var(--ink); }
+.ob-fijos { display: flex; flex-direction: column; margin-top: 4px; }
+.ob-fijo { display: flex; align-items: baseline; gap: 10px; padding: 10px 2px; border-bottom: 1px solid var(--line); }
+.ob-fijo:last-child { border-bottom: none; }
+.ob-fijo-mark { width: 12px; flex: none; color: var(--ink-muted); font-size: 13px; }
+.ob-fijo-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ob-fijo-t b { font-size: 13.5px; font-weight: 500; }
+.ob-fijo-c { font-size: 11.5px; color: var(--ink-muted); }
+.ob-fijo-i { font-size: 14px; font-weight: 600; white-space: nowrap; }
+.ob-fijo-i.ob-falta { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+
 /* Banco: conexiones, cuentas con saldo y movimientos */
 .bk-aviso { font-size: 13px; color: var(--ink-soft); margin: 0 0 12px; }
 .bk-error { font-size: 12.5px; color: var(--ink); background: var(--paper-soft); border-radius: 8px; padding: 8px 10px; }

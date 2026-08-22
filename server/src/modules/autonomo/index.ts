@@ -8,6 +8,7 @@ import type { AuthedRequest } from '../../core/auth/middleware';
 import { buildInvoicePdf } from './pdf';
 import { sendInvoiceEmail, smtpConfigured } from './mailer';
 import { bancoRouter } from './banco-routes';
+import { obligacionesRouter } from './obligaciones-routes';
 
 // Módulo "Autónomo": facturación, cuentas y trimestrales.
 export const autonomoModule = Router();
@@ -15,6 +16,10 @@ export const autonomoModule = Router();
 // La lectura del banco vive aparte (es otro mundo: PSD2, consentimientos,
 // sincronización) pero cuelga de aquí porque es la misma parcela del portal.
 autonomoModule.use('/banco', bancoRouter);
+
+// Obligaciones cruza las dos mitades del módulo: las facturas dicen lo que
+// debes a Hacienda y el banco dice lo que tienes apartado para pagarlo.
+autonomoModule.use('/obligaciones', obligacionesRouter);
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida (YYYY-MM-DD)');
 const money = z.number().positive().max(9_999_999);

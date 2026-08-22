@@ -201,6 +201,20 @@ export const MODULES: PortalModule[] = [
     icon: icons.autonomo,
     children: [
       {
+        // Lo que debes y cuándo. Va primero porque es la pregunta que más veces
+        // te haces: ¿voy al día?
+        id: 'obligaciones',
+        title: 'Obligaciones',
+        path: '/autonomo/obligaciones',
+        // un calendario con una marca: fechas que no se eligen
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" {...stroke}>
+            <rect x="3" y="5" width="18" height="16" rx="2" />
+            <path d="M8 3v4M16 3v4M3 10h18M9 15l2 2 4-4" />
+          </svg>
+        ),
+      },
+      {
         // Facturas y Cuentas eran dos entradas del mismo papeleo: ahora es una
         // con dos niveles dentro (Facturas · Cuentas).
         id: 'facturas',

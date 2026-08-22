@@ -1138,6 +1138,37 @@ export const bankTransactions = mysqlTable('bank_transactions', {
   createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+/**
+ * Compromisos declarados: lo que debes y el banco no puede saber solo.
+ *
+ * Una deuda con una persona son bizums sueltos en el extracto. Se declara una
+ * vez —total, cuota, desde cuándo y cómo reconocer los pagos— y a partir de ahí
+ * el portal la sigue contra los movimientos reales.
+ */
+export const financialCommitments = mysqlTable('financial_commitments', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  kind: varchar('kind', { length: 20 }).notNull().default('deuda'),
+  name: varchar('name', { length: 120 }).notNull(),
+  total: decimal('total', { precision: 12, scale: 2 }).notNull(),
+  monthly: decimal('monthly', { precision: 12, scale: 2 }).notNull(),
+  startedOn: date('started_on', { mode: 'string' }).notNull(),
+  // lo ya pagado cuando se declaró: el banco solo da 90 días hacia atrás
+  paidBefore: decimal('paid_before', { precision: 12, scale: 2 }).notNull().default('0'),
+  declaredOn: date('declared_on', { mode: 'string' }).notNull(),
+  matcher: varchar('matcher', { length: 120 }),
+  archivedAt: datetime('archived_at'),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`)
+    .$onUpdateFn(() => new Date()),
+});
+
+export type FinancialCommitment = typeof financialCommitments.$inferSelect;
+
 export type BankConnection = typeof bankConnections.$inferSelect;
 export type BankAccount = typeof bankAccounts.$inferSelect;
 export type BankTransaction = typeof bankTransactions.$inferSelect;

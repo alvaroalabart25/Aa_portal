@@ -19,6 +19,7 @@ import {
   saldosDe,
 } from './banco';
 import { NOMBRE_TIPO, TIPOS, emparejarTraspasos, tipoDeMovimiento, type Tipo } from './tipos';
+import { CICLO_DIA } from './ciclo';
 
 /**
  * Las rutas del banco. Todo cuelga de /api/autonomo/banco y va con sesión
@@ -76,13 +77,6 @@ function fallo(e: unknown): { status: number; error: string } {
   }
   return { status: 502, error: (e as Error).message || 'El banco no ha respondido' };
 }
-
-/**
- * El día en que empieza su mes de verdad. Suyo, dicho por él: «yo cobro del 24
- * al 30 de cada mes». Si algún día cobra en otras fechas, esto es lo único que
- * hay que cambiar.
- */
-const CICLO_DIA = 24;
 
 /** Los últimos 120 días: el emparejado necesita ver los dos lados, no el mes. */
 const VENTANA_TRASPASOS = 120;

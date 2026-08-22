@@ -8,6 +8,7 @@ import ProjectPage from './modules/tasks/ProjectPage';
 import TasksPage from './modules/tasks/TasksPage';
 import TaskPage from './modules/tasks/TaskPage';
 import AutonomoPage from './modules/autonomo/AutonomoPage';
+import ObligacionesPage from './modules/autonomo/ObligacionesPage';
 import BancoPage from './modules/autonomo/BancoPage';
 import RoadmapPage from './modules/roadmap/RoadmapPage';
 import RutinaPage from './modules/routine/RutinaPage';
@@ -87,6 +88,7 @@ export default function App() {
             {/* Facturas y Cuentas eran dos pantallas del mismo papeleo. Ahora
                 es una con dos niveles; la dirección vieja sigue valiendo. */}
             <Route path="/autonomo/facturas" element={<AutonomoPage />} />
+            <Route path="/autonomo/obligaciones" element={<ObligacionesPage />} />
             <Route path="/autonomo/cuentas" element={<Navigate to="/autonomo/facturas?tab=cuentas" replace />} />
             {/* la vuelta del banco aterriza en /autonomo/banco/vuelta?code&state */}
             <Route path="/autonomo/banco" element={<BancoPage />} />

@@ -45,6 +45,24 @@ function fallo(e: unknown): { status: number; error: string } {
     return { status: 503, error: 'La conexión con el banco no está configurada todavía' };
   }
   if (e instanceof ClaveIlegible) return { status: 503, error: (e as Error).message };
+
+  const mensaje = (e as Error).message ?? '';
+  // PSD2 limita las consultas que se pueden hacer sin que el usuario esté
+  // delante (unas pocas al día por consentimiento). Pasa de verdad y hay que
+  // decirlo en español: «HUB046» no le dice nada a nadie.
+  if (/HUB046|\(429\)/.test(mensaje)) {
+    return {
+      status: 429,
+      error: 'El banco solo permite unas cuantas consultas al día y hoy ya están gastadas. Mañana vuelve a funcionar solo.',
+    };
+  }
+  // El consentimiento caducado se arregla volviendo a autorizar, no esperando
+  if (/HUB012|consent.*(expired|invalid)|401/i.test(mensaje)) {
+    return {
+      status: 401,
+      error: 'El permiso de este banco ha caducado o se ha revocado. Hay que volver a autorizarlo desde aquí.',
+    };
+  }
   return { status: 502, error: (e as Error).message || 'El banco no ha respondido' };
 }
 

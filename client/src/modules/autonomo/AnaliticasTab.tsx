@@ -14,24 +14,6 @@ import { useDinero } from './dinero';
  * después—, y desde ahora además se guarda una foto diaria, que no caduca.
  */
 
-/** Los nombres de los tipos, para el filtro. El servidor manda la clave. */
-const NOMBRES: Record<string, string> = {
-  traspaso: 'Entre tus cuentas',
-  tarjeta: 'Compra con tarjeta',
-  movil: 'Pago con móvil',
-  bizum: 'Bizum',
-  transferencia: 'Transferencia',
-  recibo: 'Recibo domiciliado',
-  liquidacion: 'Liquidación de tarjeta',
-  comision: 'Comisión',
-  intereses: 'Intereses',
-  cambio: 'Cambio de divisa',
-  recarga: 'Recarga',
-  devolucion: 'Devolución',
-  inversion: 'Inversión',
-  otro: 'Sin clasificar',
-};
-
 const dm = (iso: string) => new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 
 /** Los últimos meses naturales, para el selector. */
@@ -75,6 +57,30 @@ export default function AnaliticasTab() {
 
   return (
     <>
+      <div className="an-periodo">
+        <select value={periodo} onChange={(e) => setPeriodo(e.target.value)}>
+          <optgroup label="Hacia atrás">
+            <option value="30">Últimos 30 días</option>
+            <option value="90">Últimos 90 días</option>
+            <option value="180">Últimos 180 días</option>
+          </optgroup>
+          <optgroup label="Por ciclo de cobro">
+            {[...a.ciclos].reverse().map((c) => (
+            <option key={c.id} value={`ciclo-${c.id}`}>
+              {dm(c.desde)} → {dm(c.hasta)}
+            </option>
+            ))}
+          </optgroup>
+          <optgroup label="Por mes natural">
+            {mesesRecientes(6).map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.titulo}
+            </option>
+            ))}
+          </optgroup>
+        </select>
+      </div>
+
       <section className="section mc-bloque oscuro">
         <span className="wg-etiqueta">{crece ? 'Tu patrimonio ha crecido' : 'Tu patrimonio ha bajado'}</span>
         <b className="wg-grande">
@@ -92,29 +98,6 @@ export default function AnaliticasTab() {
           formato={corto}
         />
 
-        <div className="an-rango">
-          <select value={periodo} onChange={(e) => setPeriodo(e.target.value)}>
-            <optgroup label="Hacia atrás">
-              <option value="30">Últimos 30 días</option>
-              <option value="90">Últimos 90 días</option>
-              <option value="180">Últimos 180 días</option>
-            </optgroup>
-            <optgroup label="Por ciclo de cobro">
-              {[...a.ciclos].reverse().map((c) => (
-                <option key={c.id} value={`ciclo-${c.id}`}>
-                  {dm(c.desde)} → {dm(c.hasta)}
-                </option>
-              ))}
-            </optgroup>
-            <optgroup label="Por mes natural">
-              {mesesRecientes(6).map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.titulo}
-                </option>
-              ))}
-            </optgroup>
-          </select>
-        </div>
 
         {a.fotos === 0 && (
           <p className="wg-nota">
@@ -157,7 +140,9 @@ export default function AnaliticasTab() {
         <section className="section mc-bloque">
           <div className="mc-head">
             <h2>De dónde entra</h2>
-            <span className="ob-cuando">{eur(a.totalIngresos)} €</span>
+            <span className="ob-cuando">
+              {eur(a.totalIngresos)} € · {dm(a.periodo.desde)} → {dm(a.periodo.hasta)}
+            </span>
           </div>
           <Reparto filas={a.ingresos} />
         </section>
@@ -165,7 +150,9 @@ export default function AnaliticasTab() {
         <section className="section mc-bloque">
           <div className="mc-head">
             <h2>En qué se va</h2>
-            <span className="ob-cuando">{eur(a.totalGastos)} €</span>
+            <span className="ob-cuando">
+              {eur(a.totalGastos)} € · {dm(a.periodo.desde)} → {dm(a.periodo.hasta)}
+            </span>
           </div>
           <Reparto filas={a.gastos} />
         </section>
@@ -178,48 +165,12 @@ export default function AnaliticasTab() {
 function Reparto({ filas }: { filas: { nombre: string; n: number; importe: number; porcentaje: number; tipo: string }[] }) {
   const { eur } = useDinero();
   const [todo, setTodo] = useState(false);
-  const [busca, setBusca] = useState('');
-  const [tipo, setTipo] = useState('');
-
-  // Los tipos que hay DE VERDAD en esta lista, no una lista inventada
-  const tipos = [...new Set(filas.map((f) => f.tipo))];
-  const filtradas = filas.filter(
-    (f) => (!tipo || f.tipo === tipo) && (!busca || f.nombre.toLowerCase().includes(busca.toLowerCase())),
-  );
-  const visibles = todo ? filtradas : filtradas.slice(0, 8);
-  const resto = filtradas.slice(8);
+  const visibles = todo ? filas : filas.slice(0, 8);
+  const resto = filas.slice(8);
   const sumaResto = resto.reduce((a, f) => a + f.importe, 0);
 
   return (
     <>
-      <div className="an-filtros">
-        <input
-          type="search"
-          value={busca}
-          placeholder="Buscar…"
-          onChange={(e) => {
-            setBusca(e.target.value);
-            setTodo(false);
-          }}
-        />
-        <select
-          value={tipo}
-          onChange={(e) => {
-            setTipo(e.target.value);
-            setTodo(false);
-          }}
-        >
-          <option value="">Todo</option>
-          {tipos.map((t) => (
-            <option key={t} value={t}>
-              {NOMBRES[t] ?? t}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {filtradas.length === 0 && <p className="muted mc-vacio">Nada con ese filtro.</p>}
-
       <div className="an-reparto">
         {visibles.map((f) => (
           <div key={f.nombre} className="an-fila">

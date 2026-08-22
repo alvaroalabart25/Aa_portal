@@ -2215,8 +2215,10 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .gf-rango { margin-left: auto; }
 
 /* Analíticas: crecimiento, de dónde entra y en qué se va */
-.an-rango { margin-top: 16px; }
-.an-rango select {
+/* El periodo manda sobre TODA la pestaña —curva, ciclos y las dos listas—, así
+   que va arriba del todo y no escondido dentro de una caja. */
+.an-periodo { margin: -6px 0 18px; }
+.an-periodo select {
   font: inherit; font-size: 12.5px; cursor: pointer; color: var(--ink);
   background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: 7px 12px;
   max-width: 100%;
@@ -2245,14 +2247,6 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
      bloque» y las cabeceras quedan a distinta altura */
   .an-dos > .mc-bloque { margin-top: 40px; }
 }
-.an-filtros { display: flex; gap: 8px; margin-top: 14px; }
-.an-filtros input, .an-filtros select {
-  font: inherit; font-size: 12.5px; color: var(--ink); background: var(--paper);
-  border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; min-width: 0;
-}
-.an-filtros input { flex: 1; }
-.an-filtros input:focus, .an-filtros select:focus { outline: none; border-color: var(--ink-soft); }
-
 /* El plan del ciclo: cada tramo con su peso */
 .pl-tramos { display: flex; flex-direction: column; gap: 14px; margin-top: 16px; }
 .pl-tramo { display: grid; grid-template-columns: 1fr auto auto; gap: 4px 12px; align-items: baseline; }

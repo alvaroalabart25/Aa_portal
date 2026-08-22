@@ -2,6 +2,7 @@ import { useSearchParams } from 'react-router-dom';
 import MesDeVerdad from './MesDeVerdad';
 import AnaliticasTab from './AnaliticasTab';
 import ObjetivosTab from './ObjetivosTab';
+import PlanTab from './PlanTab';
 import { OjoPrivacidad } from './dinero';
 
 /**
@@ -24,6 +25,7 @@ const PESTANAS = [
   { id: 'resumen', titulo: 'Hoy', lema: 'Lo que tienes y cómo va el ciclo, sin contar el dinero que solo cambia de bolsillo.' },
   { id: 'analiticas', titulo: 'Analíticas', lema: '¿Crece tu patrimonio? ¿De dónde entra el dinero y en qué se va?' },
   { id: 'objetivos', titulo: 'Objetivos', lema: 'Hacia dónde va el dinero que no te gastas.' },
+  { id: 'plan', titulo: 'Plan', lema: 'A dónde va cada euro de lo que entra este ciclo.' },
 ];
 
 export default function ResumenPage() {
@@ -56,6 +58,7 @@ export default function ResumenPage() {
       {pestana.id === 'resumen' && <MesDeVerdad refrescar={0} />}
       {pestana.id === 'analiticas' && <AnaliticasTab />}
       {pestana.id === 'objetivos' && <ObjetivosTab />}
+      {pestana.id === 'plan' && <PlanTab />}
     </div>
   );
 }

@@ -213,32 +213,36 @@ analiticaRouter.get('/', ah(async (req: AuthedRequest, res) => {
   // De dónde viene el dinero, en la ventana pedida
   const desdeIso = desde.toISOString().slice(0, 10);
   const hastaIso = hasta.toISOString().slice(0, 10);
-  const origenes = new Map<string, { n: number; importe: number }>();
+  const origenes = new Map<string, { n: number; importe: number; tipos: Map<string, number> }>();
   for (const m of movimientos) {
     if (!m.fecha || m.fecha < desdeIso || m.fecha > hastaIso || m.direccion !== 'CRDT' || m.tipo === 'traspaso') continue;
     const quien = quienPaga(m.concepto, m.contraparte);
-    const x = origenes.get(quien) ?? { n: 0, importe: 0 };
+    const x = origenes.get(quien) ?? { n: 0, importe: 0, tipos: new Map<string, number>() };
     x.n += 1;
     x.importe += cent(m.importe);
+    x.tipos.set(m.tipo ?? 'otro', (x.tipos.get(m.tipo ?? 'otro') ?? 0) + 1);
     origenes.set(quien, x);
   }
+  const dominante = (tipos: Map<string, number>) =>
+    [...tipos].sort((a, z) => z[1] - a[1])[0]?.[0] ?? 'otro';
   const ingresos = [...origenes]
-    .map(([nombre, x]) => ({ nombre, n: x.n, importe: euros(x.importe) }))
+    .map(([nombre, x]) => ({ nombre, n: x.n, importe: euros(x.importe), tipo: dominante(x.tipos) }))
     .sort((a, z) => z.importe - a.importe);
   const totalIngresos = ingresos.reduce((a, i) => a + i.importe, 0);
 
   // Y en qué se va
-  const destinos = new Map<string, { n: number; importe: number }>();
+  const destinos = new Map<string, { n: number; importe: number; tipos: Map<string, number> }>();
   for (const m of movimientos) {
     if (!m.fecha || m.fecha < desdeIso || m.fecha > hastaIso || m.direccion !== 'DBIT' || m.tipo === 'traspaso') continue;
     const donde = enQueGasto(m.concepto, m.contraparte);
-    const x = destinos.get(donde) ?? { n: 0, importe: 0 };
+    const x = destinos.get(donde) ?? { n: 0, importe: 0, tipos: new Map<string, number>() };
     x.n += 1;
     x.importe += cent(m.importe);
+    x.tipos.set(m.tipo ?? 'otro', (x.tipos.get(m.tipo ?? 'otro') ?? 0) + 1);
     destinos.set(donde, x);
   }
   const gastos = [...destinos]
-    .map(([nombre, x]) => ({ nombre, n: x.n, importe: euros(x.importe) }))
+    .map(([nombre, x]) => ({ nombre, n: x.n, importe: euros(x.importe), tipo: dominante(x.tipos) }))
     .sort((a, z) => z.importe - a.importe);
   const totalGastos = gastos.reduce((a, g) => a + g.importe, 0);
 

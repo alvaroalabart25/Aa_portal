@@ -14,6 +14,24 @@ import { useDinero } from './dinero';
  * después—, y desde ahora además se guarda una foto diaria, que no caduca.
  */
 
+/** Los nombres de los tipos, para el filtro. El servidor manda la clave. */
+const NOMBRES: Record<string, string> = {
+  traspaso: 'Entre tus cuentas',
+  tarjeta: 'Compra con tarjeta',
+  movil: 'Pago con móvil',
+  bizum: 'Bizum',
+  transferencia: 'Transferencia',
+  recibo: 'Recibo domiciliado',
+  liquidacion: 'Liquidación de tarjeta',
+  comision: 'Comisión',
+  intereses: 'Intereses',
+  cambio: 'Cambio de divisa',
+  recarga: 'Recarga',
+  devolucion: 'Devolución',
+  inversion: 'Inversión',
+  otro: 'Sin clasificar',
+};
+
 const dm = (iso: string) => new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 
 /** Los últimos meses naturales, para el selector. */
@@ -157,15 +175,51 @@ export default function AnaliticasTab() {
 }
 
 /** Una lista con barra: se lee el peso de cada cosa sin leer los números. */
-function Reparto({ filas }: { filas: { nombre: string; n: number; importe: number; porcentaje: number }[] }) {
+function Reparto({ filas }: { filas: { nombre: string; n: number; importe: number; porcentaje: number; tipo: string }[] }) {
   const { eur } = useDinero();
   const [todo, setTodo] = useState(false);
-  const visibles = todo ? filas : filas.slice(0, 8);
-  const resto = filas.slice(8);
+  const [busca, setBusca] = useState('');
+  const [tipo, setTipo] = useState('');
+
+  // Los tipos que hay DE VERDAD en esta lista, no una lista inventada
+  const tipos = [...new Set(filas.map((f) => f.tipo))];
+  const filtradas = filas.filter(
+    (f) => (!tipo || f.tipo === tipo) && (!busca || f.nombre.toLowerCase().includes(busca.toLowerCase())),
+  );
+  const visibles = todo ? filtradas : filtradas.slice(0, 8);
+  const resto = filtradas.slice(8);
   const sumaResto = resto.reduce((a, f) => a + f.importe, 0);
 
   return (
     <>
+      <div className="an-filtros">
+        <input
+          type="search"
+          value={busca}
+          placeholder="Buscar…"
+          onChange={(e) => {
+            setBusca(e.target.value);
+            setTodo(false);
+          }}
+        />
+        <select
+          value={tipo}
+          onChange={(e) => {
+            setTipo(e.target.value);
+            setTodo(false);
+          }}
+        >
+          <option value="">Todo</option>
+          {tipos.map((t) => (
+            <option key={t} value={t}>
+              {NOMBRES[t] ?? t}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {filtradas.length === 0 && <p className="muted mc-vacio">Nada con ese filtro.</p>}
+
       <div className="an-reparto">
         {visibles.map((f) => (
           <div key={f.nombre} className="an-fila">

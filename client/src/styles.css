@@ -2245,6 +2245,37 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
      bloque» y las cabeceras quedan a distinta altura */
   .an-dos > .mc-bloque { margin-top: 40px; }
 }
+.an-filtros { display: flex; gap: 8px; margin-top: 14px; }
+.an-filtros input, .an-filtros select {
+  font: inherit; font-size: 12.5px; color: var(--ink); background: var(--paper);
+  border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; min-width: 0;
+}
+.an-filtros input { flex: 1; }
+.an-filtros input:focus, .an-filtros select:focus { outline: none; border-color: var(--ink-soft); }
+
+/* El plan del ciclo: cada tramo con su peso */
+.pl-tramos { display: flex; flex-direction: column; gap: 14px; margin-top: 16px; }
+.pl-tramo { display: grid; grid-template-columns: 1fr auto auto; gap: 4px 12px; align-items: baseline; }
+.pl-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pl-t b { font-size: 13.5px; font-weight: 500; }
+.pl-d { font-size: 11.5px; color: var(--ink-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-pct { font-size: 11.5px; color: var(--ink-muted); white-space: nowrap; }
+.pl-i {
+  font: inherit; font-family: var(--font-title); font-size: 15px; font-weight: 600; white-space: nowrap;
+  background: none; border: none; padding: 0; color: var(--ink);
+}
+.pl-i.editable { cursor: pointer; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 4px; }
+.pl-i.editable:hover { text-decoration-color: var(--ink); }
+.pl-input {
+  font: inherit; font-family: var(--font-title); font-size: 15px; font-weight: 600; width: 90px; text-align: right;
+  border: 1px solid var(--ink); border-radius: 8px; padding: 2px 8px; background: var(--paper); color: var(--ink);
+}
+.pl-barra { grid-column: 1 / -1; height: 4px; border-radius: 2px; background: var(--paper-soft); overflow: hidden; }
+.pl-barra div { height: 100%; background: var(--ink-muted); }
+/* Lo que queda para vivir es el resultado, no una partida más: se marca */
+.pl-tramo.vivir { border-top: 1px solid var(--ink); padding-top: 14px; margin-top: 4px; }
+.pl-tramo.vivir .pl-barra div { background: var(--ink); }
+
 .an-reparto { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
 .an-fila { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: baseline; }
 .an-fila-n { font-size: 13px; text-transform: capitalize; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -197,10 +197,29 @@ export interface Objetivo {
   termina: string | null;
 }
 
+/** El reparto del ciclo: qué entra y a dónde va cada euro. */
+export interface Plan {
+  ciclo: { id: string; desde: string; hasta: string };
+  ingreso: number;
+  llegado: boolean;
+  cuadra: boolean;
+  tramos: {
+    id: string;
+    titulo: string;
+    detalle: string;
+    importe: number;
+    porcentaje: number;
+    editable: boolean;
+  }[];
+}
+
 export const obligacionesApi = {
   ver: () => get<Obligaciones>('/autonomo/obligaciones'),
   deuda: (id: number) => get<DeudaFicha>(`/autonomo/obligaciones/deudas/${id}`),
   objetivos: () => get<Objetivo[]>('/autonomo/obligaciones/objetivos'),
+  plan: () => get<Plan>('/autonomo/obligaciones/plan'),
+  cambiarObjetivo: (id: number, cambios: { mensual?: number; meta?: number }) =>
+    patch<{ ok: boolean }>(`/autonomo/obligaciones/objetivos/${id}`, cambios),
 };
 
 /** Analíticas: ¿crece el patrimonio, de dónde entra y en qué se va? */
@@ -222,9 +241,9 @@ export interface Analitica {
     /** lo que de verdad cambió tu bolsillo: cuadra con la curva, entra−sale no */
     patrimonio: number;
   }[];
-  ingresos: { nombre: string; n: number; importe: number; porcentaje: number }[];
+  ingresos: { nombre: string; n: number; importe: number; porcentaje: number; tipo: string }[];
   totalIngresos: number;
-  gastos: { nombre: string; n: number; importe: number; porcentaje: number }[];
+  gastos: { nombre: string; n: number; importe: number; porcentaje: number; tipo: string }[];
   totalGastos: number;
 }
 

@@ -89,6 +89,144 @@ function ivaSegunCobros(importes: number[], ivaPct: number, irpfPct: number): nu
  * un número que haya que ir actualizando: si un mes sacas dinero del colchón, el
  * objetivo retrocede solo, que es justo lo que tiene que pasar.
  */
+/**
+ * GET /plan — el reparto del ciclo: qué entra y a dónde va cada euro.
+ *
+ * No es un presupuesto inventado: cada tramo sale de datos reales. El IVA, de
+ * lo que cobras; los fijos, de lo que se repite en tu banco; la deuda y los
+ * objetivos, de lo que tú declaraste. **El día a día es lo que sobra**, y esa
+ * es la idea entera: primero se cubre lo que no se negocia y lo que quieres
+ * guardar, y con el resto se vive.
+ */
+obligacionesRouter.get('/plan', ah(async (req: AuthedRequest, res) => {
+  const userId = req.userId!;
+  const ciclo = cicloDe();
+
+  // Lo que entra: el cobro de este ciclo si ya llegó, y si no, el último
+  const cobros = await db
+    .select({ importe: bankTransactions.amount, fecha: bankTransactions.bookingDate })
+    .from(bankTransactions)
+    .where(
+      and(
+        eq(bankTransactions.userId, userId),
+        eq(bankTransactions.direction, 'CRDT'),
+        sql`${bankTransactions.tipo} in ('transferencia','otro')`,
+        sql`${bankTransactions.amount} >= 300`,
+      ),
+    )
+    .orderBy(desc(bankTransactions.bookingDate));
+
+  const delCiclo = cobros.filter((c) => c.fecha && c.fecha >= ciclo.desde && c.fecha <= ciclo.hasta);
+  const ingreso = delCiclo.length
+    ? delCiclo.reduce((a, c) => a + cent(c.importe), 0)
+    : cent(cobros[0]?.importe ?? 0);
+  const llegado = delCiclo.length > 0;
+
+  const [ultima] = await db
+    .select({ vatPct: invoices.vatPct, irpfPct: invoices.irpfPct })
+    .from(invoices)
+    .where(and(eq(invoices.userId, userId), eq(invoices.kind, 'income'), isNull(invoices.archivedAt)))
+    .orderBy(desc(invoices.issueDate))
+    .limit(1);
+  const iva = ivaSegunCobros([ingreso / 100], Number(ultima?.vatPct ?? 21), Number(ultima?.irpfPct ?? 15));
+
+  // Los fijos que se repiten, detectados en el banco
+  const movimientos = await db
+    .select({ fecha: bankTransactions.bookingDate, importe: bankTransactions.amount, concepto: bankTransactions.concept })
+    .from(bankTransactions)
+    .where(
+      and(
+        eq(bankTransactions.userId, userId),
+        eq(bankTransactions.direction, 'DBIT'),
+        sql`${bankTransactions.tipo} <> 'traspaso'`,
+      ),
+    );
+  const fijos = detectarFijos(
+    movimientos.map((m) => ({ fecha: m.fecha ?? '', importe: Number(m.importe), concepto: m.concepto })),
+  ).filter((f) => faltanDias(f.ultimo) >= (f.cadencia === 'mensual' ? -45 : -21));
+  const costeFijo = fijos.reduce((a, f) => a + Math.round(f.importe * 100) * (f.cadencia === 'semanal' ? 4 : 1), 0);
+
+  const compromisos = await db
+    .select()
+    .from(financialCommitments)
+    .where(and(eq(financialCommitments.userId, userId), isNull(financialCommitments.archivedAt)));
+  const deuda = compromisos.reduce((a, d) => a + cent(d.monthly), 0);
+
+  const objetivos = await db
+    .select()
+    .from(financialGoals)
+    .where(and(eq(financialGoals.userId, userId), isNull(financialGoals.archivedAt)));
+  const aObjetivos = objetivos.reduce((a, o) => a + cent(o.monthly), 0);
+
+  const diaADia = ingreso - iva - costeFijo - deuda - aObjetivos;
+  const pct = (c: number) => (ingreso > 0 ? Math.round((1000 * c) / ingreso) / 10 : 0);
+
+  res.json({
+    ciclo,
+    ingreso: euros(ingreso),
+    llegado,
+    tramos: [
+      {
+        id: 'iva',
+        titulo: 'Apartar el IVA',
+        detalle: 'No es tuyo: se devuelve cada trimestre',
+        importe: euros(iva),
+        porcentaje: pct(iva),
+        editable: false,
+      },
+      {
+        id: 'fijos',
+        titulo: 'Costes fijos',
+        detalle: fijos.map((f) => f.nombre).join(' · ') || 'todavía sin detectar',
+        importe: euros(costeFijo),
+        porcentaje: pct(costeFijo),
+        editable: false,
+      },
+      ...compromisos.map((d) => ({
+        id: `deuda-${d.id}`,
+        titulo: d.name,
+        detalle: 'Deuda',
+        importe: euros(cent(d.monthly)),
+        porcentaje: pct(cent(d.monthly)),
+        editable: false,
+      })),
+      ...objetivos.map((o) => ({
+        id: `objetivo-${o.id}`,
+        titulo: o.name,
+        detalle: 'Objetivo',
+        importe: euros(cent(o.monthly)),
+        porcentaje: pct(cent(o.monthly)),
+        editable: true,
+      })),
+      {
+        id: 'dia',
+        titulo: 'Para vivir',
+        detalle: 'Lo que queda después de todo lo anterior',
+        importe: euros(diaADia),
+        porcentaje: pct(diaADia),
+        editable: false,
+      },
+    ],
+    // sin margen no hay plan: si el día a día sale negativo, el reparto no cabe
+    cuadra: diaADia >= 0,
+  });
+}));
+
+/** PATCH /objetivos/:id — cambiar lo que se mete cada ciclo, o la meta. */
+obligacionesRouter.patch('/objetivos/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
+  const cambios: { monthly?: string; target?: string } = {};
+  if (typeof req.body?.mensual === 'number' && req.body.mensual >= 0) cambios.monthly = req.body.mensual.toFixed(2);
+  if (typeof req.body?.meta === 'number' && req.body.meta > 0) cambios.target = req.body.meta.toFixed(2);
+  if (!Object.keys(cambios).length) return res.status(400).json({ error: 'Nada que cambiar' });
+
+  const [r] = await db
+    .update(financialGoals)
+    .set(cambios)
+    .where(and(eq(financialGoals.id, Number(req.params.id)), eq(financialGoals.userId, req.userId!)));
+  if (!r.affectedRows) return res.status(404).json({ error: 'No existe ese objetivo' });
+  res.json({ ok: true });
+}));
+
 obligacionesRouter.get('/objetivos', ah(async (req: AuthedRequest, res) => {
   const objetivos = await db
     .select()

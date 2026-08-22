@@ -85,6 +85,13 @@ export default function AutonomoPage() {
         </div>
       </div>
 
+      <p className="page-sub">{seccion.lema}</p>
+
+      {/* los plazos de Hacienda sí interesan con un mes de antelación */}
+      <EventsRadar scope="autonomo" dias={RADAR_DIAS_FISCAL} />
+
+      {/* Las subpestañas van pegadas a lo que cambian, debajo de lo que no
+          cambia (el lema y los plazos), que es de la sección entera. */}
       <div className="subseg" role="tablist">
         {seccion.sub.map((s) => (
           <button
@@ -98,11 +105,6 @@ export default function AutonomoPage() {
           </button>
         ))}
       </div>
-
-      <p className="page-sub">{seccion.lema}</p>
-
-      {/* los plazos de Hacienda sí interesan con un mes de antelación */}
-      <EventsRadar scope="autonomo" dias={RADAR_DIAS_FISCAL} />
 
       {sub.pinta()}
     </div>

@@ -15,6 +15,7 @@ import {
   crudo,
   iniciarAutorizacion,
   movimientosDe,
+  saldoPrincipal,
   saldosDe,
 } from './banco';
 import { NOMBRE_TIPO, TIPOS, emparejarTraspasos, tipoDeMovimiento, type Tipo } from './tipos';
@@ -304,7 +305,8 @@ bancoRouter.post('/sincronizar/:id(\\d+)', ah(async (req: AuthedRequest, res) =>
       }
 
       const saldos = await saldosDe(cuenta.accountUid);
-      const principal = saldos[0]?.balance_amount?.amount;
+      // por TIPO, no por posición: ver `saldoPrincipal`
+      const principal = saldoPrincipal(saldos)?.balance_amount?.amount;
       if (principal != null) {
         await db
           .update(bankAccounts)

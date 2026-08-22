@@ -219,6 +219,33 @@ export interface SaldoApi {
   reference_date?: string;
 }
 
+/**
+ * Cuál de los saldos es EL saldo.
+ *
+ * Cada banco manda los que quiere y en el orden que quiere. Santander manda dos
+ * y pone primero el de APERTURA del día, así que quedarse con el primero es
+ * quedarse con el saldo de las 00:00 — se veía 317,13 € cuando quedaban 2. Se
+ * elige por tipo, nunca por posición:
+ *
+ *   ITAV  disponible en el día (Revolut)
+ *   CLBD  contable / cierre (Ibercaja, y el bueno de Santander)
+ *   ITBD  contable en el día
+ *   XPCD  esperado
+ *
+ * Y OPBD —apertura— no se usa NUNCA para decir cuánto tienes. Si no se reconoce
+ * ninguno, se coge el último: el primero suele ser el de apertura.
+ */
+const PRIORIDAD_SALDO = ['ITAV', 'CLBD', 'ITBD', 'XPCD', 'PRCD', 'VALU'];
+
+export function saldoPrincipal(saldos: SaldoApi[]): SaldoApi | undefined {
+  const tiene = (s: SaldoApi) => s.balance_amount?.amount != null;
+  for (const tipo of PRIORIDAD_SALDO) {
+    const s = saldos.find((x) => (x.balance_type ?? '').toUpperCase() === tipo && tiene(x));
+    if (s) return s;
+  }
+  return [...saldos].reverse().find(tiene);
+}
+
 export async function saldosDe(accountUid: string): Promise<SaldoApi[]> {
   const r = await llamar<{ balances: SaldoApi[] }>(`/accounts/${encodeURIComponent(accountUid)}/balances`);
   return r.balances ?? [];

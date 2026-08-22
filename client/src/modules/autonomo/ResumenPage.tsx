@@ -1,31 +1,24 @@
 import { useSearchParams } from 'react-router-dom';
 import MesDeVerdad from './MesDeVerdad';
-import AnaliticasTab from './AnaliticasTab';
 import ObjetivosTab from './ObjetivosTab';
-import PlanTab from './PlanTab';
 import { OjoPrivacidad } from './dinero';
 
 /**
- * Tu dinero en el tiempo, en tres pestañas.
+ * El resumen: cuánto tienes hoy y hacia dónde va.
  *
- * La primera se llama «Hoy» y no «Resumen» a propósito: la pantalla ya se
- * llama así, y «Resumen › Resumen» no dice nada.
+ *   Hoy        patrimonio, cómo va el ciclo y dónde está tu dinero
+ *   Objetivos  el colchón y la deuda, con su recorrido
  *
- *   Hoy         cuánto tienes y cómo va el ciclo
- *   Analíticas  si el patrimonio crece, de dónde entra y en qué se va
- *   Objetivos   hacia dónde va lo que no se gasta
+ * Lo que se DEDUCE del banco —analíticas y el reparto del ciclo— vive en
+ * Bancos, junto a los movimientos de los que sale. Aquí solo la foto.
  *
- * Las tres contestan a la misma familia de preguntas, por eso viven juntas. La
- * fontanería del banco —conectar, sincronizar, el libro de movimientos— está en
- * su propia pantalla: se toca una vez al mes y no debería compartir sitio con
- * esto.
+ * La primera pestaña se llama «Hoy» y no «Resumen» a propósito: la pantalla ya
+ * se llama así, y «Resumen › Resumen» no dice nada.
  */
 
 const PESTANAS = [
   { id: 'resumen', titulo: 'Hoy', lema: 'Lo que tienes y cómo va el ciclo, sin contar el dinero que solo cambia de bolsillo.' },
-  { id: 'analiticas', titulo: 'Analíticas', lema: '¿Crece tu patrimonio? ¿De dónde entra el dinero y en qué se va?' },
   { id: 'objetivos', titulo: 'Objetivos', lema: 'Hacia dónde va el dinero que no te gastas.' },
-  { id: 'plan', titulo: 'Plan', lema: 'A dónde va cada euro de lo que entra este ciclo.' },
 ];
 
 export default function ResumenPage() {
@@ -56,9 +49,7 @@ export default function ResumenPage() {
       <p className="page-sub">{pestana.lema}</p>
 
       {pestana.id === 'resumen' && <MesDeVerdad refrescar={0} />}
-      {pestana.id === 'analiticas' && <AnaliticasTab />}
       {pestana.id === 'objetivos' && <ObjetivosTab />}
-      {pestana.id === 'plan' && <PlanTab />}
     </div>
   );
 }

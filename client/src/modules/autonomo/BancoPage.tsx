@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { bancoApi, type ConexionBanco } from './api';
 import MovimientosTab from './MovimientosTab';
+import AnaliticasTab from './AnaliticasTab';
+import PlanTab from './PlanTab';
 import { OjoPrivacidad, useDinero } from './dinero';
 
 /**
@@ -10,8 +12,9 @@ import { OjoPrivacidad, useDinero } from './dinero';
  * Qué bancos hay conectados, con qué saldo, autorizar y sincronizar, y el libro
  * entero de movimientos con sus filtros. Se toca una vez al mes.
  *
- * Lo que se mira a diario —patrimonio, ciclo, analíticas, objetivos— vive en
- * Resumen. Aquí solo hay botones que dan miedo.
+ * Y con ellos, lo que se DEDUCE de sus datos: las analíticas y el reparto del
+ * ciclo. Viven aquí, junto a los movimientos de los que salen, y no en Resumen,
+ * que es solo la foto de hoy.
  *
  * La dirección NO se cambia: `/autonomo/banco/vuelta` es el redirect registrado
  * en Enable Banking y tocarlo rompería la autorización de los tres bancos.
@@ -32,7 +35,8 @@ export default function BancoPage() {
   const [aviso, setAviso] = useState('');
   const [error, setError] = useState('');
 
-  const tab = params.get('tab') === 'movimientos' ? 'movimientos' : 'cuentas';
+  const pedida = params.get('tab');
+  const tab = (['movimientos', 'analiticas', 'plan'] as const).find((t) => t === pedida) ?? 'cuentas';
 
   const cargar = useCallback(async () => {
     const e = await bancoApi.estado();
@@ -110,7 +114,7 @@ export default function BancoPage() {
         <h1>Bancos</h1>
         <div className="page-acciones">
           <div className="seg" role="tablist">
-            {(['cuentas', 'movimientos'] as const).map((t) => (
+            {(['cuentas', 'movimientos', 'analiticas', 'plan'] as const).map((t) => (
               <button
                 key={t}
                 role="tab"
@@ -118,7 +122,13 @@ export default function BancoPage() {
                 className={tab === t ? 'active' : ''}
                 onClick={() => setParams(t === 'cuentas' ? {} : { tab: t }, { replace: true })}
               >
-                {t === 'cuentas' ? 'Cuentas' : 'Movimientos'}
+                {t === 'cuentas'
+                  ? 'Cuentas'
+                  : t === 'movimientos'
+                    ? 'Movimientos'
+                    : t === 'analiticas'
+                      ? 'Analíticas'
+                      : 'Plan'}
               </button>
             ))}
           </div>
@@ -128,7 +138,11 @@ export default function BancoPage() {
       <p className="page-sub">
         {tab === 'cuentas'
           ? 'Tus bancos conectados y sus saldos. Solo lectura — el portal no puede mover dinero ni ve tus claves.'
-          : 'El libro entero, con búsqueda y filtros.'}
+          : tab === 'movimientos'
+            ? 'El libro entero, con búsqueda y filtros.'
+            : tab === 'analiticas'
+              ? '¿Crece tu patrimonio? ¿De dónde entra el dinero y en qué se va?'
+              : 'A dónde va cada euro de lo que entra este ciclo.'}
       </p>
 
       {error && <div className="error-msg">{error}</div>}
@@ -242,6 +256,9 @@ export default function BancoPage() {
           <MovimientosTab />
         </section>
       )}
+
+      {tab === 'analiticas' && <AnaliticasTab />}
+      {tab === 'plan' && <PlanTab />}
 
     </div>
   );

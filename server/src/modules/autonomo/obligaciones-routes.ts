@@ -7,6 +7,7 @@ import {
   bankConnections,
   bankTransactions,
   financialCommitments,
+  financialGoals,
   invoices,
 } from '../../db/schema';
 import type { AuthedRequest } from '../../core/auth/middleware';
@@ -81,6 +82,58 @@ function ivaSegunCobros(importes: number[], ivaPct: number, irpfPct: number): nu
  * bloque declarado de antes de que hubiera histórico) y deja la proyección para
  * la pantalla, que es donde se puede jugar con la cuota sin ir y volver.
  */
+/**
+ * GET /objetivos — hacia dónde va el dinero que no se gasta.
+ *
+ * El progreso de cada objetivo es el SALDO de su cuenta, leído del banco. No es
+ * un número que haya que ir actualizando: si un mes sacas dinero del colchón, el
+ * objetivo retrocede solo, que es justo lo que tiene que pasar.
+ */
+obligacionesRouter.get('/objetivos', ah(async (req: AuthedRequest, res) => {
+  const objetivos = await db
+    .select()
+    .from(financialGoals)
+    .where(and(eq(financialGoals.userId, req.userId!), isNull(financialGoals.archivedAt)))
+    .orderBy(financialGoals.sortOrder);
+
+  const cuentas = await db
+    .select({
+      id: bankAccounts.id,
+      nombre: sql<string | null>`coalesce(${bankAccounts.alias}, ${bankAccounts.name})`,
+      saldo: bankAccounts.balance,
+    })
+    .from(bankAccounts)
+    .where(and(eq(bankAccounts.userId, req.userId!), isNull(bankAccounts.archivedAt)));
+
+  res.json(
+    objetivos.map((o) => {
+      const cuenta = cuentas.find((c) => c.id === o.accountId);
+      const ahora = (cuenta?.saldo ? cent(cuenta.saldo) : 0) + cent(o.declared);
+      const meta = cent(o.target);
+      const mensual = cent(o.monthly);
+      const falta = Math.max(0, meta - ahora);
+      // A este ritmo, ¿cuándo se llena? Sin ritmo no hay fecha, y decirla
+      // igualmente sería inventarla.
+      const ciclos = mensual > 0 ? Math.ceil(falta / mensual) : null;
+      const fin = new Date();
+      if (ciclos !== null) fin.setUTCMonth(fin.getUTCMonth() + ciclos);
+
+      return {
+        id: o.id,
+        nombre: o.name,
+        meta: euros(meta),
+        ahora: euros(ahora),
+        falta: euros(falta),
+        porcentaje: meta > 0 ? Math.min(100, Math.round((100 * ahora) / meta)) : 0,
+        mensual: euros(mensual),
+        cuenta: cuenta?.nombre ?? null,
+        ciclos,
+        termina: ciclos === null || falta === 0 ? null : fin.toISOString().slice(0, 7),
+      };
+    }),
+  );
+}));
+
 obligacionesRouter.get('/deudas/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
   const [deuda] = await db
     .select()

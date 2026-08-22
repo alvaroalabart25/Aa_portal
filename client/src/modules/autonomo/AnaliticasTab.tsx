@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { analiticaApi, type Analitica } from './api';
 import Grafica from './Grafica';
+import { useDinero } from './dinero';
 
 /**
  * Analíticas: tres preguntas y nada más.
@@ -13,11 +14,10 @@ import Grafica from './Grafica';
  * después—, y desde ahora además se guarda una foto diaria, que no caduca.
  */
 
-const eur = (n: number) => n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const corto = (n: number) => `${Math.round(n)} €`;
 const dm = (iso: string) => new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 
 export default function AnaliticasTab() {
+  const { eur, corto } = useDinero();
   const [a, setA] = useState<Analitica | null>(null);
   const [dias, setDias] = useState(90);
 
@@ -109,6 +109,7 @@ export default function AnaliticasTab() {
 
 /** Una lista con barra: se lee el peso de cada cosa sin leer los números. */
 function Reparto({ filas }: { filas: { nombre: string; n: number; importe: number; porcentaje: number }[] }) {
+  const { eur } = useDinero();
   const [todo, setTodo] = useState(false);
   const visibles = todo ? filas : filas.slice(0, 8);
   const resto = filas.slice(8);

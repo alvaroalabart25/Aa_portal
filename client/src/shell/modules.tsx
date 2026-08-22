@@ -201,10 +201,20 @@ export const MODULES: PortalModule[] = [
     icon: icons.autonomo,
     children: [
       {
-        // Lo que debes y cuándo. Va primero porque es la pregunta que más veces
-        // te haces: ¿voy al día?
+        // Tu dinero en el tiempo: patrimonio, analíticas y objetivos
+        id: 'resumen',
+        title: 'Resumen',
+        path: '/autonomo/resumen',
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" {...stroke}>
+            <path d="M4 19V5M4 19h16M8 15l4-5 3 3 5-7" />
+          </svg>
+        ),
+      },
+      {
+        // Lo que debes y cuándo. La pregunta que más veces te haces.
         id: 'obligaciones',
-        title: 'Obligaciones',
+        title: 'Obligaciones y Deuda',
         path: '/autonomo/obligaciones',
         // un calendario con una marca: fechas que no se eligen
         icon: (
@@ -228,10 +238,10 @@ export const MODULES: PortalModule[] = [
         ),
       },
       {
-        // En el menú a petición suya. La pantalla sigue siendo un banco de
-        // pruebas: primero vemos qué datos da cada banco y luego se diseña.
+        // La fontanería: conexiones, saldos y el libro de movimientos. Se
+        // toca una vez al mes; lo de mirar a diario está en Resumen.
         id: 'banco',
-        title: 'Banco',
+        title: 'Bancos',
         path: '/autonomo/banco',
         // edificio con columnas: el banco
         icon: (

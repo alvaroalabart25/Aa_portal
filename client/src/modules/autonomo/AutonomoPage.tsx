@@ -6,6 +6,7 @@ import CuentasTab from './CuentasTab';
 import TrimestralesTab from './TrimestralesTab';
 import { EventsRadar } from '../events/components';
 import { RADAR_DIAS_FISCAL } from '../events/types';
+import { OjoPrivacidad } from './dinero';
 
 /**
  * Autónomo: el papeleo, en una sola pantalla.
@@ -83,6 +84,7 @@ export default function AutonomoPage() {
             </button>
           ))}
         </div>
+        <OjoPrivacidad />
       </div>
 
       <p className="page-sub">{seccion.lema}</p>

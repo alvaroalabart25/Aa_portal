@@ -1,19 +1,20 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { bancoApi, type ConexionBanco } from './api';
-import MesDeVerdad from './MesDeVerdad';
 import MovimientosTab from './MovimientosTab';
-import AnaliticasTab from './AnaliticasTab';
+import { OjoPrivacidad, useDinero } from './dinero';
 
 /**
- * Banco, en dos mitades.
+ * Bancos: la fontanería y el libro.
  *
- * **Resumen** es lo que se mira a diario: cuánto tienes y cómo va el ciclo.
- * **Cuentas** es lo de debajo: qué bancos hay conectados, con qué saldo, y el
- * libro entero de movimientos con sus filtros.
+ * Qué bancos hay conectados, con qué saldo, autorizar y sincronizar, y el libro
+ * entero de movimientos con sus filtros. Se toca una vez al mes.
  *
- * La fontanería (autorizar, sincronizar, desconectar) vive en Cuentas porque se
- * toca una vez al mes; el resumen no debería tener botones que dan miedo.
+ * Lo que se mira a diario —patrimonio, ciclo, analíticas, objetivos— vive en
+ * Resumen. Aquí solo hay botones que dan miedo.
+ *
+ * La dirección NO se cambia: `/autonomo/banco/vuelta` es el redirect registrado
+ * en Enable Banking y tocarlo rompería la autorización de los tres bancos.
  */
 
 /** Tapa el número de tarjeta que Santander mete dentro del concepto. */
@@ -22,24 +23,19 @@ function enEspera(c: ConexionBanco): boolean {
 }
 
 export default function BancoPage() {
+  const { eur } = useDinero();
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const [estado, setEstado] = useState<{ configurado: boolean; conexiones: ConexionBanco[] } | null>(null);
   const [bancos, setBancos] = useState<{ nombre: string; logo: string | null }[] | null>(null);
   const [eligiendo, setEligiendo] = useState(false);
   const [busy, setBusy] = useState('');
-  const [refrescar, setRefrescar] = useState(0);
   const [aviso, setAviso] = useState('');
   const [error, setError] = useState('');
-
-  const pedida = params.get('tab');
-  const tab = pedida === 'cuentas' || pedida === 'analiticas' ? pedida : 'resumen';
-  const irA = (t: string) => setParams(t === 'resumen' ? {} : { tab: t }, { replace: true });
 
   const cargar = useCallback(async () => {
     const e = await bancoApi.estado();
     setEstado(e);
-    setRefrescar((n) => n + 1);
   }, []);
 
   useEffect(() => {
@@ -62,7 +58,7 @@ export default function BancoPage() {
       .catch((e) => setError((e as Error).message))
       .finally(() => {
         setBusy('');
-        setParams({ tab: 'cuentas' }, { replace: true });
+        setParams({}, { replace: true });
       });
   }, [params, setParams, cargar]);
 
@@ -110,21 +106,11 @@ export default function BancoPage() {
   return (
     <div>
       <div className="page-head">
-        <h1>Banco</h1>
-        <div className="seg" role="tablist">
-          {(['resumen', 'analiticas', 'cuentas'] as const).map((t) => (
-            <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'active' : ''} onClick={() => irA(t)}>
-              {t === 'resumen' ? 'Resumen' : t === 'analiticas' ? 'Analíticas' : 'Cuentas'}
-            </button>
-          ))}
-        </div>
+        <h1>Bancos</h1>
+        <OjoPrivacidad />
       </div>
       <p className="page-sub">
-        {tab === 'resumen'
-          ? 'Lo que tienes y cómo va el ciclo, sin contar el dinero que solo cambia de bolsillo.'
-          : tab === 'analiticas'
-            ? '¿Crece tu patrimonio? ¿De dónde entra el dinero y en qué se va?'
-            : 'Tus bancos y el libro entero de movimientos. Solo lectura — el portal no puede mover dinero.'}
+        Tus bancos y el libro entero de movimientos. Solo lectura — el portal no puede mover dinero ni ve tus claves.
       </p>
 
       {error && <div className="error-msg">{error}</div>}
@@ -140,24 +126,7 @@ export default function BancoPage() {
         </section>
       )}
 
-      {tab === 'analiticas' && <AnaliticasTab />}
-
-      {tab === 'resumen' ? (
-        <>
-          {estado?.conexiones.length ? <MesDeVerdad refrescar={refrescar} /> : null}
-
-          <section className="section mc-bloque">
-            <div className="mc-head">
-              <h2>Inversiones</h2>
-              <span className="ob-cuando">sin conectar</span>
-            </div>
-            <p className="wg-nota">
-              Coinbase entra por su API. Revolut Invest no lo da PSD2: habrá que declararlo.
-            </p>
-          </section>
-        </>
-      ) : tab === 'cuentas' ? (
-        <>
+      <>
           {estado?.conexiones.map((c) => (
             <section key={c.id} className="section mc-bloque">
               <div className="mc-head">
@@ -194,7 +163,7 @@ export default function BancoPage() {
                       </span>
                       <span className="bk-saldo">
                         {a.saldo != null
-                          ? `${Number(a.saldo).toLocaleString('es-ES', { minimumFractionDigits: 2 })} ${a.moneda}`
+                          ? `${eur(Number(a.saldo))} ${a.moneda}`
                           : '—'}
                       </span>
                     </div>
@@ -252,8 +221,7 @@ export default function BancoPage() {
             </div>
             <MovimientosTab />
           </section>
-        </>
-      ) : null}
+      </>
 
       <button className="btn ghost sm" style={{ marginTop: 8 }} onClick={() => navigate('/autonomo/obligaciones')}>
         ← Obligaciones

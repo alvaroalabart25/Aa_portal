@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { bancoApi, type FiltroMovimientos, type PaginaMovimientos } from './api';
+import { useDinero } from './dinero';
 
 /**
  * El libro de movimientos, con filtros.
@@ -13,12 +14,12 @@ import { bancoApi, type FiltroMovimientos, type PaginaMovimientos } from './api'
  * no tiene ninguna comisión, no aparece el filtro de comisiones.
  */
 
-const eur = (n: number) => n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /** Santander mete el número completo de la tarjeta en el concepto. */
 const sinNumerosLargos = (t: string) => t.replace(/\d{8,}/g, (n) => `···${n.slice(-4)}`);
 
 export default function MovimientosTab() {
+  const { eur } = useDinero();
   const [pag, setPag] = useState<PaginaMovimientos | null>(null);
   const [filtro, setFiltro] = useState<FiltroMovimientos>({ orden: 'fecha', dir: 'desc', limite: 50 });
   const [texto, setTexto] = useState('');

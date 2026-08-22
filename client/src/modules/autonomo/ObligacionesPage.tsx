@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { obligacionesApi, type Obligaciones } from './api';
+import { OjoPrivacidad, useDinero } from './dinero';
 
 /**
  * Obligaciones: ¿voy al día y tengo apartado lo que debo?
@@ -15,12 +16,12 @@ import { obligacionesApi, type Obligaciones } from './api';
  * Hoy esa información vive en dos sitios que nadie junta.
  */
 
-const eur = (n: number) => n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const fecha = (iso: string) =>
   new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 
 export default function ObligacionesPage() {
+  const { eur } = useDinero();
   const navigate = useNavigate();
   const [o, setO] = useState<Obligaciones | null>(null);
   const [error, setError] = useState('');
@@ -46,7 +47,8 @@ export default function ObligacionesPage() {
   return (
     <div>
       <div className="page-head">
-        <h1>Obligaciones</h1>
+        <h1>Obligaciones y Deuda</h1>
+        <OjoPrivacidad />
       </div>
       <p className="page-sub">Lo que debes, cuándo se paga y si tienes con qué.</p>
 

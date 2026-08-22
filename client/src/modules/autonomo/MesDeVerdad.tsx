@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { bancoApi, type ResumenMes } from './api';
 import Grafica from './Grafica';
+import { useDinero } from './dinero';
 
 /**
  * El resumen del dinero: cuánto tienes y cómo va el ciclo.
@@ -23,7 +24,6 @@ const MESES = [
 
 const CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
-const eur = (n: number) => n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const nombreMes = (mes: string) => {
   const [a, m] = mes.split('-').map(Number);
@@ -52,6 +52,7 @@ const acumular = (xs: number[]): number[] => {
 };
 
 export default function MesDeVerdad({ refrescar }: { refrescar: number }) {
+  const { eur } = useDinero();
   const [mes, setMes] = useState<string | null>(null);
   const [ciclo, setCiclo] = useState(() => localStorage.getItem(RECUERDA_CICLO) !== 'no');
   const [r, setR] = useState<ResumenMes | null>(null);

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { obligacionesApi, type DeudaFicha } from './api';
+import { OjoPrivacidad, useDinero } from './dinero';
 
 /**
  * La ficha de una deuda y su cuadro de amortización.
@@ -14,7 +15,6 @@ import { obligacionesApi, type DeudaFicha } from './api';
  * si un mes se paga más. Con una deuda al 0% esa es la única decisión que hay.
  */
 
-const eur = (n: number) => n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const mesLargo = (iso: string) =>
   new Date(iso).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
@@ -35,6 +35,7 @@ interface Fila {
 const CUOTAS = [150, 250, 300, 400, 580];
 
 export default function DeudaPage() {
+  const { eur } = useDinero();
   const { id } = useParams();
   const navigate = useNavigate();
   const [d, setD] = useState<DeudaFicha | null>(null);
@@ -112,6 +113,7 @@ export default function DeudaPage() {
     <div>
       <div className="page-head">
         <h1>{d.nombre}</h1>
+        <OjoPrivacidad />
       </div>
       <p className="page-sub">
         Debes {eur(pendienteHoy)} € de {eur(d.total)} €, desde {mesLargo(d.desde)}.

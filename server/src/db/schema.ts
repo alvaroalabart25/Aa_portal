@@ -1170,6 +1170,33 @@ export const financialCommitments = mysqlTable('financial_commitments', {
 export type FinancialCommitment = typeof financialCommitments.$inferSelect;
 
 /**
+ * Objetivos de ahorro. Cada uno apunta a una cuenta real, así que su progreso
+ * es el SALDO leído del banco y no un número declarado que hay que mantener: si
+ * un día sacas dinero del colchón, el objetivo retrocede solo.
+ */
+export const financialGoals = mysqlTable('financial_goals', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  name: varchar('name', { length: 120 }).notNull(),
+  target: decimal('target', { precision: 12, scale: 2 }).notNull(),
+  monthly: decimal('monthly', { precision: 12, scale: 2 }).notNull().default('0'),
+  accountId: bigint('account_id', { mode: 'number' }),
+  // lo que vive fuera del banco (una inversión que PSD2 no deja leer)
+  declared: decimal('declared', { precision: 12, scale: 2 }).notNull().default('0'),
+  sortOrder: int('sort_order').notNull().default(0),
+  archivedAt: datetime('archived_at'),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`)
+    .$onUpdateFn(() => new Date()),
+});
+
+export type FinancialGoal = typeof financialGoals.$inferSelect;
+
+/**
  * La foto diaria del patrimonio.
  *
  * `bank_accounts.balance` guarda el saldo de HOY y lo pisa en cada

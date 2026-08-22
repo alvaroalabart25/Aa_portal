@@ -184,9 +184,23 @@ export interface DeudaFicha {
   pagos: { fecha: string; importe: number }[];
 }
 
+export interface Objetivo {
+  id: number;
+  nombre: string;
+  meta: number;
+  ahora: number;
+  falta: number;
+  porcentaje: number;
+  mensual: number;
+  cuenta: string | null;
+  ciclos: number | null;
+  termina: string | null;
+}
+
 export const obligacionesApi = {
   ver: () => get<Obligaciones>('/autonomo/obligaciones'),
   deuda: (id: number) => get<DeudaFicha>(`/autonomo/obligaciones/deudas/${id}`),
+  objetivos: () => get<Objetivo[]>('/autonomo/obligaciones/objetivos'),
 };
 
 /** Analíticas: ¿crece el patrimonio, de dónde entra y en qué se va? */

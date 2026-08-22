@@ -42,6 +42,39 @@ export default function ObligacionesPage() {
       </div>
       <p className="page-sub">Lo que debes, cuándo se paga y si tienes con qué.</p>
 
+      {/* ---------------------------------------------------------- deudas */}
+      {o.deudas.map((d) => (
+        <section key={d.id} className="section mc-bloque">
+          <div className="mc-head">
+            <h2>Deuda · {d.nombre}</h2>
+            {d.termina && (
+              <span className="ob-cuando">
+                termina en{' '}
+                {new Date(`${d.termina}-01`).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+              </span>
+            )}
+          </div>
+
+          <div className="ob-deuda">
+            <b>{eur(d.queda)} €</b>
+            <span>pendientes de {eur(d.total)} €</span>
+          </div>
+
+          <div className="ob-barra" aria-hidden>
+            <div style={{ width: `${d.porcentaje}%` }} />
+          </div>
+          <p className="ob-nota">
+            Pagado {eur(d.pagado)} € · el {d.porcentaje}%. A {eur(d.mensual)} €/mes desde{' '}
+            {new Date(d.desde).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}.
+          </p>
+          <p className="ob-nota">
+            {d.esteCiclo.pagado
+              ? `Este ciclo ya has pagado ${eur(d.esteCiclo.importe)} €.`
+              : 'Este ciclo todavía no has pagado.'}
+          </p>
+        </section>
+      ))}
+
       {/* ------------------------------------------------------------- IVA */}
       <section className="section mc-bloque">
         <div className="mc-head">
@@ -86,39 +119,6 @@ export default function ObligacionesPage() {
         )}
       </section>
 
-      {/* ---------------------------------------------------------- deudas */}
-      {o.deudas.map((d) => (
-        <section key={d.id} className="section mc-bloque">
-          <div className="mc-head">
-            <h2>Deuda · {d.nombre}</h2>
-            {d.termina && (
-              <span className="ob-cuando">
-                termina en{' '}
-                {new Date(`${d.termina}-01`).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
-              </span>
-            )}
-          </div>
-
-          <div className="ob-deuda">
-            <b>{eur(d.queda)} €</b>
-            <span>pendientes de {eur(d.total)} €</span>
-          </div>
-
-          <div className="ob-barra" aria-hidden>
-            <div style={{ width: `${d.porcentaje}%` }} />
-          </div>
-          <p className="ob-nota">
-            Pagado {eur(d.pagado)} € · el {d.porcentaje}%. A {eur(d.mensual)} €/mes desde{' '}
-            {new Date(d.desde).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}.
-          </p>
-          <p className="ob-nota">
-            {d.esteCiclo.pagado
-              ? `Este ciclo ya has pagado ${eur(d.esteCiclo.importe)} €.`
-              : 'Este ciclo todavía no has pagado.'}
-          </p>
-        </section>
-      ))}
-
       {/* ----------------------------------------------------------- fijos */}
       <section className="section mc-bloque">
         <div className="mc-head">
@@ -140,8 +140,8 @@ export default function ObligacionesPage() {
                   <span className="ob-fijo-t">
                     <b>{f.nombre}</b>
                     <span className="ob-fijo-c">
-                      {f.dormido
-                        ? `sin cargo desde el ${fecha(f.ultimo)}`
+                      {f.nota
+                        ? f.nota
                         : f.pagado
                           ? `pagado el ${fecha(f.fecha)}`
                           : `sale el ${fecha(f.fecha)}${f.cuenta ? ` · en ${f.cuenta} hay ${eur(f.saldoCuenta ?? 0)} €` : ''}`}
@@ -154,11 +154,6 @@ export default function ObligacionesPage() {
           </div>
         )}
 
-        {o.fijos.some((f) => f.dormido) && (
-          <p className="ob-nota">
-            Los marcados como sin cargo llevan demasiado sin aparecer: probablemente ya no existan.
-          </p>
-        )}
       </section>
     </div>
   );

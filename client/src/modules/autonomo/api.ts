@@ -130,6 +130,7 @@ export interface Obligaciones {
     faltanDias: number | null;
     dormido: boolean;
     ultimo: string;
+    nota: string | null;
   }[];
   deudas: {
     id: number;

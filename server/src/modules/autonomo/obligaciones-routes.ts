@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { and, desc, eq, gte, isNull, lte, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm';
 import { ah } from '../../lib/async';
 import { db } from '../../db';
 import {
@@ -140,7 +140,7 @@ obligacionesRouter.get('/', ah(async (req: AuthedRequest, res) => {
       ),
     );
 
-  const fijos = detectarFijos(
+  const detectados = detectarFijos(
     movimientos.map((m) => ({ fecha: m.fecha ?? '', importe: Number(m.importe), concepto: m.concepto })),
   ).map((f) => {
     // ¿Ha caído ya en este ciclo?
@@ -170,8 +170,90 @@ obligacionesRouter.get('/', ah(async (req: AuthedRequest, res) => {
       // pasó con nomadesim al volver de Bali): se sigue enseñando, pero dicho.
       dormido: faltanDias(f.ultimo) < (f.cadencia === 'mensual' ? -45 : -21),
       ultimo: f.ultimo,
+      nota: null as string | null,
     };
   });
+
+  // Uno que dejó de cargarse NO es un fijo del ciclo: nomadesim se murió en
+  // junio al volver de Bali y no pinta nada en una lista de lo que va a salir.
+  const fijos = detectados.filter((f) => !f.dormido);
+
+  // ------------------------------------------------- apartar el IVA
+  // Es el primer fijo del ciclo, aunque no sea un recibo: el día que entra el
+  // cobro, su IVA deja de ser tuyo. Se compara contra los traspasos que hayan
+  // entrado de verdad en las cuentas marcadas como ajenas.
+  const cobrosDelCiclo = await db
+    .select({ importe: bankTransactions.amount, fecha: bankTransactions.bookingDate })
+    .from(bankTransactions)
+    .where(
+      and(
+        eq(bankTransactions.userId, userId),
+        eq(bankTransactions.direction, 'CRDT'),
+        sql`${bankTransactions.tipo} in ('transferencia','otro')`,
+        sql`${bankTransactions.amount} >= 300`,
+        gte(bankTransactions.bookingDate, ciclo.desde),
+        lte(bankTransactions.bookingDate, ciclo.hasta),
+      ),
+    );
+
+  const [ultimoCobro] = await db
+    .select({ importe: bankTransactions.amount })
+    .from(bankTransactions)
+    .where(
+      and(
+        eq(bankTransactions.userId, userId),
+        eq(bankTransactions.direction, 'CRDT'),
+        sql`${bankTransactions.tipo} in ('transferencia','otro')`,
+        sql`${bankTransactions.amount} >= 300`,
+      ),
+    )
+    .orderBy(desc(bankTransactions.bookingDate))
+    .limit(1);
+
+  // Si el cobro del ciclo aún no ha entrado, se enseña lo que tocará según el
+  // último: es una previsión, pero es la cifra con la que hay que contar.
+  const aApartar = cobrosDelCiclo.length
+    ? ivaSegunCobros(cobrosDelCiclo.map((c) => Number(c.importe)), ivaPct, irpfPct)
+    : ivaSegunCobros(ultimoCobro ? [Number(ultimoCobro.importe)] : [], ivaPct, irpfPct);
+
+  const cuentasAjenas = cuentas.filter((c) => c.escrow).map((c) => c.id);
+  const apartadoEnCiclo = cuentasAjenas.length
+    ? (
+        await db
+          .select({ importe: bankTransactions.amount })
+          .from(bankTransactions)
+          .where(
+            and(
+              eq(bankTransactions.userId, userId),
+              eq(bankTransactions.direction, 'CRDT'),
+              inArray(bankTransactions.accountId, cuentasAjenas),
+              gte(bankTransactions.bookingDate, ciclo.desde),
+              lte(bankTransactions.bookingDate, ciclo.hasta),
+            ),
+          )
+      ).reduce((a, m) => a + cent(m.importe), 0)
+    : 0;
+
+  if (aApartar > 0) {
+    const hecho = apartadoEnCiclo >= aApartar;
+    fijos.unshift({
+      nombre: 'Apartar el IVA',
+      importe: euros(aApartar),
+      cadencia: 'mensual' as const,
+      cuenta: cuentas.find((c) => c.escrow)?.nombre ?? null,
+      saldoCuenta: cuentas.find((c) => c.escrow)?.saldo ? Number(cuentas.find((c) => c.escrow)!.saldo) : null,
+      pagado: hecho,
+      fecha: cobrosDelCiclo[0]?.fecha ?? ciclo.desde,
+      faltanDias: hecho ? null : 0,
+      dormido: false,
+      ultimo: ciclo.desde,
+      nota: hecho
+        ? `apartado ${euros(apartadoEnCiclo)} € este ciclo`
+        : cobrosDelCiclo.length
+          ? 'el cobro ya entró: esto es lo primero que sale'
+          : 'cuando entre el cobro, antes que nada',
+    });
+  }
 
   // ----------------------------------------------------------------- deudas
   const compromisos = await db
@@ -216,6 +298,7 @@ obligacionesRouter.get('/', ah(async (req: AuthedRequest, res) => {
 
   res.json({
     ciclo,
+    deudas,
     iva: {
       trimestre: `${trimestre.id} ${trimestre.anio}`,
       desde: trimestre.desde,
@@ -236,6 +319,5 @@ obligacionesRouter.get('/', ah(async (req: AuthedRequest, res) => {
       donde: cuentas.filter((c) => c.escrow).map((c) => c.nombre),
     },
     fijos,
-    deudas,
   });
 }));

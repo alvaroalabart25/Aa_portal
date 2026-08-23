@@ -2329,6 +2329,12 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 /* Las categorías ya vienen escritas como se leen; capitalizar cada palabra
    dejaría «Impuestos Y Cuota», que en español está mal */
 .an-fila.cat .an-fila-n { text-transform: none; }
+/* Un ciclo cuyo cálculo se apoya en apuntes que el banco no da enteros: se
+   enseña el número, pero con la duda pegada al lado */
+.an-ciclo-duda {
+  font-style: normal; margin-left: 8px; padding: 1px 7px; border-radius: 999px;
+  border: 1px dashed var(--line); font-size: 10.5px; color: var(--ink-muted); white-space: nowrap;
+}
 .an-fila-tag {
   font-style: normal; text-transform: none; font-size: 11px; color: var(--ink-muted); margin-left: 8px;
 }

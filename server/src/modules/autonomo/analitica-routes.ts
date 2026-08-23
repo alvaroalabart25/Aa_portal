@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { ah } from '../../lib/async';
 import { db } from '../../db';
-import { bankAccounts, bankBalanceDaily, bankTransactions } from '../../db/schema';
+import { bankAccounts, bankBalanceDaily, bankConnections, bankTransactions } from '../../db/schema';
 import type { AuthedRequest } from '../../core/auth/middleware';
 import { cicloDe, cicloPorId } from './ciclo';
 import { CATEGORIAS, NOMBRE_CATEGORIA, NO_ES_GASTO, esCategoria } from './categorias';
@@ -108,14 +108,25 @@ analiticaRouter.get('/', ah(async (req: AuthedRequest, res) => {
     : Math.min(Math.max(Number(req.query.dias ?? 90), 30), 400);
 
   const cuentas = await db
-    .select({ saldo: bankAccounts.balance, escrow: bankAccounts.escrow })
+    .select({
+      id: bankAccounts.id,
+      // el nombre del BANCO, no el del titular: el aviso de abajo dice a quién
+      // hay que pedirle los apuntes que faltan
+      nombre: bankConnections.aspspName,
+      saldo: bankAccounts.balance,
+      escrow: bankAccounts.escrow,
+    })
     .from(bankAccounts)
+    .innerJoin(bankConnections, eq(bankAccounts.connectionId, bankConnections.id))
     .where(and(eq(bankAccounts.userId, userId), isNull(bankAccounts.archivedAt)));
 
   const hoyTotal = cuentas.filter((c) => !c.escrow).reduce((a, c) => a + (c.saldo ? cent(c.saldo) : 0), 0);
+  // lo que está en las cuentas pero no es suyo: el pocket de Hacienda
+  const apartado = cuentas.filter((c) => c.escrow).reduce((a, c) => a + (c.saldo ? cent(c.saldo) : 0), 0);
 
   const movimientos = await db
     .select({
+      cuentaId: bankTransactions.accountId,
       fecha: bankTransactions.bookingDate,
       importe: bankTransactions.amount,
       direccion: bankTransactions.direction,
@@ -136,12 +147,14 @@ analiticaRouter.get('/', ah(async (req: AuthedRequest, res) => {
   const hasta = rango ? new Date(rango.hasta) : hoy;
 
   // El movimiento de un día cambia el saldo DE ESE DÍA, así que para saber el
-  // saldo al cierre de un día hay que quitar lo de los días posteriores.
-  const porDia = new Map<string, number>();
+  // saldo al cierre de un día hay que quitar lo de los días posteriores. Y se
+  // hace CUENTA A CUENTA, no sobre el total: es lo único que permite darse
+  // cuenta de que la reconstrucción se ha roto (ver más abajo).
+  const porCuenta = new Map<number, Map<string, number>>();
   for (const m of movimientos) {
     if (!m.fecha || m.escrow) continue; // el pocket de Hacienda no es patrimonio
-    const c = cent(m.importe) * (m.direccion === 'CRDT' ? 1 : -1);
-    porDia.set(m.fecha, (porDia.get(m.fecha) ?? 0) + c);
+    const dias = porCuenta.get(m.cuentaId) ?? porCuenta.set(m.cuentaId, new Map()).get(m.cuentaId)!;
+    dias.set(m.fecha, (dias.get(m.fecha) ?? 0) + cent(m.importe) * (m.direccion === 'CRDT' ? 1 : -1));
   }
 
   // Las fotos guardadas mandan sobre lo reconstruido: son el dato, no un cálculo
@@ -154,14 +167,51 @@ analiticaRouter.get('/', ah(async (req: AuthedRequest, res) => {
     ).map((f) => [f.fecha, cent(f.total)]),
   );
 
+  /**
+   * Hasta dónde se puede reconstruir sin mentir.
+   *
+   * La reconstrucción da por hecho que TODOS los movimientos están guardados. Y
+   * no siempre lo están: Santander e Ibercaja devuelven noventa días de apuntes
+   * pero un saldo de hoy que no cuadra con ellos, así que al ir hacia atrás sus
+   * cuentas acaban en números imposibles —el Santander llegaba a −315 €—, y el
+   * total de arriba salía de restar eso.
+   *
+   * **Una cuenta corriente en negativo es la prueba de que faltan apuntes**, y
+   * es una prueba que está dentro de los propios datos. Así que en cuanto una
+   * cuenta se va por debajo de cero, se corta: de ahí hacia atrás no se dibuja
+   * nada. Media curva de verdad vale más que una entera inventada.
+   *
+   * Un día con foto guardada nunca se corta: eso no es un cálculo, es el dato.
+   */
+  const TOLERANCIA = -100; // un euro de margen por redondeos del banco
+  const saldos = new Map(
+    cuentas.filter((c) => !c.escrow).map((c) => [c.id, c.saldo ? cent(c.saldo) : 0]),
+  );
+
   const curva: { fecha: string; total: number; real: boolean }[] = [];
-  let saldo = hoyTotal;
+  let cortado: string | null = null;
+  let cortadoPor: string[] = [];
   for (let t = hoy.getTime(); t >= desde.getTime(); t -= 86400000) {
     const fecha = new Date(t).toISOString().slice(0, 10);
     const foto = fotos.get(fecha);
+
+    const imposibles = [...saldos].filter(([, v]) => v < TOLERANCIA);
+    if (foto === undefined && imposibles.length) {
+      cortado = fecha;
+      // decir QUÉ cuenta rompe la reconstrucción: es lo que hace que el aviso
+      // sirva para algo en vez de ser una disculpa genérica
+      cortadoPor = [...new Set(imposibles.map(([id]) => cuentas.find((c) => c.id === id)?.nombre ?? 'una cuenta'))];
+      break;
+    }
+    const total = [...saldos.values()].reduce((a, v) => a + v, 0);
     // fuera lo posterior al rango: se ha recorrido para llegar hasta aquí
-    if (t <= hasta.getTime()) curva.unshift({ fecha, total: euros(foto ?? saldo), real: foto !== undefined });
-    saldo -= porDia.get(fecha) ?? 0; // deshaciendo el día para llegar al anterior
+    if (t <= hasta.getTime()) curva.unshift({ fecha, total: euros(foto ?? total), real: foto !== undefined });
+
+    // deshaciendo el día, cuenta por cuenta, para llegar al anterior
+    for (const [id, dias] of porCuenta) {
+      if (!saldos.has(id)) continue;
+      saldos.set(id, saldos.get(id)! - (dias.get(fecha) ?? 0));
+    }
   }
 
   // Por ciclo: lo que de verdad contesta «¿crezco?». Los traspasos no cuentan.
@@ -175,6 +225,7 @@ analiticaRouter.get('/', ah(async (req: AuthedRequest, res) => {
     diferencia: number;
     aHacienda: number;
     patrimonio: number;
+    completo: boolean;
   }[] = [];
   for (let i = 5; i >= 0; i -= 1) {
     const [anio, mes] = cicloActual.id.split('-').map(Number);
@@ -202,6 +253,9 @@ analiticaRouter.get('/', ah(async (req: AuthedRequest, res) => {
     if (entra === 0 && sale === 0 && patrimonio === 0) continue;
     ciclos.push({
       ...c,
+      // Un ciclo anterior al corte se calcula con apuntes que sabemos
+      // incompletos: se enseña, pero diciendo que le falta histórico.
+      completo: cortado === null || c.desde > cortado,
       entra: euros(entra),
       sale: euros(sale),
       diferencia: euros(entra - sale),
@@ -293,7 +347,15 @@ analiticaRouter.get('/', ah(async (req: AuthedRequest, res) => {
     periodo: { desde: desdeIso, hasta: hastaIso },
     categorias,
     guardado,
+    // Lo que tienes HOY: la suma de tus cuentas sin el pocket de Hacienda. Es un
+    // dato leído, no un cálculo, y por eso va antes que nada.
+    hoy: euros(hoyTotal),
+    apartado: euros(apartado),
     curva,
+    // Desde cuándo la curva es creíble, y qué cuenta impide llegar más atrás
+    fiableDesde: curva[0]?.fecha ?? null,
+    cortado,
+    cortadoPor,
     // cuántos puntos son foto guardada y cuántos reconstrucción
     fotos: curva.filter((p) => p.real).length,
     // hasta dónde se puede mirar de verdad: no hay histórico anterior al banco

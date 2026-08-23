@@ -251,7 +251,16 @@ export const obligacionesApi = {
 export interface Analitica {
   dias: number;
   periodo: { desde: string; hasta: string };
+  /** lo que hay HOY en sus cuentas, sin el pocket de Hacienda: dato, no cálculo */
+  hoy: number;
+  /** lo que está en las cuentas pero no es suyo */
+  apartado: number;
   curva: { fecha: string; total: number; real: boolean }[];
+  /** desde cuándo la curva es creíble */
+  fiableDesde: string | null;
+  /** el día en que la reconstrucción dejó de cuadrar, y qué cuenta la rompió */
+  cortado: string | null;
+  cortadoPor: string[];
   fotos: number;
   desdeQueHay: string | null;
   cambio: { desde: number; hasta: number; diferencia: number };
@@ -265,6 +274,8 @@ export interface Analitica {
     aHacienda: number;
     /** lo que de verdad cambió tu bolsillo: cuadra con la curva, entra−sale no */
     patrimonio: number;
+    /** false = se calcula con apuntes que sabemos incompletos */
+    completo: boolean;
   }[];
   ingresos: { nombre: string; n: number; importe: number; porcentaje: number; tipo: string }[];
   totalIngresos: number;

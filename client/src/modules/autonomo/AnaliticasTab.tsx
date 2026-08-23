@@ -54,6 +54,11 @@ export default function AnaliticasTab() {
   if (!a) return <p className="muted">Calculando…</p>;
 
   const crece = a.cambio.diferencia >= 0;
+  const dl = (iso: string) => new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+  // Las fechas del texto son las de la CURVA, no las que se pidieron: si la
+  // reconstrucción se cortó, decir «desde el 25 de mayo» sería mentir.
+  const desdeCurva = a.curva[0]?.fecha ?? a.periodo.desde;
+  const hastaCurva = a.curva[a.curva.length - 1]?.fecha ?? a.periodo.hasta;
 
   return (
     <>
@@ -81,14 +86,15 @@ export default function AnaliticasTab() {
         </select>
       </div>
 
+      {/* Lo grande es lo que TIENES, que es un dato leído del banco. El cambio
+          es un cálculo y va debajo: puestos al revés, la cifra que se queda en
+          la cabeza es la que no se puede comprobar. */}
       <section className="section mc-bloque oscuro">
-        <span className="wg-etiqueta">{crece ? 'Tu patrimonio ha crecido' : 'Tu patrimonio ha bajado'}</span>
-        <b className="wg-grande">
-          {crece ? '+' : '−'}
-          {eur(Math.abs(a.cambio.diferencia))} €
-        </b>
+        <span className="wg-etiqueta">Lo que tienes hoy</span>
+        <b className="wg-grande">{eur(a.hoy)} €</b>
         <span className="wg-pie">
-          de {eur(a.cambio.desde)} € a {eur(a.cambio.hasta)} € · {dm(a.periodo.desde)} → {dm(a.periodo.hasta)}
+          en tus cuentas
+          {a.apartado > 0 && `, sin contar los ${eur(a.apartado)} € que guardas para Hacienda`}
         </span>
 
         <Grafica
@@ -98,11 +104,23 @@ export default function AnaliticasTab() {
           formato={corto}
         />
 
+        <p className="wg-nota">
+          Del {dl(desdeCurva)} al {dl(hastaCurva)}
+          {crece ? ' has ganado ' : ' has perdido '}
+          <b>{eur(Math.abs(a.cambio.diferencia))} €</b> · de {eur(a.cambio.desde)} € a {eur(a.cambio.hasta)} €.
+        </p>
 
-        {a.fotos === 0 && (
+        {a.cortado && (
           <p className="wg-nota">
-            Reconstruido a partir de tus movimientos. Desde hoy se guarda una foto diaria, así que a partir de aquí
-            será histórico de verdad.
+            No se puede mirar más atrás del {dl(desdeCurva)}: {a.cortadoPor.join(' y ')}{' '}
+            {a.cortadoPor.length > 1 ? 'no devuelven' : 'no devuelve'} todos los apuntes, y la reconstrucción daba
+            saldos imposibles. Antes de enseñarte un número inventado, se corta.
+          </p>
+        )}
+
+        {a.fotos <= 1 && (
+          <p className="wg-nota">
+            Desde ahora se guarda una foto diaria del saldo, así que esto deja de depender de reconstruir nada.
           </p>
         )}
       </section>
@@ -124,13 +142,15 @@ export default function AnaliticasTab() {
               <span className="an-ciclo-d">
                 entra {eur(c.entra)} · sale {eur(c.sale)}
                 {c.aHacienda > 0 && ` · ${eur(c.aHacienda)} apartados`}
+                {!c.completo && <em className="an-ciclo-duda">le falta histórico</em>}
               </span>
             </div>
           ))}
         </div>
         <p className="wg-nota">
-          La cifra grande es lo que cambió tu patrimonio, no la resta de arriba: el dinero que apartas para Hacienda
-          sale de tu bolsillo sin ser un gasto, y lo que mandas a inversión tampoco se puede leer.
+          La cifra de la derecha es lo que cambió tu patrimonio, no la resta: el dinero que apartas para Hacienda sale
+          de tu bolsillo sin ser un gasto, y lo que mandas a un sitio que el portal no lee tampoco se puede seguir.
+          Los ciclos marcados se calculan con apuntes que el banco no devuelve enteros.
         </p>
       </section>
 

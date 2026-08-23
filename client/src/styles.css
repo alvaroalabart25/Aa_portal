@@ -2197,6 +2197,27 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .bk-mov-cat.vacia { border-style: dashed; background: none; color: var(--ink-muted); }
 .mv-aviso { font-size: 12.5px; color: var(--ink-soft); margin: 0 0 12px; }
 
+/* Cuánto de un pago era deuda. Misma pastilla que la categoría —se toca igual
+   y hace lo mismo: corregir una lectura que el banco no puede saber. */
+.dp-parte {
+  align-self: flex-start; margin-top: 4px; font: inherit; font-size: 11px;
+  letter-spacing: .03em; text-transform: uppercase; cursor: pointer;
+  background: none; border: 1px dashed var(--line); border-radius: 999px;
+  padding: 2px 9px; color: var(--ink-muted);
+}
+.dp-parte:hover { border-color: var(--ink-soft); color: var(--ink); }
+/* Acotado a mano: deja de ser el valor por defecto y se marca como dato */
+.dp-parte.acotado { border-style: solid; background: var(--paper-soft); color: var(--ink-soft); }
+.dp-parte-edit { display: flex; align-items: baseline; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+.dp-parte-edit input {
+  font: inherit; font-family: var(--font-title); font-size: 14px; font-weight: 600; width: 84px;
+  border: 1px solid var(--ink); border-radius: 8px; padding: 2px 8px;
+  background: var(--paper); color: var(--ink);
+}
+.dp-parte-edit em { font-style: normal; font-size: 11px; color: var(--ink-muted); }
+/* Un pago que no amortiza nada: sigue estando, pero no pesa */
+.bk-mov-i.fuera { color: var(--ink-muted); text-decoration: line-through; text-decoration-thickness: 1px; }
+
 /* El ojo que esconde los importes: discreción, no seguridad */
 .ojo {
   background: none; border: 1px solid var(--line); border-radius: 999px; cursor: pointer;

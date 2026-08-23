@@ -190,7 +190,12 @@ export interface DeudaFicha {
   pagos: {
     id: number;
     fecha: string;
+    /** lo que salió del banco */
     importe: number;
+    /** lo que de eso amortiza deuda: por defecto todo, salvo que él lo acote */
+    aDeuda: number;
+    declarado: boolean;
+    nota: string | null;
     concepto: string | null;
     tipo: string | null;
     cuenta: string | null;
@@ -234,6 +239,12 @@ export const obligacionesApi = {
   plan: () => get<Plan>('/autonomo/obligaciones/plan'),
   cambiarObjetivo: (id: number, cambios: { mensual?: number; meta?: number }) =>
     patch<{ ok: boolean }>(`/autonomo/obligaciones/objetivos/${id}`, cambios),
+  /** Cuánto de ese pago era deuda. `null` = cuenta entero, como venía. */
+  parteDeuda: (deudaId: number, pagoId: number, importe: number | null) =>
+    patch<{ ok: boolean; aDeuda: number; declarado: boolean }>(
+      `/autonomo/obligaciones/deudas/${deudaId}/pagos/${pagoId}`,
+      { importe },
+    ),
 };
 
 /** Analíticas: ¿crece el patrimonio, de dónde entra y en qué se va? */

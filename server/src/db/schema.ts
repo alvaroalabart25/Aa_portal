@@ -1170,6 +1170,31 @@ export const financialCommitments = mysqlTable('financial_commitments', {
 export type FinancialCommitment = typeof financialCommitments.$inferSelect;
 
 /**
+ * Cuánto de un pago cuenta como deuda de verdad.
+ *
+ * Los pagos se reconocen por el nombre del acreedor, así que TODO lo que le
+ * manda entra como amortización, y no siempre lo es: dentro de un bizum de 188 €
+ * había 150 de deuda y 38 de otra cosa. Eso no está en el concepto, está en su
+ * cabeza, así que se declara. Se guarda cuánto CUENTA, no cuánto se descuenta.
+ */
+export const commitmentPaymentParts = mysqlTable('commitment_payment_parts', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  commitmentId: bigint('commitment_id', { mode: 'number' }).notNull(),
+  transactionId: bigint('transaction_id', { mode: 'number' }).notNull(),
+  amount: decimal('amount', { precision: 12, scale: 2 }).notNull(),
+  note: varchar('note', { length: 140 }),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`)
+    .$onUpdateFn(() => new Date()),
+});
+export type CommitmentPaymentPart = typeof commitmentPaymentParts.$inferSelect;
+
+/**
  * Objetivos de ahorro. Cada uno apunta a una cuenta real, así que su progreso
  * es el SALDO leído del banco y no un número declarado que hay que mantener: si
  * un día sacas dinero del colchón, el objetivo retrocede solo.

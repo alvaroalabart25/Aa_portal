@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { and, desc, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm';
 import { ah } from '../../lib/async';
 import { db } from '../../db';
@@ -6,6 +7,7 @@ import {
   bankAccounts,
   bankConnections,
   bankTransactions,
+  commitmentPaymentParts,
   financialCommitments,
   financialGoals,
   invoices,
@@ -56,6 +58,34 @@ function proximaVez(ultimo: string, cadencia: 'mensual' | 'semanal', dia: number
     if (candidato > hoy) return candidato.toISOString().slice(0, 10);
   }
   return ultimo;
+}
+
+/**
+ * Los trozos que él ha declarado: cuánto de cada pago cuenta como deuda.
+ *
+ * Devuelve una función en vez de un mapa porque el caso normal —no hay nada
+ * declarado, cuenta entero— tiene que ser el que no cueste escribir.
+ */
+async function partesDeclaradas(userId: number) {
+  const filas = await db
+    .select({
+      commitmentId: commitmentPaymentParts.commitmentId,
+      transactionId: commitmentPaymentParts.transactionId,
+      amount: commitmentPaymentParts.amount,
+      note: commitmentPaymentParts.note,
+    })
+    .from(commitmentPaymentParts)
+    .where(eq(commitmentPaymentParts.userId, userId));
+  const mapa = new Map(filas.map((f) => [`${f.commitmentId}-${f.transactionId}`, f]));
+  return {
+    /** lo que cuenta de ese pago, en céntimos */
+    cuenta: (deudaId: number, txId: number, importe: number) => {
+      const p = mapa.get(`${deudaId}-${txId}`);
+      return p ? cent(p.amount) : importe;
+    },
+    nota: (deudaId: number, txId: number) => mapa.get(`${deudaId}-${txId}`)?.note ?? null,
+    declarado: (deudaId: number, txId: number) => mapa.has(`${deudaId}-${txId}`),
+  };
 }
 
 /** Cuánto queda para una fecha, en días. Negativo si ya pasó. */
@@ -273,6 +303,67 @@ obligacionesRouter.get('/objetivos', ah(async (req: AuthedRequest, res) => {
   );
 }));
 
+/**
+ * PATCH /deudas/:id/pagos/:txId — cuánto de ese pago era deuda.
+ *
+ * `importe: null` deshace la declaración y el pago vuelve a contar entero. Un 0
+ * es una declaración como cualquier otra: «esto no era deuda».
+ *
+ * No se toca el movimiento del banco: eso pasó y es sagrado. Lo que se guarda
+ * es su lectura, que es lo único que el banco no puede saber.
+ */
+obligacionesRouter.patch('/deudas/:id(\\d+)/pagos/:txId(\\d+)', ah(async (req: AuthedRequest, res) => {
+  const deudaId = Number(req.params.id);
+  const txId = Number(req.params.txId);
+  const cuerpo = z
+    .object({ importe: z.number().min(0).nullable(), nota: z.string().max(140).nullable().optional() })
+    .safeParse(req.body);
+  if (!cuerpo.success) return res.status(400).json({ error: 'Importe no válido' });
+
+  const [deuda] = await db
+    .select({ id: financialCommitments.id })
+    .from(financialCommitments)
+    .where(and(eq(financialCommitments.id, deudaId), eq(financialCommitments.userId, req.userId!)));
+  if (!deuda) return res.status(404).json({ error: 'No existe esa deuda' });
+
+  const [mov] = await db
+    .select({ id: bankTransactions.id, importe: bankTransactions.amount })
+    .from(bankTransactions)
+    .where(and(eq(bankTransactions.id, txId), eq(bankTransactions.userId, req.userId!)));
+  if (!mov) return res.status(404).json({ error: 'No existe ese movimiento' });
+
+  if (cuerpo.data.importe === null) {
+    await db
+      .delete(commitmentPaymentParts)
+      .where(
+        and(
+          eq(commitmentPaymentParts.userId, req.userId!),
+          eq(commitmentPaymentParts.commitmentId, deudaId),
+          eq(commitmentPaymentParts.transactionId, txId),
+        ),
+      );
+    return res.json({ ok: true, aDeuda: Number(mov.importe), declarado: false });
+  }
+
+  // Nadie amortiza más de lo que pagó: eso sería un error de dedo, no un dato
+  if (cent(cuerpo.data.importe) > cent(mov.importe)) {
+    return res.status(400).json({ error: `Ese pago fue de ${euros(cent(mov.importe))} €` });
+  }
+
+  await db
+    .insert(commitmentPaymentParts)
+    .values({
+      userId: req.userId!,
+      commitmentId: deudaId,
+      transactionId: txId,
+      amount: cuerpo.data.importe.toFixed(2),
+      note: cuerpo.data.nota ?? null,
+    })
+    .onDuplicateKeyUpdate({ set: { amount: cuerpo.data.importe.toFixed(2), note: cuerpo.data.nota ?? null } });
+
+  res.json({ ok: true, aDeuda: cuerpo.data.importe, declarado: true });
+}));
+
 obligacionesRouter.get('/deudas/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
   const [deuda] = await db
     .select()
@@ -312,6 +403,8 @@ obligacionesRouter.get('/deudas/:id(\\d+)', ah(async (req: AuthedRequest, res) =
         .orderBy(bankTransactions.bookingDate)
     : [];
 
+  const partes = await partesDeclaradas(req.userId!);
+
   res.json({
     id: deuda.id,
     nombre: deuda.name,
@@ -329,6 +422,10 @@ obligacionesRouter.get('/deudas/:id(\\d+)', ah(async (req: AuthedRequest, res) =
         id: p.id,
         fecha: p.fecha!,
         importe: Number(p.importe),
+        // lo que de verdad amortiza: por defecto todo, salvo que él lo acote
+        aDeuda: euros(partes.cuenta(deuda.id, p.id, cent(p.importe))),
+        declarado: partes.declarado(deuda.id, p.id),
+        nota: partes.nota(deuda.id, p.id),
         concepto: p.concepto,
         tipo: p.tipo && p.tipo in NOMBRE_TIPO ? NOMBRE_TIPO[p.tipo as Tipo] : null,
         cuenta: p.cuenta,
@@ -412,6 +509,7 @@ obligacionesRouter.get('/', ah(async (req: AuthedRequest, res) => {
   // ------------------------------------------------------------------ fijos
   const movimientos = await db
     .select({
+      id: bankTransactions.id,
       fecha: bankTransactions.bookingDate,
       importe: bankTransactions.amount,
       concepto: bankTransactions.concept,
@@ -556,6 +654,8 @@ obligacionesRouter.get('/', ah(async (req: AuthedRequest, res) => {
     .from(financialCommitments)
     .where(and(eq(financialCommitments.userId, userId), isNull(financialCommitments.archivedAt)));
 
+  const partes = await partesDeclaradas(userId);
+
   const deudas = compromisos.map((d) => {
     const pagos = movimientos.filter(
       (m) =>
@@ -564,7 +664,10 @@ obligacionesRouter.get('/', ah(async (req: AuthedRequest, res) => {
         m.fecha > d.declaredOn &&
         (m.concepto ?? '').toUpperCase().includes(d.matcher.toUpperCase()),
     );
-    const pagadoDespues = pagos.reduce((a, m) => a + cent(m.importe), 0);
+    // Solo la parte que él ha reconocido como deuda: un bizum a su padre puede
+    // llevar dentro la ITV, y eso no amortiza nada.
+    const aDeuda = (m: { id: number; importe: string }) => partes.cuenta(d.id, m.id, cent(m.importe));
+    const pagadoDespues = pagos.reduce((a, m) => a + aDeuda(m), 0);
     const pagado = cent(d.paidBefore) + pagadoDespues;
     const queda = Math.max(0, cent(d.total) - pagado);
     const mensual = cent(d.monthly);
@@ -585,8 +688,8 @@ obligacionesRouter.get('/', ah(async (req: AuthedRequest, res) => {
       desde: d.startedOn,
       termina: queda > 0 ? fin.toISOString().slice(0, 7) : null,
       esteCiclo: {
-        pagado: esteCiclo.length > 0,
-        importe: euros(esteCiclo.reduce((a, m) => a + cent(m.importe), 0)),
+        pagado: esteCiclo.some((m) => aDeuda(m) > 0),
+        importe: euros(esteCiclo.reduce((a, m) => a + aDeuda(m), 0)),
       },
     };
   });

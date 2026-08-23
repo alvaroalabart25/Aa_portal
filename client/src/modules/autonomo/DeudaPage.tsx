@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { obligacionesApi, type DeudaFicha } from './api';
 import { OjoPrivacidad, useDinero } from './dinero';
@@ -63,16 +63,38 @@ export default function DeudaPage() {
   const [d, setD] = useState<DeudaFicha | null>(null);
   const [error, setError] = useState('');
   const [cuota, setCuota] = useState<number | null>(null);
+  // qué pago se está acotando y con qué valor
+  const [editando, setEditando] = useState<number | null>(null);
+  const [valor, setValor] = useState('');
+
+  const cargar = useCallback(
+    (primeraVez = false) =>
+      obligacionesApi
+        .deuda(Number(id))
+        .then((x) => {
+          setD(x);
+          if (primeraVez) setCuota(x.mensual);
+        })
+        .catch((e) => setError((e as Error).message)),
+    [id],
+  );
 
   useEffect(() => {
-    obligacionesApi
-      .deuda(Number(id))
-      .then((x) => {
-        setD(x);
-        setCuota(x.mensual);
-      })
-      .catch((e) => setError((e as Error).message));
-  }, [id]);
+    void cargar(true);
+  }, [cargar]);
+
+  /**
+   * Guardar cuánto de un pago era deuda. Vacío = vuelve a contar entero, que es
+   * la salida cuando uno se equivoca acotando.
+   */
+  async function guardarParte(pagoId: number) {
+    const limpio = valor.trim().replace(',', '.');
+    const importe = limpio === '' ? null : Number(limpio);
+    setEditando(null);
+    if (importe !== null && (!Number.isFinite(importe) || importe < 0)) return;
+    await obligacionesApi.parteDeuda(Number(id), pagoId, importe).catch((e) => setError((e as Error).message));
+    await cargar();
+  }
 
   const cuadro = useMemo<Fila[]>(() => {
     if (!d || !cuota) return [];
@@ -90,11 +112,13 @@ export default function DeudaPage() {
       });
     }
 
-    // 2. Lo real, agrupado por mes: sus pagos no son de 150 clavados
+    // 2. Lo real, agrupado por mes: sus pagos no son de 150 clavados, y de
+    //    algunos solo una parte amortiza —el resto era otra cosa que le pagó
     const porMes = new Map<string, number>();
     for (const p of d.pagos) {
+      if (p.aDeuda <= 0) continue;
       const k = p.fecha.slice(0, 7);
-      porMes.set(k, (porMes.get(k) ?? 0) + Math.round(p.importe * 100));
+      porMes.set(k, (porMes.get(k) ?? 0) + Math.round(p.aDeuda * 100));
     }
     for (const [mes, importe] of [...porMes].sort()) {
       pendiente -= importe;
@@ -129,7 +153,8 @@ export default function DeudaPage() {
   const pagadoHoy = d.total - pendienteHoy;
   const porcentaje = Math.round((100 * pagadoHoy) / d.total);
   const previstas = cuadro.filter((f) => !f.real);
-  const pagadoBanco = d.pagos.reduce((a, p) => a + p.importe, 0);
+  const salidoDelBanco = d.pagos.reduce((a, p) => a + p.importe, 0);
+  const amortizado = d.pagos.reduce((a, p) => a + p.aDeuda, 0);
   const fin = previstas[previstas.length - 1];
 
   return (
@@ -176,7 +201,8 @@ export default function DeudaPage() {
           <div className="mc-head">
             <h2>Los pagos, como están en el banco</h2>
             <span className="ob-cuando">
-              {d.pagos.length} {d.pagos.length === 1 ? 'pago' : 'pagos'} · {eur(pagadoBanco)} €
+              {d.pagos.length} {d.pagos.length === 1 ? 'pago' : 'pagos'} · {eur(amortizado)} €
+              {amortizado !== salidoDelBanco && ` de ${eur(salidoDelBanco)} €`}
             </span>
           </div>
 
@@ -197,13 +223,49 @@ export default function DeudaPage() {
                       {p.banco}
                       {p.cuenta && ` · ${p.cuenta}`}
                     </span>
+                    {editando === p.id ? (
+                      <span className="dp-parte-edit">
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          autoFocus
+                          value={valor}
+                          placeholder="todo"
+                          onChange={(e) => setValor(e.target.value)}
+                          onBlur={() => guardarParte(p.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') guardarParte(p.id);
+                            if (e.key === 'Escape') setEditando(null);
+                          }}
+                        />
+                        <em>€ de {eur(p.importe)} · vacío = entero</em>
+                      </span>
+                    ) : (
+                      <button
+                        className={`dp-parte${p.declarado ? ' acotado' : ''}`}
+                        onClick={() => {
+                          setEditando(p.id);
+                          setValor(p.declarado ? String(p.aDeuda).replace('.', ',') : '');
+                        }}
+                      >
+                        {!p.declarado
+                          ? 'cuenta entero'
+                          : p.aDeuda === 0
+                            ? 'no es deuda'
+                            : `solo ${eur(p.aDeuda)} € es deuda`}
+                      </button>
+                    )}
                   </span>
-                  <span className="bk-mov-i sale">−{eur(p.importe)}</span>
+                  <span className={`bk-mov-i sale${p.aDeuda === 0 ? ' fuera' : ''}`}>−{eur(p.importe)}</span>
                 </div>
               ))}
             </div>
           )}
 
+          <p className="ob-nota">
+            Los pagos se reconocen por el nombre, así que aquí entra <b>todo</b> lo que le mandas. Toca la etiqueta de
+            cualquiera para decir cuánto de ese pago era deuda: el resto sigue siendo un gasto, pero deja de amortizar.
+          </p>
           <p className="ob-nota">
             Antes de {mesLargo(d.declarado.hasta)} no hay rastro: el banco solo da 90 días. Los {eur(d.declarado.importe)}{' '}
             € anteriores están declarados por ti, no vistos.

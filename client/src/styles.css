@@ -2169,6 +2169,33 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
   font-style: normal; font-size: 11px; letter-spacing: .03em; text-transform: uppercase;
   color: var(--ink-muted); margin-right: 7px;
 }
+/* La categoría se cambia en la propia línea, sin abrir nada: es un <select>
+   nativo disfrazado de etiqueta. Nativo a propósito —en el móvil el selector
+   del sistema se maneja mejor que cualquier desplegable dibujado a mano—, y
+   pegado al movimiento porque corregirlo tiene que costar un gesto, no tres. */
+.bk-mov-cat {
+  position: relative; align-self: flex-start; max-width: 100%;
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; letter-spacing: .03em; text-transform: uppercase; color: var(--ink-soft);
+  background: var(--paper-soft); border: 1px solid var(--line); border-radius: 999px;
+  padding: 2px 9px; margin-top: 4px; cursor: pointer;
+}
+/* La flechita, a mano: sin ella la etiqueta no parece tocable */
+.bk-mov-cat::after {
+  content: ''; flex: none; width: 0; height: 0;
+  border-left: 3px solid transparent; border-right: 3px solid transparent;
+  border-top: 3.5px solid currentColor; opacity: .7;
+}
+/* El select real, encima y transparente: da el selector nativo del móvil sin
+   imponer su ancho, que sería el de la opción más larga */
+.bk-mov-cat select {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  opacity: 0; cursor: pointer; font: inherit; border: none; -webkit-appearance: none; appearance: none;
+}
+.bk-mov-cat:hover { border-color: var(--ink-soft); color: var(--ink); }
+/* Lo que falta por categorizar no se disimula: se ve que está pendiente */
+.bk-mov-cat.vacia { border-style: dashed; background: none; color: var(--ink-muted); }
+.mv-aviso { font-size: 12.5px; color: var(--ink-soft); margin: 0 0 12px; }
 
 /* El ojo que esconde los importes: discreción, no seguridad */
 .ojo {
@@ -2276,6 +2303,17 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .an-fila-i { font-size: 13px; font-weight: 600; white-space: nowrap; }
 .an-fila-b { grid-column: 1 / -1; height: 4px; border-radius: 2px; background: var(--paper-soft); overflow: hidden; }
 .an-fila-b div { height: 100%; background: var(--ink); }
+/* «no es gasto» junto a Ahorro: la etiqueta explica por qué esa barra no
+   cuenta igual que las demás, sin sacarla de la lista */
+/* Las categorías ya vienen escritas como se leen; capitalizar cada palabra
+   dejaría «Impuestos Y Cuota», que en español está mal */
+.an-fila.cat .an-fila-n { text-transform: none; }
+.an-fila-tag {
+  font-style: normal; text-transform: none; font-size: 11px; color: var(--ink-muted); margin-left: 8px;
+}
+/* Sin categoría: presente y legible, pero en gris. Es una tarea, no un gasto */
+.an-fila.pendiente .an-fila-n { color: var(--ink-muted); }
+.an-fila.pendiente .an-fila-b div { background: var(--ink-muted); opacity: .5; }
 
 /* Widgets del resumen. El aire lo pone SIEMPRE el contenedor, nunca el
    elemento: así dos widgets seguidos nunca quedan pegados ni bailan. */

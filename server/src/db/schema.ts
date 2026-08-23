@@ -1222,3 +1222,20 @@ export const bankBalanceDaily = mysqlTable('bank_balance_daily', {
 export type BankConnection = typeof bankConnections.$inferSelect;
 export type BankAccount = typeof bankAccounts.$inferSelect;
 export type BankTransaction = typeof bankTransactions.$inferSelect;
+
+/**
+ * Las reglas de categoría QUE ÉL CORRIGE. La semilla vive en el código; aquí
+ * solo lo suyo, que manda sobre la semilla y no se puede perder en un deploy.
+ */
+export const bankCategoryRules = mysqlTable('bank_category_rules', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  patron: varchar('patron', { length: 120 }),
+  tipo: varchar('tipo', { length: 30 }),
+  category: varchar('category', { length: 30 }).notNull(),
+  sortOrder: int('sort_order').notNull().default(0),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+export type BankCategoryRule = typeof bankCategoryRules.$inferSelect;

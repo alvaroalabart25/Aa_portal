@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { obligacionesApi, type DeudaFicha } from './api';
 import { OjoPrivacidad, useDinero } from './dinero';
 
@@ -13,6 +13,10 @@ import { OjoPrivacidad, useDinero } from './dinero';
  * Y como la cuota se puede cambiar, la proyección se recalcula aquí mismo: el
  * valor de esta pantalla no es ver el pasado, es ver cuánto se adelanta el final
  * si un mes se paga más. Con una deuda al 0% esa es la única decisión que hay.
+ *
+ * En la segunda pestaña, los pagos TAL CUAL están en el banco. El cuadro de
+ * arriba agrupa por mes y redondea la historia; esto es el rastro: qué día, de
+ * qué cuenta y con qué concepto. Es lo que se mira cuando un mes no cuadra.
  */
 
 
@@ -21,6 +25,9 @@ const mesLargo = (iso: string) =>
 
 const mesCorto = (iso: string) =>
   new Date(iso).toLocaleDateString('es-ES', { month: 'short', year: '2-digit' });
+
+const diaCorto = (iso: string) =>
+  new Date(iso).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
 
 interface Fila {
   etiqueta: string;
@@ -31,6 +38,19 @@ interface Fila {
   real: boolean;
 }
 
+/** Santander mete el número completo de la tarjeta dentro del concepto. */
+const sinNumerosLargos = (t: string) => t.replace(/\d{8,}/g, (n) => `···${n.slice(-4)}`);
+
+/**
+ * Del «BIZUM A FAVOR DE Jorge Enrique Alabart Ferrer CONCEPTO: ventilador» solo
+ * interesa lo último: en esta pantalla el destinatario es el título, repetirlo
+ * en cada línea tapa lo único que cambia, que es en concepto de qué se pagó.
+ */
+function soloElConcepto(t: string): string {
+  const m = /CONCEPTO:\s*(.+)$/i.exec(t);
+  return sinNumerosLargos((m ? m[1] : t).trim()) || 'Pago';
+}
+
 /** Las cuotas que tiene sentido probar, además de la suya. */
 const CUOTAS = [150, 250, 300, 400, 580];
 
@@ -38,6 +58,8 @@ export default function DeudaPage() {
   const { eur } = useDinero();
   const { id } = useParams();
   const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const tab = params.get('tab') === 'movimientos' ? 'movimientos' : 'cuadro';
   const [d, setD] = useState<DeudaFicha | null>(null);
   const [error, setError] = useState('');
   const [cuota, setCuota] = useState<number | null>(null);
@@ -107,13 +129,29 @@ export default function DeudaPage() {
   const pagadoHoy = d.total - pendienteHoy;
   const porcentaje = Math.round((100 * pagadoHoy) / d.total);
   const previstas = cuadro.filter((f) => !f.real);
+  const pagadoBanco = d.pagos.reduce((a, p) => a + p.importe, 0);
   const fin = previstas[previstas.length - 1];
 
   return (
     <div>
       <div className="page-head">
         <h1>{d.nombre}</h1>
-        <OjoPrivacidad />
+        <div className="page-acciones">
+          <div className="seg" role="tablist">
+            {(['cuadro', 'movimientos'] as const).map((t) => (
+              <button
+                key={t}
+                role="tab"
+                aria-selected={tab === t}
+                className={tab === t ? 'active' : ''}
+                onClick={() => setParams(t === 'cuadro' ? {} : { tab: t }, { replace: true })}
+              >
+                {t === 'cuadro' ? 'Cuadro' : 'Movimientos'}
+              </button>
+            ))}
+          </div>
+          <OjoPrivacidad />
+        </div>
       </div>
       <p className="page-sub">
         Debes {eur(pendienteHoy)} € de {eur(d.total)} €, desde {mesLargo(d.desde)}.
@@ -133,6 +171,46 @@ export default function DeudaPage() {
         </p>
       </section>
 
+      {tab === 'movimientos' ? (
+        <section className="section mc-bloque">
+          <div className="mc-head">
+            <h2>Los pagos, como están en el banco</h2>
+            <span className="ob-cuando">
+              {d.pagos.length} {d.pagos.length === 1 ? 'pago' : 'pagos'} · {eur(pagadoBanco)} €
+            </span>
+          </div>
+
+          {d.pagos.length === 0 ? (
+            <p className="muted mc-vacio">
+              Ningún pago reconocido desde {mesLargo(d.declarado.hasta)}. Se reconocen por el concepto, así que si
+              pagaste de otra forma no aparece aquí.
+            </p>
+          ) : (
+            <div className="bk-movs">
+              {[...d.pagos].reverse().map((p) => (
+                <div key={p.id} className="bk-mov">
+                  <span className="bk-mov-f">{diaCorto(p.fecha)}</span>
+                  <span className="bk-mov-t">
+                    <b>{p.concepto ? soloElConcepto(p.concepto) : 'Pago'}</b>
+                    <span className="bk-mov-c">
+                      {p.tipo && <em className="bk-mov-tipo">{p.tipo}</em>}
+                      {p.banco}
+                      {p.cuenta && ` · ${p.cuenta}`}
+                    </span>
+                  </span>
+                  <span className="bk-mov-i sale">−{eur(p.importe)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <p className="ob-nota">
+            Antes de {mesLargo(d.declarado.hasta)} no hay rastro: el banco solo da 90 días. Los {eur(d.declarado.importe)}{' '}
+            € anteriores están declarados por ti, no vistos.
+          </p>
+        </section>
+      ) : (
+        <>
       <section className="section mc-bloque">
         <div className="mc-head">
           <h2>Si pagas al mes…</h2>
@@ -172,6 +250,8 @@ export default function DeudaPage() {
         </div>
         <p className="ob-nota">En negro lo pagado, en gris la previsión.</p>
       </section>
+        </>
+      )}
 
       <button className="btn ghost sm" style={{ marginTop: 8 }} onClick={() => navigate('/autonomo/obligaciones')}>
         ← Obligaciones

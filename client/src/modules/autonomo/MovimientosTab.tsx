@@ -12,6 +12,11 @@ import { useDinero } from './dinero';
  *
  * Los filtros que se ofrecen salen de sus datos, no de una lista inventada: si
  * no tiene ninguna comisión, no aparece el filtro de comisiones.
+ *
+ * Cada gasto lleva su categoría y se puede cambiar AQUÍ, en la misma línea, sin
+ * abrir nada: corregir uno corrige todos los del mismo comercio y se guarda
+ * como regla. Ese es el trato —él corrige una vez, el portal aprende— y es lo
+ * único que evita que esto acabe abandonado como cualquier hoja de gastos.
  */
 
 
@@ -24,6 +29,7 @@ export default function MovimientosTab() {
   const [filtro, setFiltro] = useState<FiltroMovimientos>({ orden: 'fecha', dir: 'desc', limite: 50 });
   const [texto, setTexto] = useState('');
   const [cargando, setCargando] = useState(true);
+  const [aviso, setAviso] = useState('');
   const debounce = useRef<number>();
 
   const cargar = useCallback((f: FiltroMovimientos) => {
@@ -45,6 +51,15 @@ export default function MovimientosTab() {
   }
 
   const cambiar = (parcial: FiltroMovimientos) => setFiltro((f) => ({ ...f, ...parcial, pagina: 0 }));
+
+  /** Corregir la categoría de uno: arrastra a todos los del mismo comercio. */
+  async function categorizar(id: number, valor: string) {
+    const r = await bancoApi.categorizar(id, valor || null).catch(() => null);
+    if (!r) return setAviso('No se ha podido guardar');
+    setAviso(r.regla ? `Guardado: todo lo de ${r.regla.toLowerCase()} va ahí` : 'Guardado');
+    window.setTimeout(() => setAviso(''), 4000);
+    cargar(filtro);
+  }
 
   return (
     <div>
@@ -75,6 +90,17 @@ export default function MovimientosTab() {
           ))}
         </select>
 
+        <select value={filtro.categoria ?? ''} onChange={(e) => cambiar({ categoria: e.target.value })}>
+          <option value="">Todas las categorías</option>
+          {pag?.categorias
+            .filter((c) => c.n > 0)
+            .map((c) => (
+              <option key={c.categoria} value={c.categoria}>
+                {c.nombre} ({c.n})
+              </option>
+            ))}
+        </select>
+
         <button
           className={`mv-toggle${filtro.traspasos ? ' active' : ''}`}
           onClick={() => cambiar({ traspasos: filtro.traspasos ? undefined : 1 })}
@@ -99,7 +125,7 @@ export default function MovimientosTab() {
       <p className="mv-cuantos">
         {cargando ? 'Buscando…' : `${pag?.total ?? 0} movimientos`}
         {!cargando && !filtro.traspasos && !filtro.tipo && <span>sin contar traspasos</span>}
-        {(filtro.banco || filtro.tipo || filtro.q || filtro.traspasos) && !cargando && (
+        {(filtro.banco || filtro.tipo || filtro.categoria || filtro.q || filtro.traspasos) && !cargando && (
           <button
             className="mv-limpiar"
             onClick={() => {
@@ -111,6 +137,8 @@ export default function MovimientosTab() {
           </button>
         )}
       </p>
+
+      {aviso && <p className="mv-aviso">{aviso}</p>}
 
       {pag && pag.movimientos.length === 0 && !cargando && (
         <p className="muted mc-vacio">Ningún movimiento con esos filtros.</p>
@@ -127,6 +155,29 @@ export default function MovimientosTab() {
                 {m.banco}
                 {m.cuentaIban && ` ···${m.cuentaIban}`}
               </span>
+              {m.direccion === 'DBIT' && m.tipo !== 'traspaso' && (
+                /* La etiqueta la pinta el <span> y el <select> va encima,
+                   invisible: si se estilara el select, se estiraría hasta el
+                   ancho de su opción más larga y la línea quedaría ocupada por
+                   una pastilla de medio móvil. */
+                <span className={`bk-mov-cat${m.categoria ? '' : ' vacia'}`}>
+                  {m.categoriaNombre ?? 'Sin categoría'}
+                  <select
+                    aria-label="Categoría"
+                    value={m.categoria ?? ''}
+                    onChange={(e) => categorizar(m.id, e.target.value)}
+                  >
+                    <option value="">Sin categoría</option>
+                    {pag?.categorias
+                      .filter((c) => c.categoria !== 'sin')
+                      .map((c) => (
+                        <option key={c.categoria} value={c.categoria}>
+                          {c.nombre}
+                        </option>
+                      ))}
+                  </select>
+                </span>
+              )}
             </span>
             <span className={`bk-mov-i ${m.direccion === 'CRDT' ? 'entra' : 'sale'}`}>
               {m.direccion === 'CRDT' ? '+' : '−'}

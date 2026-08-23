@@ -12,6 +12,7 @@ import {
 } from '../../db/schema';
 import type { AuthedRequest } from '../../core/auth/middleware';
 import { cicloDe, trimestreDe } from './ciclo';
+import { NOMBRE_TIPO, type Tipo } from './tipos';
 import { detectarFijos } from './fijos';
 
 /**
@@ -288,11 +289,17 @@ obligacionesRouter.get('/deudas/:id(\\d+)', ah(async (req: AuthedRequest, res) =
   const pagos = deuda.matcher
     ? await db
         .select({
+          id: bankTransactions.id,
           fecha: bankTransactions.bookingDate,
           importe: bankTransactions.amount,
           concepto: bankTransactions.concept,
+          tipo: bankTransactions.tipo,
+          cuenta: sql<string | null>`coalesce(${bankAccounts.alias}, ${bankAccounts.name})`,
+          banco: bankConnections.aspspName,
         })
         .from(bankTransactions)
+        .innerJoin(bankAccounts, eq(bankTransactions.accountId, bankAccounts.id))
+        .innerJoin(bankConnections, eq(bankAccounts.connectionId, bankConnections.id))
         .where(
           and(
             eq(bankTransactions.userId, req.userId!),
@@ -313,9 +320,20 @@ obligacionesRouter.get('/deudas/:id(\\d+)', ah(async (req: AuthedRequest, res) =
     desde: deuda.startedOn,
     // lo pagado antes de que el banco tuviera histórico: declarado, no visto
     declarado: { hasta: deuda.declaredOn, importe: euros(cent(deuda.paidBefore)) },
+    // Cada pago con su rastro: de qué cuenta salió y con qué concepto. Un
+    // cuadro de amortización que no se puede contrastar contra el banco es una
+    // hoja de cálculo, y de esas ya tenía una.
     pagos: pagos
       .filter((p) => p.fecha)
-      .map((p) => ({ fecha: p.fecha!, importe: Number(p.importe) })),
+      .map((p) => ({
+        id: p.id,
+        fecha: p.fecha!,
+        importe: Number(p.importe),
+        concepto: p.concepto,
+        tipo: p.tipo && p.tipo in NOMBRE_TIPO ? NOMBRE_TIPO[p.tipo as Tipo] : null,
+        cuenta: p.cuenta,
+        banco: p.banco,
+      })),
   });
 }));
 

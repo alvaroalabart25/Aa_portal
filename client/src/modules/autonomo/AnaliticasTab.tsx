@@ -134,6 +134,21 @@ export default function AnaliticasTab() {
         </p>
       </section>
 
+      <section className="section mc-bloque">
+        <div className="mc-head">
+          <h2>En qué se va</h2>
+          <span className="ob-cuando">
+            {eur(a.totalGastos)} € · {dm(a.periodo.desde)} → {dm(a.periodo.hasta)}
+          </span>
+        </div>
+        <PorCategoria categorias={a.categorias} total={a.totalGastos} />
+        <p className="ob-nota">
+          {a.guardado > 0
+            ? `De esos, ${eur(a.guardado)} € no se gastaron: se guardaron. Salieron de la cuenta pero siguen siendo tuyos.`
+            : 'Ningún euro fue a ahorro en este periodo.'}
+        </p>
+      </section>
+
       {/* Enfrentadas: entra a la izquierda, sale a la derecha. En móvil se
           apilan solas, que en 375 px dos columnas no se leen. */}
       <div className="an-dos">
@@ -149,15 +164,49 @@ export default function AnaliticasTab() {
 
         <section className="section mc-bloque">
           <div className="mc-head">
-            <h2>En qué se va</h2>
-            <span className="ob-cuando">
-              {eur(a.totalGastos)} € · {dm(a.periodo.desde)} → {dm(a.periodo.hasta)}
-            </span>
+            <h2>En qué comercios</h2>
+            <span className="ob-cuando">{a.gastos.length} sitios</span>
           </div>
           <Reparto filas={a.gastos} />
         </section>
       </div>
     </>
+  );
+}
+
+/**
+ * El gasto por categoría, de mayor a menor.
+ *
+ * «Sin categoría» va con los demás y con su importe delante, no escondido al
+ * final: es el único hueco del portal que es información, porque dice cuánto de
+ * lo que gastas todavía no sabemos en qué se fue. Se arregla en Movimientos.
+ */
+function PorCategoria({
+  categorias,
+  total,
+}: {
+  categorias: { categoria: string; nombre: string; n: number; importe: number; gasto: boolean }[];
+  total: number;
+}) {
+  const { eur } = useDinero();
+  const filas = [...categorias].sort((a, z) => z.importe - a.importe);
+  if (!filas.length) return <p className="muted mc-vacio">Ningún gasto en este periodo.</p>;
+
+  return (
+    <div className="an-reparto">
+      {filas.map((c) => (
+        <div key={c.categoria} className={`an-fila cat${c.categoria === 'sin' ? ' pendiente' : ''}`}>
+          <span className="an-fila-n">
+            {c.nombre}
+            {!c.gasto && <em className="an-fila-tag">no es gasto</em>}
+          </span>
+          <span className="an-fila-i">{eur(c.importe)}</span>
+          <div className="an-fila-b" aria-hidden>
+            <div style={{ width: `${Math.max(2, total > 0 ? Math.round((100 * c.importe) / total) : 0)}%` }} />
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 

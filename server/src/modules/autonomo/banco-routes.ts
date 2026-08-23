@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { and, desc, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm';
 import { ah } from '../../lib/async';
 import { db } from '../../db';
-import { bankAccounts, bankBalanceDaily, bankConnections, bankTransactions } from '../../db/schema';
+import { bankAccounts, bankBalanceDaily, bankCategoryRules, bankConnections, bankTransactions } from '../../db/schema';
 import type { AuthedRequest } from '../../core/auth/middleware';
 import {
   BancoApagado,
@@ -19,6 +19,15 @@ import {
   saldosDe,
 } from './banco';
 import { NOMBRE_TIPO, TIPOS, emparejarTraspasos, nombraAlTitular, tipoDeMovimiento, type Tipo } from './tipos';
+import {
+  CATEGORIAS,
+  NOMBRE_CATEGORIA,
+  categoriaDe,
+  comercioDe,
+  esCategoria,
+  type Categoria,
+  type Regla,
+} from './categorias';
 import { CICLO_DIA } from './ciclo';
 
 /**
@@ -126,6 +135,62 @@ const VENTANA_TRASPASOS = 120;
  * otro. Es idempotente: cada vez borra las parejas de la ventana y las vuelve
  * a calcular, así que arreglar la regla es volver a llamarla.
  */
+/** Las reglas que ha corregido él. Van primero: mandan sobre la semilla. */
+async function reglasDe(userId: number): Promise<Regla[]> {
+  const filas = await db
+    .select()
+    .from(bankCategoryRules)
+    .where(eq(bankCategoryRules.userId, userId))
+    .orderBy(bankCategoryRules.sortOrder, bankCategoryRules.id);
+  return filas.map((f) => ({ patron: f.patron, tipo: f.tipo, categoria: f.category as Categoria }));
+}
+
+/**
+ * Vuelve a categorizar todo lo guardado y escribe solo lo que CAMBIA.
+ *
+ * Se llama después de emparejar traspasos, no antes: un movimiento que resulta
+ * ser un traspaso entre sus cuentas no lleva categoría, y eso no se sabe hasta
+ * tener los dos lados delante.
+ */
+async function recategorizar(userId: number): Promise<{ categorizados: number; sin: number }> {
+  const reglas = await reglasDe(userId);
+  const filas = await db
+    .select({
+      id: bankTransactions.id,
+      concept: bankTransactions.concept,
+      counterparty: bankTransactions.counterparty,
+      tipo: bankTransactions.tipo,
+      direction: bankTransactions.direction,
+      category: bankTransactions.category,
+    })
+    .from(bankTransactions)
+    .where(eq(bankTransactions.userId, userId));
+
+  // Una sentencia por categoría en vez de una por movimiento: la base está en
+  // Oregón y cada consulta cuesta 165 ms.
+  const cambios = new Map<Categoria | null, number[]>();
+  let categorizados = 0;
+  let sin = 0;
+  for (const f of filas) {
+    // Los ingresos no se categorizan: en qué se GASTA es otra pregunta, y
+    // «de dónde entra» ya se agrupa por quién paga.
+    const nueva = f.direction === 'DBIT' ? categoriaDe(f, reglas) : null;
+    if (nueva) categorizados += 1;
+    else if (f.direction === 'DBIT' && f.tipo !== 'traspaso') sin += 1;
+    if ((f.category ?? null) === nueva) continue;
+    (cambios.get(nueva) ?? cambios.set(nueva, []).get(nueva)!).push(f.id);
+  }
+  for (const [categoria, ids] of cambios) {
+    for (let i = 0; i < ids.length; i += 200) {
+      await db
+        .update(bankTransactions)
+        .set({ category: categoria })
+        .where(and(eq(bankTransactions.userId, userId), inArray(bankTransactions.id, ids.slice(i, i + 200))));
+    }
+  }
+  return { categorizados, sin };
+}
+
 async function recalcularTraspasos(userId: number): Promise<number> {
   const desde = new Date();
   desde.setDate(desde.getDate() - VENTANA_TRASPASOS);
@@ -464,6 +529,9 @@ bancoRouter.post('/sincronizar/:id(\\d+)', ah(async (req: AuthedRequest, res) =>
     // Los traspasos solo se ven con los DOS lados delante, así que se
     // recalculan al final y sobre todas las cuentas, no solo las de este banco.
     const traspasos = await recalcularTraspasos(req.userId!);
+    // después de emparejar: un traspaso no lleva categoría y eso no se sabe
+    // hasta tener los dos lados
+    await recategorizar(req.userId!);
     await retratarPatrimonio(req.userId!);
 
     await db
@@ -500,6 +568,7 @@ bancoRouter.get('/movimientos', ah(async (req: AuthedRequest, res) => {
   const pagina = Math.max(0, Number(req.query.pagina ?? 0));
   const banco = String(req.query.banco ?? '').trim();
   const tipo = String(req.query.tipo ?? '').trim();
+  const categoria = String(req.query.categoria ?? '').trim();
   const busca = String(req.query.q ?? '').trim();
   const orden = req.query.orden === 'importe' ? 'importe' : 'fecha';
   const asc = req.query.dir === 'asc';
@@ -507,6 +576,10 @@ bancoRouter.get('/movimientos', ah(async (req: AuthedRequest, res) => {
   const condiciones = [eq(bankTransactions.userId, req.userId!)];
   if (banco) condiciones.push(eq(bankConnections.aspspName, banco));
   if (tipo) condiciones.push(eq(bankTransactions.tipo, tipo));
+  // «sin» es un filtro de verdad, no la ausencia de filtro: es la lista de lo
+  // que hay que enseñarle para que la corrija
+  if (categoria === 'sin') condiciones.push(and(isNull(bankTransactions.category), eq(bankTransactions.direction, 'DBIT'))!);
+  else if (categoria) condiciones.push(eq(bankTransactions.category, categoria));
   // Casi la mitad de sus movimientos son traspasos entre cuentas propias —los
   // redondeos de Revolut son céntimos— y ahogan el listado. Se esconden salvo
   // que se pidan, igual que no cuentan en el mes.
@@ -542,6 +615,7 @@ bancoRouter.get('/movimientos', ah(async (req: AuthedRequest, res) => {
       cuentaIban: bankAccounts.ibanTail,
       banco: bankConnections.aspspName,
       tipo: bankTransactions.tipo,
+      categoria: bankTransactions.category,
     })
     .from(bankTransactions)
     .innerJoin(bankAccounts, eq(bankTransactions.accountId, bankAccounts.id))
@@ -572,6 +646,12 @@ bancoRouter.get('/movimientos', ah(async (req: AuthedRequest, res) => {
     .where(eq(bankTransactions.userId, req.userId!))
     .groupBy(bankTransactions.tipo);
 
+  const categorias = await db
+    .select({ categoria: bankTransactions.category, n: sql<number>`count(*)` })
+    .from(bankTransactions)
+    .where(and(eq(bankTransactions.userId, req.userId!), eq(bankTransactions.direction, 'DBIT')))
+    .groupBy(bankTransactions.category);
+
   res.json({
     total: Number(total),
     pagina,
@@ -579,6 +659,7 @@ bancoRouter.get('/movimientos', ah(async (req: AuthedRequest, res) => {
     movimientos: filas.map((f) => ({
       ...f,
       tipoNombre: f.tipo && f.tipo in NOMBRE_TIPO ? NOMBRE_TIPO[f.tipo as Tipo] : null,
+      categoriaNombre: f.categoria && esCategoria(f.categoria) ? NOMBRE_CATEGORIA[f.categoria] : null,
     })),
     bancos: bancos.map((b) => b.nombre).sort(),
     tipos: TIPOS.filter((t) => tipos.some((x) => x.tipo === t)).map((t) => ({
@@ -586,7 +667,82 @@ bancoRouter.get('/movimientos', ah(async (req: AuthedRequest, res) => {
       nombre: NOMBRE_TIPO[t],
       n: Number(tipos.find((x) => x.tipo === t)?.n ?? 0),
     })),
+    // Todas las categorías, tengan o no movimientos: aquí la lista completa no
+    // es ruido, es lo que se puede elegir al corregir uno.
+    categorias: [
+      ...CATEGORIAS.map((c) => ({
+        categoria: c as string,
+        nombre: NOMBRE_CATEGORIA[c],
+        n: Number(categorias.find((x) => x.categoria === c)?.n ?? 0),
+      })),
+      {
+        categoria: 'sin',
+        nombre: 'Sin categoría',
+        n: Number(categorias.find((x) => x.categoria === null)?.n ?? 0),
+      },
+    ],
   });
+}));
+
+/**
+ * PATCH /movimientos/:id/categoria — corregir en qué se fue el dinero.
+ *
+ * Corregir UNO corrige TODOS los del mismo sitio, y se guarda como regla: si
+ * dice que GoPay es comida, el mes que viene los 26 movimientos de GoPay ya
+ * nacen siendo comida. Un portal en el que hay que reetiquetar lo mismo cada
+ * mes se abandona en dos meses.
+ *
+ * Con `todos: false` se cambia solo ese movimiento —una compra rara en un
+ * comercio que normalmente es otra cosa—, pero entonces no se crea regla y una
+ * recategorización lo devolvería a su sitio. Se dice en pantalla.
+ */
+bancoRouter.patch('/movimientos/:id(\\d+)/categoria', ah(async (req: AuthedRequest, res) => {
+  const cuerpo = z
+    .object({ categoria: z.string().nullable(), todos: z.boolean().optional() })
+    .safeParse(req.body);
+  if (!cuerpo.success) return res.status(400).json({ error: 'Falta la categoría' });
+
+  const categoria = cuerpo.data.categoria;
+  if (categoria !== null && !esCategoria(categoria)) return res.status(400).json({ error: 'Esa categoría no existe' });
+
+  const [mov] = await db
+    .select({
+      id: bankTransactions.id,
+      concept: bankTransactions.concept,
+      counterparty: bankTransactions.counterparty,
+      tipo: bankTransactions.tipo,
+    })
+    .from(bankTransactions)
+    .where(and(eq(bankTransactions.id, Number(req.params.id)), eq(bankTransactions.userId, req.userId!)));
+  if (!mov) return res.status(404).json({ error: 'No existe ese movimiento' });
+
+  const comercio = comercioDe(mov);
+  const conRegla = cuerpo.data.todos !== false && Boolean(comercio) && categoria !== null;
+
+  if (conRegla) {
+    // Una regla por comercio: si ya la había, se cambia a dónde apunta en vez
+    // de apilar dos que se contradicen.
+    const [previa] = await db
+      .select({ id: bankCategoryRules.id })
+      .from(bankCategoryRules)
+      .where(and(eq(bankCategoryRules.userId, req.userId!), eq(bankCategoryRules.patron, comercio!)));
+    if (previa) {
+      await db.update(bankCategoryRules).set({ category: categoria }).where(eq(bankCategoryRules.id, previa.id));
+    } else {
+      await db.insert(bankCategoryRules).values({ userId: req.userId!, patron: comercio, category: categoria });
+    }
+  }
+
+  if (conRegla) {
+    const { categorizados, sin } = await recategorizar(req.userId!);
+    return res.json({ ok: true, regla: comercio, categorizados, sinCategoria: sin });
+  }
+
+  await db
+    .update(bankTransactions)
+    .set({ category: categoria })
+    .where(and(eq(bankTransactions.id, mov.id), eq(bankTransactions.userId, req.userId!)));
+  res.json({ ok: true, regla: null });
 }));
 
 // POST /reclasificar — volver a poner el tipo a todo lo guardado
@@ -621,11 +777,14 @@ bancoRouter.post('/reclasificar', ah(async (req: AuthedRequest, res) => {
   }
 
   const traspasos = await recalcularTraspasos(req.userId!);
+  const categorias = await recategorizar(req.userId!);
   res.json({
     ok: true,
     movimientos: filas.length,
     traspasos,
     sinClasificar: porTipo.get('otro')?.length ?? 0,
+    categorizados: categorias.categorizados,
+    sinCategoria: categorias.sin,
   });
 }));
 

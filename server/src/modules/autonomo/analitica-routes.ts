@@ -5,6 +5,7 @@ import { db } from '../../db';
 import { bankAccounts, bankBalanceDaily, bankTransactions } from '../../db/schema';
 import type { AuthedRequest } from '../../core/auth/middleware';
 import { cicloDe, cicloPorId } from './ciclo';
+import { CATEGORIAS, NOMBRE_CATEGORIA, NO_ES_GASTO, esCategoria } from './categorias';
 
 /**
  * Analíticas: ¿el patrimonio crece o no?
@@ -121,6 +122,7 @@ analiticaRouter.get('/', ah(async (req: AuthedRequest, res) => {
       tipo: bankTransactions.tipo,
       concepto: bankTransactions.concept,
       contraparte: bankTransactions.counterparty,
+      categoria: bankTransactions.category,
       escrow: bankAccounts.escrow,
     })
     .from(bankTransactions)
@@ -246,12 +248,51 @@ analiticaRouter.get('/', ah(async (req: AuthedRequest, res) => {
     .sort((a, z) => z.importe - a.importe);
   const totalGastos = gastos.reduce((a, g) => a + g.importe, 0);
 
+  /**
+   * Lo mismo, pero por CATEGORÍA: 91 comercios no se leen, nueve categorías sí.
+   *
+   * Lo que no se reconoce sale como «Sin categoría» y con su importe delante,
+   * a la vista. Es el único sitio del portal donde un hueco es información:
+   * dice cuánto de lo que gastas no sabemos todavía en qué se fue.
+   */
+  const porCategoria = new Map<string, { n: number; importe: number }>();
+  for (const m of movimientos) {
+    if (!m.fecha || m.fecha < desdeIso || m.fecha > hastaIso || m.direccion !== 'DBIT' || m.tipo === 'traspaso') continue;
+    const k = m.categoria && esCategoria(m.categoria) ? m.categoria : 'sin';
+    const x = porCategoria.get(k) ?? { n: 0, importe: 0 };
+    x.n += 1;
+    x.importe += cent(m.importe);
+    porCategoria.set(k, x);
+  }
+  const categorias = [
+    ...CATEGORIAS.map((c) => ({
+      categoria: c as string,
+      nombre: NOMBRE_CATEGORIA[c],
+      n: porCategoria.get(c)?.n ?? 0,
+      importe: euros(porCategoria.get(c)?.importe ?? 0),
+      // guardar no es gastar: se enseña, pero aparte
+      gasto: !NO_ES_GASTO.includes(c),
+    })),
+    {
+      categoria: 'sin',
+      nombre: 'Sin categoría',
+      n: porCategoria.get('sin')?.n ?? 0,
+      importe: euros(porCategoria.get('sin')?.importe ?? 0),
+      gasto: true,
+    },
+  ].filter((c) => c.n > 0);
+  // Lo guardado sale de la cuenta pero no desaparece: separarlo es la
+  // diferencia entre «este mes he gastado 900» y «he gastado 700 y guardado 200»
+  const guardado = categorias.filter((c) => !c.gasto).reduce((a, c) => a + c.importe, 0);
+
   const primero = curva[0]?.total ?? 0;
   const ultimo = curva[curva.length - 1]?.total ?? 0;
 
   res.json({
     dias,
     periodo: { desde: desdeIso, hasta: hastaIso },
+    categorias,
+    guardado,
     curva,
     // cuántos puntos son foto guardada y cuántos reconstrucción
     fotos: curva.filter((p) => p.real).length,

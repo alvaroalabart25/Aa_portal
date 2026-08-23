@@ -56,6 +56,8 @@ export interface PaginaMovimientos {
   movimientos: MovimientoBanco[];
   bancos: string[];
   tipos: { tipo: string; nombre: string; n: number }[];
+  /** todas las categorías, con cuántos gastos tiene cada una; «sin» es una más */
+  categorias: { categoria: string; nombre: string; n: number }[];
 }
 
 export interface FiltroMovimientos {
@@ -63,6 +65,8 @@ export interface FiltroMovimientos {
   /** 1 = incluir los traspasos entre cuentas propias, que por defecto se ocultan */
   traspasos?: 1;
   tipo?: string;
+  /** una categoría, o 'sin' para ver lo que falta por categorizar */
+  categoria?: string;
   q?: string;
   orden?: 'fecha' | 'importe';
   dir?: 'asc' | 'desc';
@@ -84,6 +88,8 @@ export interface MovimientoBanco {
   banco: string;
   tipo: string | null;
   tipoNombre: string | null;
+  categoria: string | null;
+  categoriaNombre: string | null;
 }
 
 /** El mes de verdad: lo que entra y sale sin contar traspasos entre cuentas. */
@@ -181,7 +187,15 @@ export interface DeudaFicha {
   mensual: number;
   desde: string;
   declarado: { hasta: string; importe: number };
-  pagos: { fecha: string; importe: number }[];
+  pagos: {
+    id: number;
+    fecha: string;
+    importe: number;
+    concepto: string | null;
+    tipo: string | null;
+    cuenta: string | null;
+    banco: string | null;
+  }[];
 }
 
 export interface Objetivo {
@@ -245,6 +259,10 @@ export interface Analitica {
   totalIngresos: number;
   gastos: { nombre: string; n: number; importe: number; porcentaje: number; tipo: string }[];
   totalGastos: number;
+  /** en qué se va, agrupado: nueve cajones en vez de noventa comercios */
+  categorias: { categoria: string; nombre: string; n: number; importe: number; gasto: boolean }[];
+  /** lo que salió de la cuenta pero no se gastó: cambió de sitio */
+  guardado: number;
 }
 
 export const analiticaApi = {
@@ -280,6 +298,16 @@ export const bancoApi = {
     post<{ ok: boolean; movimientos: number; traspasos: number; sinClasificar: number }>(
       '/autonomo/banco/reclasificar',
       {},
+    ),
+  /**
+   * Corregir en qué se fue el dinero. Por defecto arrastra a todos los del
+   * mismo comercio y lo deja guardado como regla: corregir dos veces lo mismo
+   * es lo que hace que nadie mantenga sus categorías.
+   */
+  categorizar: (id: number, categoria: string | null, todos = true) =>
+    patch<{ ok: boolean; regla: string | null; categorizados?: number; sinCategoria?: number }>(
+      `/autonomo/banco/movimientos/${id}/categoria`,
+      { categoria, todos },
     ),
   movimientos: (f: FiltroMovimientos = {}) => {
     const q = new URLSearchParams();

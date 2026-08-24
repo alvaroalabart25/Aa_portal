@@ -128,7 +128,7 @@ export default function MacroTab() {
 
 function BloqueMelones({ mes, onCrear }: { mes: FocusMes; onCrear: () => void }) {
   const melones = mes.items.filter((i) => i.kind === 'melon');
-  const activos = melones.filter((m) => m.status === 'activo');
+  const activos = melones.filter((m) => m.status === 'activo').sort((a, z) => atencion(a) - atencion(z));
   // Lo hecho ya no compite por la atención: va al final, en una línea, y lo
   // último conseguido primero. Sigue estando —da gusto verlo— pero no ocupa
   // el sitio de lo que queda por hacer.
@@ -222,6 +222,21 @@ function TarjetaMelon({ item }: { item: FocusItem }) {
 
     </div>
   );
+}
+
+/**
+ * Cuánta atención pide un objetivo, de más a menos.
+ *
+ * Delante lo que está en marcha, que es donde hay que seguir empujando; al
+ * final lo que ya tiene todas sus tareas cerradas, que no pide nada aunque
+ * siga abierto. Dentro de cada grupo se respeta el orden que ya tenían: el
+ * `sort` de JavaScript es estable, así que no se descoloca nada por su cuenta.
+ */
+function atencion(m: FocusItem): number {
+  const { hechas, revision, progreso, bloqueadas, total } = m.tareas;
+  if (total > 0 && hechas === total) return 2; // no queda nada que hacer
+  if (revision + progreso + bloqueadas > 0) return 0; // empezado
+  return 1; // por empezar, o sin tareas todavía
 }
 
 /**

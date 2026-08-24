@@ -1,4 +1,5 @@
 import { del, get, patch, post } from '../../lib/api';
+import type { Task } from '../tasks/types';
 
 export type FocusKind = 'melon' | 'formacion' | 'libro';
 export type FocusScope = 'trabajo' | 'personal';
@@ -37,18 +38,12 @@ export interface FocusMes {
   limites: Record<FocusScope, { usados: number; tope: number }>;
 }
 
-export interface TareaDelMelon {
-  id: number;
-  title: string;
-  status: string;
-  priority: string;
-  dueDate: string | null;
-  projectId: number;
-  projectName: string;
-  spaceId: number;
-  spaceName: string;
-  spaceColor: string;
-}
+/**
+ * Una tarea del objetivo. Es una tarea NORMAL y corriente —vive en su proyecto,
+ * aquí solo se enseña— así que se pinta con la misma tabla que la Agenda y por
+ * eso comparte su tipo.
+ */
+export type TareaDelMelon = Task;
 
 export interface Candidata {
   id: number;

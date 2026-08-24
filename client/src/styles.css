@@ -198,6 +198,9 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   .task-table td:nth-child(3) { order: 3; }
   .task-table td:nth-child(4) { order: 4; }
   .task-table td:nth-child(5) { order: 5; }
+  /* La columna de acciones (quitar del objetivo), a la derecha de la tarjeta */
+  .task-table td.tt-acciones { order: 6; margin-left: auto; }
+  .task-table .mc-tarea-x { color: var(--ink-muted); font-size: 16px; padding: 0 2px; }
   .task-table td[data-empty="true"] { display: none; }
   .task-table .status-btn { padding: 2px 8px; font-size: 12px; gap: 5px; }
   .task-table .badge { font-size: 11px; padding: 2px 7px; }
@@ -1227,8 +1230,13 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
   font-size: 10.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-muted);
 }
 .mc-tarea-estado, .mc-tarea-fecha { flex: 0 0 auto; font-size: 12px; }
+/* El aspa de «quitar del objetivo», como acción de fila de la tabla */
+.tt-acciones { text-align: right; }
 .mc-tarea-x { flex: 0 0 auto; background: none; border: none; color: var(--line); font-size: 14px; padding: 0 4px; }
-.mc-tarea-fila:hover .mc-tarea-x { color: var(--ink-muted); }
+.mc-tarea-fila:hover .mc-tarea-x,
+/* en la tabla de tareas se despierta al pasar por la fila; en el móvil, donde
+   no hay «pasar por encima», va siempre visible (más abajo) */
+.task-table .row:hover .mc-tarea-x { color: var(--ink-muted); }
 .mc-tarea-x:hover { color: var(--danger); }
 
 /* Buscador de tareas para asociar: busca en TODOS los espacios a propósito */

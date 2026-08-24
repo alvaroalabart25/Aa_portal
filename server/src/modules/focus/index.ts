@@ -343,6 +343,11 @@ focusModule.get('/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
         spaceId: spaces.id,
         spaceName: spaces.name,
         spaceColor: spaces.color,
+        // lo que le falta para ser una tarea completa y poder pintarse con la
+        // misma tabla que la Agenda, con su badge de aplazamientos incluido
+        sortOrder: tasks.sortOrder,
+        postponedCount: tasks.postponedCount,
+        lastPostponedAt: tasks.lastPostponedAt,
       })
       .from(focusTasks)
       .innerJoin(tasks, eq(tasks.id, focusTasks.taskId))

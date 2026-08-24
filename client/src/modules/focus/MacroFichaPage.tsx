@@ -1,17 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { projectsApi, spacesApi } from '../tasks/api';
+import TaskTable from '../tasks/TaskTable';
 import type { Project, Space } from '../tasks/types';
 import { focusApi, nombreMes, NOMBRE_TIPO, type Candidata, type FocusDetalle } from './api';
 
-const ESTADO_TAREA: Record<string, string> = {
-  backlog: 'Backlog',
-  in_progress: 'En progreso',
-  in_review: 'En revisión',
-  blocked: 'Bloqueada',
-  completed: 'Completada',
-  cancelled: 'Cancelada',
-};
 const cerrada = (s: string) => s === 'completed' || s === 'cancelled';
 
 function fechaCorta(iso: string): string {
@@ -51,6 +44,24 @@ export default function MacroFichaPage() {
   const t = NOMBRE_TIPO[d.kind];
   const abiertas = d.tasks.filter((x) => !cerrada(x.status));
   const cerradas = d.tasks.filter((x) => cerrada(x.status));
+
+  /**
+   * Quitar la tarea del objetivo. Va como acción de la fila y NO borra nada:
+   * la tarea sigue viviendo en su proyecto, solo deja de contar aquí.
+   */
+  const quitar = (t: { id: number }) => (
+    <button
+      className="mc-tarea-x"
+      aria-label="Quitar del objetivo"
+      title="Quitar del objetivo (la tarea no se borra)"
+      onClick={async () => {
+        await focusApi.quitarTarea(Number(id), t.id);
+        cargar();
+      }}
+    >
+      ✕
+    </button>
+  );
 
   async function guardar(cambios: Parameters<typeof focusApi.editar>[1]) {
     setD({ ...d!, ...(cambios as Partial<FocusDetalle>) });
@@ -136,6 +147,10 @@ export default function MacroFichaPage() {
 
       {d.daily === 1 && <Diario item={d} onCambio={cargar} />}
 
+      {/* Las notas, antes que las tareas: es donde se apunta el porqué del
+          objetivo, y se lee antes de ponerse a hacer nada. */}
+      <Notas valor={d.notes ?? ''} onGuardar={(notes) => guardar({ notes })} />
+
       {d.kind === 'melon' && (
         <section className="section">
           <div className="page-head">
@@ -152,11 +167,11 @@ export default function MacroFichaPage() {
             <p className="empty">Sin tareas asociadas todavía.</p>
           ) : (
             <>
-              <ListaTareas tareas={abiertas} itemId={d.id} onCambio={cargar} />
+              <TaskTable tasks={abiertas} onChanged={cargar} acciones={quitar} />
               {cerradas.length > 0 && (
                 <>
                   <h3 className="mc-sub">Cerradas · {cerradas.length}</h3>
-                  <ListaTareas tareas={cerradas} itemId={d.id} onCambio={cargar} />
+                  <TaskTable tasks={cerradas} onChanged={cargar} acciones={quitar} />
                 </>
               )}
             </>
@@ -174,7 +189,6 @@ export default function MacroFichaPage() {
         </section>
       )}
 
-      <Notas valor={d.notes ?? ''} onGuardar={(notes) => guardar({ notes })} />
     </div>
   );
 }
@@ -212,40 +226,6 @@ function Titulo({ valor, onGuardar }: { valor: string; onGuardar: (v: string) =>
     <h1 className="title-editable" onClick={() => setEditando(true)} title="Pulsa para renombrar">
       {valor}
     </h1>
-  );
-}
-
-function ListaTareas({ tareas, itemId, onCambio }: { tareas: FocusDetalle['tasks']; itemId: number; onCambio: () => void }) {
-  return (
-    <div className="mc-tareas">
-      {tareas.map((x) => (
-        <div key={x.id} className={`mc-tarea-fila${cerrada(x.status) ? ' cerrada' : ''}`}>
-          <span className="dot" style={{ background: x.spaceColor }} />
-          {/* con el origen a cuestas: al volver de la tarea, aquí mismo */}
-          <Link
-            to={`/tareas/${x.id}`}
-            state={{ volverA: `${window.location.pathname}${window.location.search}` }}
-            className="mc-tarea-titulo"
-          >
-            <span className="mc-tarea-espacio">{x.spaceName}</span>
-            {x.title}
-          </Link>
-          <span className="muted mc-tarea-estado">{ESTADO_TAREA[x.status] ?? x.status}</span>
-          {x.dueDate && <span className="muted mc-tarea-fecha">{fechaCorta(x.dueDate)}</span>}
-          <button
-            className="mc-tarea-x"
-            aria-label="Desasociar del objetivo"
-            title="Quitar del objetivo (la tarea no se borra)"
-            onClick={async () => {
-              await focusApi.quitarTarea(itemId, x.id);
-              onCambio();
-            }}
-          >
-            ✕
-          </button>
-        </div>
-      ))}
-    </div>
   );
 }
 
@@ -468,9 +448,11 @@ function Notas({ valor, onGuardar }: { valor: string; onGuardar: (v: string) => 
       <textarea
         value={txt}
         onChange={(e) => cambiar(e.target.value)}
-        rows={10}
+        rows={4}
         placeholder="Lo que vayas aprendiendo, enlaces, ideas, resúmenes…"
-        style={{ width: '100%', maxWidth: 680, lineHeight: 1.65, resize: 'vertical' }}
+        /* A todo lo ancho y baja: la caja de diez líneas ocupaba media pantalla
+           aunque hubiera dos frases. Se estira quien la necesite. */
+        style={{ width: '100%', lineHeight: 1.65, resize: 'vertical' }}
       />
     </section>
   );

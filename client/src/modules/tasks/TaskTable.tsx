@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { tasksApi } from './api';
 import { Aplazada, DueDateEdit, PrioritySelect, SpaceTag, StatusSelect } from './components';
@@ -9,10 +10,14 @@ export default function TaskTable({
   tasks,
   showProject = true,
   onChanged,
+  acciones,
 }: {
   tasks: Task[];
   showProject?: boolean;
   onChanged: () => void;
+  /** Un control extra al final de cada fila, para quien lo necesite (quitar la
+   *  tarea de un objetivo, por ejemplo). Sin él, la tabla es la de siempre. */
+  acciones?: (t: Task) => ReactNode;
 }) {
   const navigate = useNavigate();
   // Desde dónde se abre la tarea. La tabla no sabe en qué pantalla vive, pero
@@ -37,6 +42,7 @@ export default function TaskTable({
           <th style={{ width: '12%' }}>Vencimiento</th>
           <th style={{ width: '12%' }}>Prioridad</th>
           {showProject && <th style={{ width: '17%' }}>Espacio</th>}
+          {acciones && <th style={{ width: '4%' }} aria-label="Acciones" />}
         </tr>
       </thead>
       <tbody>
@@ -89,6 +95,7 @@ export default function TaskTable({
                 <SpaceTag name={t.spaceName} color={t.spaceColor} />
               </td>
             )}
+            {acciones && <td className="tt-acciones">{acciones(t)}</td>}
           </tr>
         ))}
       </tbody>

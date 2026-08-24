@@ -25,6 +25,11 @@
   --paper: #ffffff;
   --paper-soft: #f5f5f4;
   --line: #e5e5e3;
+  /* Lo conseguido. Mismo registro que el ámbar de lo aplazado: apagado, para
+     que informe sin gritar. */
+  --verde: #1a6b45;
+  --verde-linea: #b4dcc6;
+  --verde-fondo: #eff7f2;
   --danger: #c92a2a;
   --font-title: 'Bricolage Grotesque', system-ui, sans-serif;
   --font-body: 'Satoshi', -apple-system, system-ui, sans-serif;
@@ -897,7 +902,24 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 }
 .mc-tope.pasado { color: var(--danger); border-color: #eed4d4; background: #fdf5f5; font-weight: 600; }
 
-.mc-hechos { margin-top: 10px; opacity: 0.68; }
+/* Los objetivos ya conseguidos: al final y en una línea, con su check verde.
+   Siguen estando porque da gusto verlos, pero dejan de ocupar el sitio de lo
+   que queda por hacer. Verde y ámbar (.aplazada) son los dos únicos colores
+   del portal, y los dos dicen un estado, no decoran. */
+.mc-hechos { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.mk-hecho {
+  display: inline-flex; align-items: baseline; gap: 8px;
+  padding: 6px 12px 6px 10px; border-radius: 999px;
+  border: 1px solid var(--verde-linea); background: var(--verde-fondo);
+  color: var(--verde); text-decoration: none; max-width: 100%;
+}
+.mk-hecho:hover { border-color: var(--verde); }
+.mk-hecho-v { font-size: 12px; font-weight: 700; line-height: 1; flex: none; }
+.mk-hecho-t {
+  font-family: var(--font-title); font-weight: 600; font-size: 13.5px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.mk-hecho-s { font-size: 11px; opacity: 0.7; flex: none; }
 
 /* ---------- Tarjetas del mes (melones, formaciones, libros) ----------
    La portada del mes se lee de un vistazo, no se lee línea a línea: cada cosa

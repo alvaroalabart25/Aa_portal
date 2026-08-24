@@ -129,7 +129,12 @@ export default function MacroTab() {
 function BloqueMelones({ mes, onCrear }: { mes: FocusMes; onCrear: () => void }) {
   const melones = mes.items.filter((i) => i.kind === 'melon');
   const activos = melones.filter((m) => m.status === 'activo');
-  const hechos = melones.filter((m) => m.status === 'hecho');
+  // Lo hecho ya no compite por la atención: va al final, en una línea, y lo
+  // último conseguido primero. Sigue estando —da gusto verlo— pero no ocupa
+  // el sitio de lo que queda por hacer.
+  const hechos = melones
+    .filter((m) => m.status === 'hecho')
+    .sort((a, b) => (b.doneAt ?? '').localeCompare(a.doneAt ?? ''));
 
   return (
     <section className="section mc-bloque">
@@ -169,9 +174,15 @@ function BloqueMelones({ mes, onCrear }: { mes: FocusMes; onCrear: () => void })
       )}
 
       {hechos.length > 0 && (
-        <div className="mk-grid mc-hechos">
+        <div className="mc-hechos">
           {hechos.map((m) => (
-            <TarjetaMelon key={m.id} item={m} />
+            <Link key={m.id} to={`/macro/${m.id}`} className="mk-hecho">
+              <span className="mk-hecho-v" aria-hidden="true">
+                ✓
+              </span>
+              <span className="mk-hecho-t">{m.title}</span>
+              <span className="mk-hecho-s">{m.scope === 'trabajo' ? 'Trabajo' : 'Personal'}</span>
+            </Link>
           ))}
         </div>
       )}

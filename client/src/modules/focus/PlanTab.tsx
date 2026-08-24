@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as
 import { Link } from 'react-router-dom';
 import Modal from '../../components/Modal';
 import { eventsApi } from '../events/api';
-import type { ImportantEvent } from '../events/types';
+import { daysUntil, fmtEventDate, whenLabel, type ImportantEvent } from '../events/types';
 import { focusApi, type Plan, type PlanItem } from './api';
 
 /**
@@ -57,6 +57,14 @@ export default function PlanTab() {
   const [eventos, setEventos] = useState<ImportantEvent[]>([]);
   const [arrastre, setArrastre] = useState<Arrastre | null>(null);
   const [creando, setCreando] = useState(false);
+  /**
+   * La fecha señalada abierta, con dónde ponerle el globo.
+   *
+   * Se guarda la posición en pantalla y el globo va `fixed`, no dentro de la
+   * franja: la plani se desplaza de lado, y un globo metido dentro lo recortaba
+   * el scroll en cuanto el emoji caía cerca de un borde.
+   */
+  const [abierta, setAbierta] = useState<{ ev: ImportantEvent; x: number; y: number } | null>(null);
   const pistaRef = useRef<HTMLDivElement>(null);
 
   const cargar = useCallback(
@@ -70,6 +78,15 @@ export default function PlanTab() {
   useEffect(() => {
     void cargar();
   }, [cargar]);
+
+  // El globo va `fixed`, así que si la página se mueve se queda flotando lejos
+  // de su emoji: al primer desplazamiento se cierra.
+  useEffect(() => {
+    if (!abierta) return;
+    const cerrar = () => setAbierta(null);
+    window.addEventListener('scroll', cerrar, { passive: true });
+    return () => window.removeEventListener('scroll', cerrar);
+  }, [abierta]);
 
   // El calendario arranca el lunes de esta semana: la plani mira hacia delante
   const inicio = useMemo(() => lunesDe(plan?.hoy ?? isoDe(new Date())), [plan?.hoy]);
@@ -104,6 +121,8 @@ export default function PlanTab() {
 
   const colocados = plan.items.filter((i) => i.dueOn);
   const sinFecha = plan.items.filter((i) => !i.dueOn);
+  const vivos = plan.items.filter((i) => i.status !== 'hecho');
+  const conseguidos = plan.items.filter((i) => i.status === 'hecho');
 
   /** Lo que se está arrastrando manda sobre lo guardado, para que se vea al mover. */
   const tramo = (i: PlanItem) => {
@@ -161,6 +180,12 @@ export default function PlanTab() {
     window.addEventListener('pointerup', onUp);
   }
 
+  /** Abrir el globo de una fecha señalada, centrado bajo su emoji. */
+  function abrir(boton: HTMLElement, ev: ImportantEvent) {
+    const r = boton.getBoundingClientRect();
+    setAbierta({ ev, x: r.left + r.width / 2, y: r.bottom });
+  }
+
   /** Poner un objetivo sin fecha en esta semana, para poder arrastrarlo. */
   async function colocar(i: PlanItem) {
     await focusApi.editar(i.id, { dueOn: masDias(inicio, 6) });
@@ -182,7 +207,7 @@ export default function PlanTab() {
         nombre para ver sus tareas.
       </p>
 
-      <div className="pla-wrap">
+      <div className="pla-wrap" onScroll={() => setAbierta(null)}>
         <div className="pla" style={{ ['--sem' as string]: SEMANAS }}>
           <div className="pla-cab">
             <span className="pla-nombre pla-esquina" />
@@ -206,9 +231,16 @@ export default function PlanTab() {
                 {porSemana.map((deEsa, n) => (
                   <span key={n} className="pla-sem">
                     {deEsa.map((ev) => (
-                      <span key={ev.id} className="pla-evento" title={`${ev.title} · ${ev.eventDate}`}>
+                      <button
+                        key={ev.id}
+                        className={`pla-evento${abierta?.ev.id === ev.id ? ' abierta' : ''}`}
+                        onMouseEnter={(e) => abrir(e.currentTarget, ev)}
+                        onMouseLeave={() => setAbierta(null)}
+                        onClick={(e) => (abierta?.ev.id === ev.id ? setAbierta(null) : abrir(e.currentTarget, ev))}
+                        aria-label={`${ev.title}, ${fmtEventDate(ev.eventDate)}`}
+                      >
                         {ev.emoji}
-                      </span>
+                      </button>
                     ))}
                   </span>
                 ))}
@@ -295,25 +327,37 @@ export default function PlanTab() {
       <section className="section mc-bloque">
         <div className="mc-head">
           <h2>Todos los objetivos</h2>
-          <span className="ob-cuando">{plan.items.length}</span>
+          <button className="btn ghost sm" onClick={() => setCreando(true)}>
+            + Objetivo
+          </button>
         </div>
         <p className="muted mc-vacio">Colocados y sin colocar, para saber de qué se compone el plan.</p>
         <div className="pla-lista">
-          {plan.items.map((i) => (
-            <Link key={i.id} to={`/macro/${i.id}`} className="pla-lista-f">
-              <span className="pla-lista-t">{i.title}</span>
-              <span className="pla-lista-d">
-                {i.scope === 'trabajo' ? 'Trabajo' : 'Personal'}
-                {' · '}
-                {i.status === 'hecho' ? 'hecho' : i.total === 0 ? 'sin tareas' : `${i.pendientes} pendientes`}
-              </span>
-              <span className="pla-lista-c">
-                {i.dueOn ? (i.startsOn ? `${cortita(i.startsOn)} → ${cortita(i.dueOn)}` : cortita(i.dueOn)) : 'sin fecha'}
-              </span>
-            </Link>
+          {vivos.map((i) => (
+            <Fila key={i.id} i={i} />
           ))}
         </div>
       </section>
+
+      {/* Lo conseguido, en su propio bloque: en la lista de arriba solo
+          ensuciaba lo que queda por hacer. */}
+      {conseguidos.length > 0 && (
+        <section className="section mc-bloque">
+          <div className="mc-head">
+            <h2>Objetivos completados</h2>
+            <span className="ob-cuando">{conseguidos.length}</span>
+          </div>
+          <div className="pla-lista hechos">
+            {conseguidos.map((i) => (
+              <Fila key={i.id} i={i} hecho />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* El globo, fuera de la franja y con el pico apuntando al emoji. Se
+          recorta contra los bordes de la pantalla, no contra la plani. */}
+      {abierta && <GloboFecha {...abierta} />}
 
       {creando && (
         <NuevoEnLaPlani
@@ -402,5 +446,62 @@ function NuevoEnLaPlani({
         </div>
       </div>
     </Modal>
+  );
+}
+
+/** Una fila del inventario: qué es, cómo va y cuándo sale. */
+function Fila({ i, hecho = false }: { i: PlanItem; hecho?: boolean }) {
+  return (
+    <Link to={`/macro/${i.id}`} className={`pla-lista-f${hecho ? ' hecho' : ''}`}>
+      <span className="pla-lista-t">
+        {hecho && (
+          <span className="pla-lista-v" aria-hidden="true">
+            ✓
+          </span>
+        )}
+        {i.title}
+      </span>
+      <span className="pla-lista-d">
+        {i.scope === 'trabajo' ? 'Trabajo' : 'Personal'}
+        {' · '}
+        {hecho
+          ? i.doneAt
+            ? `hecho el ${cortita(i.doneAt)}`
+            : 'hecho'
+          : i.total === 0
+            ? 'sin tareas'
+            : `${i.pendientes} pendientes`}
+      </span>
+      <span className="pla-lista-c">
+        {i.dueOn ? (i.startsOn ? `${cortita(i.startsOn)} → ${cortita(i.dueOn)}` : cortita(i.dueOn)) : 'sin fecha'}
+      </span>
+    </Link>
+  );
+}
+
+const ANCHO_GLOBO = 200;
+
+/**
+ * El globo de una fecha señalada. Va `fixed` y se recorta contra la ventana,
+ * así que nunca se sale ni lo corta el scroll de la plani; el pico se mueve
+ * para seguir apuntando al emoji aunque el globo se haya tenido que apartar.
+ */
+function GloboFecha({ ev, x, y }: { ev: ImportantEvent; x: number; y: number }) {
+  const margen = 10;
+  const centro = Math.min(Math.max(x, ANCHO_GLOBO / 2 + margen), window.innerWidth - ANCHO_GLOBO / 2 - margen);
+  const izquierda = centro - ANCHO_GLOBO / 2;
+  return (
+    <div
+      className="pla-pop"
+      role="tooltip"
+      style={{ left: izquierda, top: y + 10, width: ANCHO_GLOBO, ['--pico' as string]: `${x - izquierda}px` }}
+    >
+      <span className="pla-pop-e">{ev.emoji}</span>
+      <span className="pla-pop-t">
+        <b>{ev.title}</b>
+        <em>{fmtEventDate(ev.eventDate)}</em>
+        <em className="pla-pop-c">{whenLabel(daysUntil(ev.eventDate)).toLowerCase()}</em>
+      </span>
+    </div>
   );
 }

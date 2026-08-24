@@ -120,10 +120,13 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   .btn { padding: 6px 12px; font-size: 13px; }
   .btn.sm { padding: 4px 9px; font-size: 12.5px; }
   /* Título, botón y pestañas comparten los 375 px: todo encoge un punto */
-  .page-head:has(.head-acciones) { gap: 8px; }
+  /* Aire de verdad entre el título y las pestañas: con 8 px parecían pegadas */
+  .page-head:has(.head-acciones),
+  .page-head:has(> .page-acciones),
+  .page-head:has(> .seg) { gap: 16px; }
   .page-head:has(.head-acciones) h1,
+  .page-head:has(> .page-acciones) h1,
   .page-head:has(> .seg) h1 { font-size: 22px; }
-  .page-head:has(> .seg) { gap: 8px; }
   .head-acciones { gap: 6px; }
   .head-acciones .seg { padding: 2px; }
   .head-acciones .seg button { padding: 5px 11px; font-size: 12.5px; }
@@ -246,13 +249,24 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 /* Crear + pestañas, en este orden y en la misma esquina en todo el portal, y
    en la misma línea que el título: es una sola cabecera, no dos. */
 .head-acciones { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; justify-content: flex-end; }
-.page-head:has(.head-acciones) { flex-wrap: nowrap; }
-/* Páginas cuya cabecera lleva las pestañas directamente (Configuración): la
-   misma regla que cuando van dentro de `.head-acciones`. Se quedan en la línea
-   del título y son ELLAS las que ceden sitio —`min-width: 0`— desplazándose de
-   lado; el título no se parte. */
+/* La cabecera es UNA línea: título a la izquierda, pestañas —y lo que las
+   acompañe, como el ojo de los importes— a la derecha. Da igual si cuelgan de
+   `.head-acciones`, de `.page-acciones` o directamente de la cabecera.
+   Cuando no cabe, las que ceden son las PESTAÑAS: se desplazan de lado
+   (`min-width: 0`) en vez de partir la cabecera en dos filas. */
+.page-head:has(.head-acciones),
+.page-head:has(> .page-acciones),
 .page-head:has(> .seg) { flex-wrap: nowrap; }
-.page-head > .seg { min-width: 0; }
+/* `min-width: 0` en los DOS niveles: sin él, el contenedor de acciones no puede
+   encoger por debajo de su contenido y se sale por el borde en vez de dejar que
+   las pestañas se desplacen. */
+.page-head > .seg,
+.page-head > .page-acciones,
+.page-head > .head-acciones,
+.page-acciones .seg,
+.head-acciones .seg { min-width: 0; }
+/* El ojo y los botones no encogen: lo que se estrecha son las pestañas */
+.page-acciones > :not(.seg) { flex: none; }
 .btn.corto { white-space: nowrap; }
 .progress { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); white-space: nowrap; }
 .progress .bar { width: 120px; height: 6px; background: var(--paper-soft); border-radius: 99px; overflow: hidden; flex-shrink: 0; }
@@ -2474,7 +2488,7 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .ojo:hover { color: var(--ink); border-color: var(--ink-soft); }
 /* Las pestañas y el ojo viajan juntos a la derecha: sueltos junto al título
    se leían como parte de él. */
-.page-acciones { display: flex; align-items: center; gap: 10px; margin-left: auto; flex-wrap: wrap; }
+.page-acciones { display: flex; align-items: center; gap: 10px; margin-left: auto; flex-wrap: nowrap; }
 
 /* Gráfica de líneas: monocroma, sin ejes ni rejilla. Las series se distinguen
    por peso, no por color, que el portal no tiene paleta para eso. */

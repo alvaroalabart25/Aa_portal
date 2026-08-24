@@ -38,13 +38,13 @@ function visiblePara(userId: number) {
 export async function asegurarIdentidad(
   userId: number,
   pedido: { catalogId?: number | null; name: string; parts?: string; kind?: 'repes' | 'tiempo' },
-): Promise<{ id: number; name: string; parts: string; partsSecondary: string; kind: 'repes' | 'tiempo' }> {
+): Promise<{ id: number; name: string; parts: string; partsSecondary: string; kind: 'repes' | 'tiempo'; barKg: string | null }> {
   if (pedido.catalogId) {
     const [c] = await db
       .select()
       .from(gymCatalog)
       .where(and(eq(gymCatalog.id, pedido.catalogId), visiblePara(userId)));
-    if (c) return { id: c.id, name: c.name, parts: c.parts, partsSecondary: c.partsSecondary, kind: c.kind };
+    if (c) return { id: c.id, name: c.name, parts: c.parts, partsSecondary: c.partsSecondary, kind: c.kind, barKg: c.barKg };
   }
 
   const visibles = await db
@@ -54,6 +54,7 @@ export async function asegurarIdentidad(
       parts: gymCatalog.parts,
       partsSecondary: gymCatalog.partsSecondary,
       kind: gymCatalog.kind,
+      barKg: gymCatalog.barKg,
     })
     .from(gymCatalog)
     .where(visiblePara(userId));
@@ -69,7 +70,9 @@ export async function asegurarIdentidad(
     kind: pedido.kind ?? 'repes',
     createdBy: userId,
   });
-  return { id: r.insertId, name: pedido.name.trim(), parts: partes, partsSecondary: '', kind: pedido.kind ?? 'repes' };
+  // Sin barra: del nombre no se puede deducir, y suponerla falsearía el peso.
+  // Se marca a mano desde la ficha del ejercicio.
+  return { id: r.insertId, name: pedido.name.trim(), parts: partes, partsSecondary: '', kind: pedido.kind ?? 'repes', barKg: null };
 }
 
 // GET /gym/catalogo — la lista, con TUS números al lado de cada uno
@@ -117,6 +120,8 @@ catalogoRouter.get('/catalogo', ah(async (req: AuthedRequest, res) => {
       parts: c.parts,
       partsSecondary: c.partsSecondary,
       kind: c.kind,
+      // con valor, el peso de ese ejercicio se apunta por un lado
+      barKg: c.barKg,
       explain: c.explainText,
       mine: c.createdBy != null,
       pr: usoPor.get(c.id)?.pr ?? null,
@@ -174,6 +179,7 @@ catalogoRouter.get('/catalogo/:id(\\d+)', ah(async (req: AuthedRequest, res) => 
     parts: c.parts,
     partsSecondary: c.partsSecondary,
     kind: c.kind,
+    barKg: c.barKg,
     explain: c.explainText,
     mine: c.createdBy != null,
     note: nota?.note ?? null,

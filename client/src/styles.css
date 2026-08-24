@@ -1444,6 +1444,20 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .gy-campo > span { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-muted); }
 .gy-campo input { width: 100%; padding: 6px 8px; font-size: 16px; }
 .gy-campo input:disabled { background: none; border-color: transparent; padding-left: 0; }
+/* La cuenta hecha debajo del campo: en barra se apunta un lado, y el total es
+   lo que de verdad hay cargado. Se ve sin tener que multiplicar de cabeza. */
+.gy-total,
+.foco-total {
+  font-style: normal;
+  font-family: var(--font-title);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .01em;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+.foco-total { color: rgba(255, 255, 255, .58); }
+
 .gy-antes { flex: 0 0 auto; font-size: 11.5px; color: var(--ink-muted); white-space: nowrap; }
 .gy-check {
   flex: 0 0 auto; width: 36px; height: 36px; border-radius: 10px;

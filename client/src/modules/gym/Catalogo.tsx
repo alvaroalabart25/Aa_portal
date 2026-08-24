@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Modal from '../../components/Modal';
 import { usePerfil } from '../../lib/perfil';
-import { gymApi, kg, MUSCULOS, nombreMusculo, type CatalogoItem, type FichaCatalogo, type Parte } from './api';
+import { gymApi, MUSCULOS, nombreMusculo, type CatalogoItem, type FichaCatalogo, type Parte } from './api';
+import { txtPesoKg } from './peso';
 
 /**
  * El catálogo de ejercicios.
@@ -32,7 +33,7 @@ function Chivato({ e }: { e: CatalogoItem }) {
   if (!e.sets) return null;
   return (
     <span className="cat-chivato">
-      {e.pr ? `PR ${kg(e.pr)}` : `${e.sets} series`}
+      {e.pr ? `PR ${txtPesoKg(e.pr, e.barKg)}` : `${e.sets} series`}
       {e.lastDone ? ` · ${fmtHace(e.lastDone)}` : ''}
     </span>
   );
@@ -298,7 +299,9 @@ function FichaModal({ id, onClose, onCambio }: { id: number; onClose: () => void
               <span>{new Date(`${h.fecha}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: '2-digit' })}</span>
               <span className="muted">
                 {h.sets} {h.sets === 1 ? 'serie' : 'series'}
-                {h.mejorPeso != null ? ` · mejor ${kg(String(h.mejorPeso))}${h.mejorReps ? ` × ${h.mejorReps}` : ''}` : ''}
+                {h.mejorPeso != null
+                  ? ` · mejor ${txtPesoKg(String(h.mejorPeso), ficha.barKg)}${h.mejorReps ? ` × ${h.mejorReps}` : ''}`
+                  : ''}
                 {h.mejorSegs != null ? ` · ${h.mejorSegs}s` : ''}
               </span>
             </div>

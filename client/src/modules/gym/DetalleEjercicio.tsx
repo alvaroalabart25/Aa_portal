@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import Modal from '../../components/Modal';
 import { ElegirEjercicio } from './Catalogo';
 import { gymApi, listaMusculos, nombreMusculo, numTxt, type DiaRutina, type Ejercicio } from './api';
+import { laBarra, pesoReal } from './peso';
 
 /** Los bloques que la sesión ya trabaja, derivados de sus ejercicios. */
 const bloquesDe = (dia: DiaRutina) => [...new Set(dia.exercises.flatMap((e) => listaMusculos(e.muscles)))];
@@ -29,6 +30,10 @@ export default function DetalleEjercicio({
   const [repes, setRepes] = useState(ejercicio.targetReps);
   const [peso, setPeso] = useState(numTxt(ejercicio.targetWeight));
   const [descanso, setDescanso] = useState(ejercicio.restSeconds != null ? String(ejercicio.restSeconds) : '');
+  // La barra: con valor, el peso de este ejercicio se apunta por un lado. Es
+  // editable porque no todas pesan igual —la de curl pesa menos que la
+  // olímpica— y porque el gimnasio de al lado tiene otras.
+  const [barra, setBarra] = useState(numTxt(ejercicio.barKg));
   const [explica, setExplica] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [eligiendoSS, setEligiendoSS] = useState(false);
@@ -50,6 +55,7 @@ export default function DetalleEjercicio({
     Number(series) !== ejercicio.targetSets ||
     repes.trim() !== ejercicio.targetReps ||
     peso.trim() !== numTxt(ejercicio.targetWeight) ||
+    barra.trim() !== numTxt(ejercicio.barKg) ||
     descanso.trim() !== (ejercicio.restSeconds != null ? String(ejercicio.restSeconds) : '');
 
   async function guardar() {
@@ -59,6 +65,7 @@ export default function DetalleEjercicio({
         targetSets: Math.max(1, Number(series) || ejercicio.targetSets),
         targetReps: repes.trim() || ejercicio.targetReps,
         targetWeight: peso.trim() === '' ? null : Number(peso.replace(',', '.')),
+        barKg: barra.trim() === '' ? null : Number(barra.replace(',', '.')),
         restSeconds: descanso.trim() === '' ? null : Number(descanso),
       });
       onCambio();
@@ -87,14 +94,25 @@ export default function DetalleEjercicio({
           <input value={repes} onChange={(e) => setRepes(e.target.value)} placeholder="8-10, al fallo…" />
         </label>
         <label>
-          <span>Peso (kg)</span>
+          <span>{laBarra(barra) !== null ? 'Peso por lado' : 'Peso (kg)'}</span>
           <input inputMode="decimal" value={peso} onChange={(e) => setPeso(e.target.value)} placeholder="tú decides" />
         </label>
         <label>
           <span>Descanso (s)</span>
           <input inputMode="numeric" value={descanso} onChange={(e) => setDescanso(e.target.value)} placeholder="auto" />
         </label>
+        <label>
+          <span>Barra (kg)</span>
+          <input inputMode="decimal" value={barra} onChange={(e) => setBarra(e.target.value)} placeholder="sin barra" />
+        </label>
       </div>
+      <p className="muted" style={{ fontSize: 12.5, margin: '10px 0 0' }}>
+        {laBarra(barra) !== null
+          ? peso.trim() !== ''
+            ? `Con barra, el peso se apunta de UN lado: ${numTxt(peso)} × 2 + ${numTxt(barra)} de barra = ${numTxt(pesoReal(peso.replace(',', '.'), barra.replace(',', '.')))} kg.`
+            : 'Con barra, el peso se apunta de un lado y el portal suma el otro más la barra.'
+          : 'Pon los kilos de la barra si este ejercicio se carga por los dos extremos: entonces el peso se apunta de un lado.'}
+      </p>
 
       {/* la superserie: dos ejercicios independientes que se hacen alternados */}
       <h3 className="cat-h3">Superserie</h3>

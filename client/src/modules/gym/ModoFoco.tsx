@@ -9,6 +9,7 @@ import {
   type Condicionante,
   type EjercicioEnSesion,
 } from './api';
+import { laBarra, pesoReal, txtPeso, txtPesoKg } from './peso';
 
 const DESCANSO_POR_DEFECTO = 90;
 /** Con estas repeticiones o menos, el peso era demasiado. Regla suya. */
@@ -137,6 +138,8 @@ export default function ModoFoco({
   }
 
   const ejercicio = lista[ei];
+  // con valor, los kg que se apuntan son de UN lado y la suma la hace el portal
+  const barra = laBarra(ejercicio?.barKg);
   const porTiempo = ejercicio?.kind === 'tiempo';
   const antes = ejercicio?.previous.sets.find((s) => s.setNumber === serie);
   const hecha = ejercicio?.done.find((d) => d.setNumber === serie);
@@ -279,6 +282,8 @@ export default function ModoFoco({
       // ¿Se te fue el peso? Se propone, no se impone.
       const previoHoy = ejercicio.done.filter((d) => d.setNumber < serie).at(-1);
       if (!esCastigo && !porTiempo && hechas != null && hechas <= REPES_DE_CASTIGO) {
+        // el 20% se le quita a lo que se puede quitar: los discos de un lado.
+        // La barra no se descarga, así que en barra el total baja algo menos.
         const menos = previoHoy?.weight ? Number(previoHoy.weight) : kgNum ? Math.round(kgNum * 0.8 * 2) / 2 : null;
         if (menos) {
           setCastigo({ peso: menos, serie: serie });
@@ -348,7 +353,8 @@ export default function ModoFoco({
           <span className="foco-et">Se te fue el peso</span>
           <h1 className="foco-ej">¿Serie de castigo?</h1>
           <p className="foco-msg">
-            Has hecho {reales} repeticiones. Una serie más con {numTxt(castigo.peso)} kg y la dejas bien cerrada.
+            Has hecho {reales} repeticiones. Una serie más con {txtPesoKg(castigo.peso, ejercicio.barKg)} y la dejas bien
+            cerrada.
           </p>
           <button
             className="foco-btn grande"
@@ -394,7 +400,7 @@ export default function ModoFoco({
               .map((c) => (
                 <button key={c.id} className="foco-resultado" disabled={guardandoNuevo} onClick={() => anadirNuevo(c.id, c.name)}>
                   <span>{c.name}</span>
-                  {c.pr && <span className="foco-resultado-pr">PR {Number(c.pr).toLocaleString('es-ES')} kg</span>}
+                  {c.pr && <span className="foco-resultado-pr">PR {txtPesoKg(c.pr, c.barKg)}</span>}
                 </button>
               ))}
             {catalogo !== null &&
@@ -432,7 +438,11 @@ export default function ModoFoco({
           <span className="foco-et">Para la siguiente</span>
           <div className="foco-campos">
             <label>
-              <span>kg</span>
+              {/* column-reverse: el primer hijo se pinta abajo */}
+              {barra !== null && peso !== '' && (
+                <em className="foco-total">= {numTxt(pesoReal(peso.replace(',', '.'), barra))} kg</em>
+              )}
+              <span>{barra !== null ? 'kg/lado' : 'kg'}</span>
               <input inputMode="decimal" value={peso} onChange={(e) => setPeso(e.target.value)} />
             </label>
             <label>
@@ -449,7 +459,7 @@ export default function ModoFoco({
         <div className="foco-centro" key={`curso-${serie}`}>
           <span className="foco-et">{ejercicio.name}</span>
           <h1 className="foco-ej">
-            {peso ? `${peso} kg` : 'Sin peso'} × {previstas || '?'}
+            {peso ? `${numTxt(pesoReal(peso.replace(',', '.'), barra))} kg` : 'Sin peso'} × {previstas || '?'}
           </h1>
           <span className="foco-reloj chico">{reloj(serieSegs)}</span>
           <p className="foco-msg">{mensajeSerie(serie, ejercicio, esUltimoEjercicio, esCastigo)}</p>
@@ -463,7 +473,11 @@ export default function ModoFoco({
           <h1 className="foco-ej">¿Cuántas te han salido?</h1>
           <div className="foco-campos">
             <label>
-              <span>kg</span>
+              {/* column-reverse: el primer hijo se pinta abajo */}
+              {barra !== null && peso !== '' && (
+                <em className="foco-total">= {numTxt(pesoReal(peso.replace(',', '.'), barra))} kg</em>
+              )}
+              <span>{barra !== null ? 'kg/lado' : 'kg'}</span>
               <input inputMode="decimal" value={peso} onChange={(e) => setPeso(e.target.value)} />
             </label>
             <label>
@@ -497,7 +511,11 @@ export default function ModoFoco({
 
           <div className="foco-campos">
             <label>
-              <span>kg</span>
+              {/* column-reverse: el primer hijo se pinta abajo */}
+              {barra !== null && peso !== '' && (
+                <em className="foco-total">= {numTxt(pesoReal(peso.replace(',', '.'), barra))} kg</em>
+              )}
+              <span>{barra !== null ? 'kg/lado' : 'kg'}</span>
               <input inputMode="decimal" value={peso} onChange={(e) => setPeso(e.target.value)} />
             </label>
             <label>
@@ -508,7 +526,7 @@ export default function ModoFoco({
 
           <p className="foco-antes">
             {antes
-              ? `La última vez: ${antes.weight ? `${numTxt(antes.weight)} × ` : ''}${porTiempo ? `${antes.seconds}s` : antes.reps}`
+              ? `La última vez: ${antes.weight ? `${txtPeso(antes.weight, ejercicio.barKg)} × ` : ''}${porTiempo ? `${antes.seconds}s` : antes.reps}`
               : `Objetivo: ${ejercicio.targetSets} × ${ejercicio.targetReps}`}
           </p>
 

@@ -92,7 +92,10 @@ export interface Ejercicio {
   kind: 'repes' | 'tiempo';
   targetSets: number;
   targetReps: string;
+  /** en barra, POR UN LADO: el real son peso × 2 + barra (ver `peso.ts`) */
   targetWeight: string | null;
+  /** con valor, el peso de este ejercicio se apunta por un lado */
+  barKg: string | null;
   restSeconds: number | null;
   notes: string | null;
   sortOrder: number;
@@ -238,8 +241,10 @@ export interface CatalogoItem {
   parts: string;
   partsSecondary: string;
   kind: 'repes' | 'tiempo';
+  barKg: string | null;
   explain: string | null;
   mine: boolean;
+  /** el mejor peso apuntado; en barra, por un lado */
   pr: string | null;
   lastDone: string | null;
   sets: number;
@@ -253,6 +258,7 @@ export interface FichaCatalogo {
   parts: string;
   partsSecondary: string;
   kind: 'repes' | 'tiempo';
+  barKg: string | null;
   explain: string | null;
   mine: boolean;
   note: string | null;

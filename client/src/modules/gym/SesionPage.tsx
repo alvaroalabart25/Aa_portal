@@ -7,7 +7,6 @@ import { ElegirEjercicio } from './Catalogo';
 import { ListaOrdenable } from './Ordenable';
 import {
   gymApi,
-  kg,
   listaMusculos,
   nombreMusculo,
   numTxt,
@@ -16,6 +15,7 @@ import {
   type EjercicioEnSesion,
   type SesionDetalle,
 } from './api';
+import { pesoReal, txtPeso, txtPesoKg, laBarra } from './peso';
 
 const reloj = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
@@ -96,7 +96,8 @@ export default function SesionPage() {
 
   if (celebrando) {
     const volumen = datos.exercises.reduce(
-      (n, e) => n + e.done.reduce((m, d) => m + (d.weight && d.reps ? Number(d.weight) * d.reps : 0), 0),
+      // el volumen va con el peso REAL: en barra, lo apuntado es un lado
+      (n, e) => n + e.done.reduce((m, d) => m + (d.weight && d.reps ? pesoReal(d.weight, e.barKg) * d.reps : 0), 0),
       0,
     );
     // De la primera serie a la última: si cierras desde el coche, esos minutos
@@ -406,7 +407,7 @@ function BloqueEjercicio({
           salir cada día hasta que alguien se acordara de ir a Rutina */}
       <button className="gy-bloque-obj" onClick={onEditar} title="Cambiar el objetivo del ejercicio">
         {ejercicio.targetSets} × {ejercicio.targetReps}
-        {ejercicio.targetWeight ? ` · objetivo ${kg(ejercicio.targetWeight)}` : ''}
+        {ejercicio.targetWeight ? ` · objetivo ${txtPesoKg(ejercicio.targetWeight, ejercicio.barKg)}` : ''}
         {ejercicio.restSeconds ? ` · ${ejercicio.restSeconds}s de descanso` : ''}
       </button>
       {listaMusculos(ejercicio.muscles).length > 0 && (
@@ -564,6 +565,8 @@ function FilaSerie({
   const hecha = ejercicio.done.find((d) => d.setNumber === n);
   const antes = ejercicio.previous.sets.find((s) => s.setNumber === n);
   const porTiempo = ejercicio.kind === 'tiempo';
+  // con valor, los kg que se apuntan son de UN lado
+  const barra = laBarra(ejercicio.barKg);
 
   // De salida, lo de la vez anterior: lo normal es repetir o subir un poco
   const [peso, setPeso] = useState(numTxt(hecha?.weight ?? antes?.weight ?? ejercicio.targetWeight));
@@ -604,13 +607,17 @@ function FilaSerie({
       <span className="gy-serie-n">{n}</span>
 
       <label className="gy-campo">
-        <span>kg</span>
+        <span>{barra !== null ? 'kg/lado' : 'kg'}</span>
         <input
           inputMode="decimal"
           value={peso}
           disabled={bloqueado || !!hecha}
           onChange={(e) => setPeso(e.target.value)}
         />
+        {/* La cuenta hecha, para no hacerla de cabeza entre series */}
+        {barra !== null && peso !== '' && (
+          <em className="gy-total">= {numTxt(pesoReal(String(peso).replace(',', '.'), barra))} kg</em>
+        )}
       </label>
 
       <label className="gy-campo">
@@ -627,7 +634,7 @@ function FilaSerie({
           Si no hay vez anterior no se pinta: un guion suelto solo ocupa sitio. */}
       {antes && (
         <span className="gy-antes">
-          la última: {antes.weight ? `${numTxt(antes.weight)} × ` : ''}
+          la última: {antes.weight ? `${txtPeso(antes.weight, ejercicio.barKg)} × ` : ''}
           {porTiempo ? `${antes.seconds}s` : antes.reps}
         </span>
       )}
@@ -657,7 +664,10 @@ const ANIMO_TXT = ['', 'Mal', 'Regular', 'Ni fu ni fa', 'Contento', 'Genial'];
  */
 function Resumen({ datos }: { datos: SesionDetalle }) {
   const series = datos.exercises.flatMap((e) => e.done);
-  const volumen = series.reduce((n, d) => n + (d.weight && d.reps ? Number(d.weight) * d.reps : 0), 0);
+  const volumen = datos.exercises.reduce(
+    (n, e) => n + e.done.reduce((m, d) => m + (d.weight && d.reps ? pesoReal(d.weight, e.barKg) * d.reps : 0), 0),
+    0,
+  );
   const tiempos = series.map((d) => new Date(d.createdAt ?? datos.session.startedAt).getTime()).filter(Boolean);
   const minutos =
     tiempos.length > 1 ? Math.round((Math.max(...tiempos) - Math.min(...tiempos)) / 60000) : null;
@@ -732,7 +742,7 @@ function Resumen({ datos }: { datos: SesionDetalle }) {
                   .sort((a, b) => a.setNumber - b.setNumber)
                   .map((d) => (
                     <span key={d.id} className={`gy-res-serie${d.punishment ? ' castigo' : ''}`}>
-                      {d.weight ? `${numTxt(d.weight)} × ` : ''}
+                      {d.weight ? `${txtPeso(d.weight, e.barKg)} × ` : ''}
                       {d.seconds != null ? `${d.seconds}s` : d.reps}
                       {d.plannedReps != null && d.reps != null && d.reps < d.plannedReps && (
                         <b title={`Ibas a por ${d.plannedReps}`}> ↓</b>

@@ -4,7 +4,6 @@ import {
   gymApi,
   GRUPOS,
   hace,
-  kg,
   listaMusculos,
   MUSCULOS,
   nombreGrupo,
@@ -20,6 +19,7 @@ import {
   type SesionOlvidada,
   type SemanaGym,
 } from './api';
+import { txtPesoKg } from './peso';
 import { CondicionanteModal, MetaModal } from './modals';
 import { Compartir, Sugerencias } from './Compartir';
 import { CatalogoTab, ElegirEjercicio } from './Catalogo';
@@ -1104,7 +1104,7 @@ function FilaEjercicio({ e, onClick }: { e: Ejercicio; onClick: () => void }) {
         <span className="gy-ej-n">{e.name}</span>
         <span className="gy-ej-obj">
           {e.targetSets} × {e.targetReps}
-          {e.targetWeight ? ` · ${kg(e.targetWeight)}` : ''}
+          {e.targetWeight ? ` · ${txtPesoKg(e.targetWeight, e.barKg)}` : ''}
           {e.restSeconds ? ` · ${e.restSeconds}s` : ''}
         </span>
         {listaMusculos(e.muscles).length > 0 && (

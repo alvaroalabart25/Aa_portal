@@ -775,7 +775,11 @@ export const gymExercises = mysqlTable('gym_exercises', {
   targetSets: int('target_sets').notNull().default(4),
   // texto y no número: «8-10» y «al fallo» son objetivos igual de válidos
   targetReps: varchar('target_reps', { length: 20 }).notNull().default('8-10'),
+  // en barra, POR UN LADO (ver `barKg`); en lo demás, el peso tal cual
   targetWeight: decimal('target_weight', { precision: 6, scale: 2 }),
+  // copia de la del catálogo, como el nombre y el tipo: cambiar el catálogo no
+  // puede reescribir un histórico que ya está apuntado
+  barKg: decimal('bar_kg', { precision: 5, scale: 2 }),
   restSeconds: int('rest_seconds'),
   notes: text('notes'), // técnica: «codos pegados», «banco a 30°»
   // Identidad en el catálogo: es lo que hace que quitar un ejercicio y volverlo
@@ -1020,6 +1024,10 @@ export const gymCatalog = mysqlTable('gym_catalog', {
   parts: varchar('parts', { length: 320 }).notNull().default(''),
   partsSecondary: varchar('parts_secondary', { length: 320 }).notNull().default(''),
   kind: mysqlEnum('kind', ['repes', 'tiempo']).notNull().default('repes'),
+  // Con valor: el peso se apunta POR UN LADO y esto es lo que pesa la barra, así
+  // que el real son peso × 2 + barra. NULL: el peso apuntado es el total
+  // (mancuernas, máquinas, poleas).
+  barKg: decimal('bar_kg', { precision: 5, scale: 2 }),
   // explicación genérica del ejercicio (cómo se hace), no notas personales
   explainText: text('explain_text'),
   createdBy: bigint('created_by', { mode: 'number' }),

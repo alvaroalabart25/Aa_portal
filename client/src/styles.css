@@ -121,7 +121,9 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   .btn.sm { padding: 4px 9px; font-size: 12.5px; }
   /* Título, botón y pestañas comparten los 375 px: todo encoge un punto */
   .page-head:has(.head-acciones) { gap: 8px; }
-  .page-head:has(.head-acciones) h1 { font-size: 22px; }
+  .page-head:has(.head-acciones) h1,
+  .page-head:has(> .seg) h1 { font-size: 22px; }
+  .page-head:has(> .seg) { gap: 8px; }
   .head-acciones { gap: 6px; }
   .head-acciones .seg { padding: 2px; }
   .head-acciones .seg button { padding: 5px 11px; font-size: 12.5px; }
@@ -130,40 +132,30 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   .page-head:has(.head-acciones .btn) h1 { font-size: 20px; }
   .head-acciones .btn.corto { padding: 4px 9px; font-size: 12.5px; }
   .head-acciones:has(.btn) .seg button { padding: 5px 8px; font-size: 11.5px; }
-  /* Cada botón mide lo que su nombre: si sobra sitio se reparten la barra, y si
-     falta, la barra se desplaza de lado. Lo que NO se hace es recortar el texto
-     con puntos suspensivos —«Obligaciones y…» parece un fallo del portal, no
-     una barra que se mueve—. Que hay más de lado lo dice la sombra del borde y
-     el botón que asoma. */
+  /* Cuatro apartados ocupando el ancho justo y el resto desplazando a la
+     derecha. Nada asoma por el borde: un trozo de icono cortado parece un fallo.
+     Con `.llena` (los submenús, que son cortos) se reparten todo el ancho. */
   .bottombar {
     display: flex; position: fixed; bottom: 0; left: 0; right: 0;
-    border-top: 1px solid var(--line);
-    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+    background: var(--paper); border-top: 1px solid var(--line);
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
     z-index: 50;
     overflow-x: auto; overscroll-behavior-x: contain;
     -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
     scrollbar-width: none;
-    /* La pista de que hay más de lado: una sombra en el borde que SOLO se ve
-       cuando queda algo por ver. Las dos primeras capas son tapaderas que
-       viajan con el contenido (`local`) y esconden la sombra de debajo
-       (`scroll`, fija) mientras estés en ese extremo. Sin JavaScript. */
-    background:
-      linear-gradient(to right, var(--paper) 40%, transparent) left center / 28px 100% no-repeat local,
-      linear-gradient(to left, var(--paper) 40%, transparent) right center / 28px 100% no-repeat local,
-      radial-gradient(farthest-side at 0 50%, rgba(10, 10, 10, 0.13), transparent) left center / 13px 100% no-repeat,
-      radial-gradient(farthest-side at 100% 50%, rgba(10, 10, 10, 0.13), transparent) right center / 13px 100% no-repeat,
-      var(--paper);
   }
   .bottombar::-webkit-scrollbar { display: none; }
-  /* `flex: 1 0 auto`: crecen para repartirse la barra cuando sobra sitio, y
-     NUNCA se encogen por debajo de su texto. Un nombre recortado —«Obligaciones
-     y…»— parece un error del portal, no una barra que se desplaza. */
   .bottombar .nav-item {
-    flex: 1 0 auto;
+    flex: 0 0 25%; min-width: 0;
+    scroll-snap-align: start;
     justify-content: flex-end; align-items: center;
-    flex-direction: column; gap: 3px; font-size: 11.5px; padding: 7px 12px;
+    flex-direction: column; gap: 3px; font-size: 11.5px; padding: 7px 4px;
     border: none; background: none; color: var(--ink-muted);
   }
+  .bottombar.llena { overflow-x: visible; }
+  .bottombar.llena .nav-item { flex: 1 1 0; }
+  .bottombar .nav-item span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
   .bottombar .nav-item span { white-space: nowrap; }
   .bottombar .nav-item.active { background: none; color: var(--ink); font-weight: 700; }
 }
@@ -255,6 +247,12 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
    en la misma línea que el título: es una sola cabecera, no dos. */
 .head-acciones { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; justify-content: flex-end; }
 .page-head:has(.head-acciones) { flex-wrap: nowrap; }
+/* Páginas cuya cabecera lleva las pestañas directamente (Configuración): la
+   misma regla que cuando van dentro de `.head-acciones`. Se quedan en la línea
+   del título y son ELLAS las que ceden sitio —`min-width: 0`— desplazándose de
+   lado; el título no se parte. */
+.page-head:has(> .seg) { flex-wrap: nowrap; }
+.page-head > .seg { min-width: 0; }
 .btn.corto { white-space: nowrap; }
 .progress { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); white-space: nowrap; }
 .progress .bar { width: 120px; height: 6px; background: var(--paper-soft); border-radius: 99px; overflow: hidden; flex-shrink: 0; }
@@ -453,6 +451,16 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
      Que se desplace ELLA: si no, ensancha la página entera y todo el portal se
      va de lado, con la barra inferior fuera de la pantalla. */
   max-width: 100%; overflow-x: auto; scrollbar-width: none;
+  /* Y que se NOTE que se desplaza: una sombra en el borde que solo aparece por
+     el lado donde queda algo por ver. Las dos primeras capas son tapaderas que
+     viajan con el contenido y esconden la sombra fija de debajo mientras estés
+     en ese extremo; al llegar al final se apaga sola. Sin JavaScript. */
+  background:
+    linear-gradient(to right, var(--paper) 45%, transparent) left center / 22px 100% no-repeat local,
+    linear-gradient(to left, var(--paper) 45%, transparent) right center / 22px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, rgba(10, 10, 10, 0.12), transparent) left center / 11px 100% no-repeat,
+    radial-gradient(farthest-side at 100% 50%, rgba(10, 10, 10, 0.12), transparent) right center / 11px 100% no-repeat,
+    var(--paper);
 }
 .seg::-webkit-scrollbar { display: none; }
 .seg button {

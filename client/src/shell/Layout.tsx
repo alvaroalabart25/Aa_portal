@@ -113,13 +113,13 @@ function BottomBar() {
     </NavLink>
   ) : null;
 
-  // Ya no hay que contar cuántos caben: cada botón mide lo que su nombre y se
-  // reparten el sitio si sobra. Si no cabe, la barra se desplaza de lado y lo
-  // dice con una sombra en el borde.
+  // Cuando todo cabe (los submenús son cortos) se reparte el ancho entre los
+  // que hay; solo el primer nivel, con seis apartados, necesita desplazarse.
+  const CABEN = 4;
 
   if (group === null) {
     return (
-      <nav className="bottombar">
+      <nav className={`bottombar${enOrden.length + 2 <= CABEN ? ' llena' : ''}`}>
         {/* se recorre MODULES entero: un módulo sin hijos es un enlace directo,
             uno con hijos abre su segundo nivel */}
         {enOrden.map((m) =>
@@ -162,8 +162,10 @@ function BottomBar() {
 
   const g = groups.find((x) => x.id === group)!;
   const hijos = g.children!.filter((c) => !HIDDEN_ON_MOBILE.has(c.id));
+  // «Volver» + los hijos (+ Agenda si es Organización)
+  const cuantos = hijos.length + 1 + (group === 'org' ? 1 : 0);
   return (
-    <nav className="bottombar">
+    <nav className={`bottombar${cuantos <= CABEN ? ' llena' : ''}`}>
       <button className="nav-item" aria-label="Volver" onClick={() => setGroup(null)}>
         <span style={{ fontSize: 17, lineHeight: '18px' }}>‹</span>
         <span>Volver</span>

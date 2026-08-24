@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { Link } from 'react-router-dom';
 import Modal from '../../components/Modal';
+import { eventsApi } from '../events/api';
+import type { ImportantEvent } from '../events/types';
 import { focusApi, type Plan, type PlanItem } from './api';
 
 /**
@@ -50,11 +52,21 @@ interface Arrastre {
 
 export default function PlanTab() {
   const [plan, setPlan] = useState<Plan | null>(null);
+  // Bodas, viajes: lo que hay que tener delante al planificar sin que sea una
+  // fila más. Solo los puntuales; los que se repiten llenarían la franja.
+  const [eventos, setEventos] = useState<ImportantEvent[]>([]);
   const [arrastre, setArrastre] = useState<Arrastre | null>(null);
   const [creando, setCreando] = useState(false);
   const pistaRef = useRef<HTMLDivElement>(null);
 
-  const cargar = useCallback(() => focusApi.plan().then(setPlan), []);
+  const cargar = useCallback(
+    () =>
+      Promise.all([focusApi.plan(), eventsApi.list().catch(() => [])]).then(([p, e]) => {
+        setPlan(p);
+        setEventos(e.filter((x) => x.recurrence === 'none'));
+      }),
+    [],
+  );
   useEffect(() => {
     void cargar();
   }, [cargar]);
@@ -77,6 +89,16 @@ export default function PlanTab() {
     }
     return grupos;
   }, [inicio]);
+
+  /** Los eventos repartidos por semana, para la franja de fechas. */
+  const porSemana = useMemo(() => {
+    const cajas: ImportantEvent[][] = Array.from({ length: SEMANAS }, () => []);
+    for (const ev of eventos) {
+      const c = Math.floor(diasEntre(inicio, lunesDe(ev.eventDate)) / 7);
+      if (c >= 0 && c < SEMANAS) cajas[c].push(ev);
+    }
+    return cajas;
+  }, [eventos, inicio]);
 
   if (!plan) return <p className="empty">Cargando la plani…</p>;
 
@@ -177,6 +199,23 @@ export default function PlanTab() {
             </div>
           </div>
 
+          {porSemana.some((s) => s.length > 0) && (
+            <div className="pla-fila pla-hitos">
+              <span className="pla-nombre pla-hitos-t">Fechas</span>
+              <div className="pla-pista">
+                {porSemana.map((deEsa, n) => (
+                  <span key={n} className="pla-sem">
+                    {deEsa.map((ev) => (
+                      <span key={ev.id} className="pla-evento" title={`${ev.title} · ${ev.eventDate}`}>
+                        {ev.emoji}
+                      </span>
+                    ))}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {(['trabajo', 'personal'] as const).map((ambito) => {
             const suyos = porAmbito(ambito);
             if (suyos.length === 0) return null;
@@ -252,6 +291,29 @@ export default function PlanTab() {
           </div>
         </section>
       )}
+
+      <section className="section mc-bloque">
+        <div className="mc-head">
+          <h2>Todos los objetivos</h2>
+          <span className="ob-cuando">{plan.items.length}</span>
+        </div>
+        <p className="muted mc-vacio">Colocados y sin colocar, para saber de qué se compone el plan.</p>
+        <div className="pla-lista">
+          {plan.items.map((i) => (
+            <Link key={i.id} to={`/macro/${i.id}`} className="pla-lista-f">
+              <span className="pla-lista-t">{i.title}</span>
+              <span className="pla-lista-d">
+                {i.scope === 'trabajo' ? 'Trabajo' : 'Personal'}
+                {' · '}
+                {i.status === 'hecho' ? 'hecho' : i.total === 0 ? 'sin tareas' : `${i.pendientes} pendientes`}
+              </span>
+              <span className="pla-lista-c">
+                {i.dueOn ? (i.startsOn ? `${cortita(i.startsOn)} → ${cortita(i.dueOn)}` : cortita(i.dueOn)) : 'sin fecha'}
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
 
       {creando && (
         <NuevoEnLaPlani

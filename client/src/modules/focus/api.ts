@@ -13,6 +13,9 @@ export interface FocusItem {
   notes: string | null;
   status: FocusStatus;
   startMonth: string;
+  /** las fechas de la plani: opcionales, un objetivo sin colocar es normal */
+  startsOn: string | null;
+  dueOn: string | null;
   doneAt: string | null;
   daily: number;
   metaId: number | null;
@@ -66,6 +69,30 @@ export interface MelonBreve {
   startMonth?: string;
 }
 
+/** Un objetivo colocado en el tiempo, para la plani. */
+export interface PlanItem {
+  id: number;
+  title: string;
+  scope: FocusScope;
+  status: FocusStatus;
+  startMonth: string;
+  startsOn: string | null;
+  dueOn: string | null;
+  doneAt: string | null;
+  sortOrder: number;
+  total: number;
+  hechas: number;
+  enMarcha: number;
+  bloqueadas: number;
+  /** lo que queda: el dato que se quiere ver sin entrar */
+  pendientes: number;
+}
+
+export interface Plan {
+  hoy: string;
+  items: PlanItem[];
+}
+
 export interface FocusDetalle extends Omit<FocusItem, 'tareas' | 'arrastra'> {
   tasks: TareaDelMelon[];
   dias: { doneDate: string; mark: Marca }[];
@@ -74,12 +101,29 @@ export interface FocusDetalle extends Omit<FocusItem, 'tareas' | 'arrastra'> {
 
 export const focusApi = {
   mes: (month?: string) => get<FocusMes>(`/focus${month ? `?month=${month}` : ''}`),
+  plan: () => get<Plan>('/focus/plan'),
   detalle: (id: number) => get<FocusDetalle>(`/focus/${id}`),
-  crear: (data: { kind: FocusKind; scope?: FocusScope; title: string; daily?: boolean }) =>
-    post<FocusItem>('/focus', data),
+  crear: (data: {
+    kind: FocusKind;
+    scope?: FocusScope;
+    title: string;
+    daily?: boolean;
+    month?: string;
+    startsOn?: string | null;
+    dueOn?: string | null;
+  }) => post<FocusItem>('/focus', data),
   editar: (
     id: number,
-    data: Partial<{ title: string; notes: string | null; scope: FocusScope; status: FocusStatus; daily: boolean }>,
+    data: Partial<{
+      title: string;
+      notes: string | null;
+      scope: FocusScope;
+      status: FocusStatus;
+      daily: boolean;
+      startsOn: string | null;
+      dueOn: string | null;
+      startMonth: string;
+    }>,
   ) => patch<FocusItem>(`/focus/${id}`, data),
   borrar: (id: number) => del<{ archived: boolean }>(`/focus/${id}`),
 

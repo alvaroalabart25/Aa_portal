@@ -152,6 +152,67 @@ focusModule.get('/', ah(async (req: AuthedRequest, res) => {
   });
 }));
 
+/**
+ * GET /plan — la plani: los objetivos colocados en el tiempo.
+ *
+ * Macro contesta «qué tengo entre manos ESTE mes». Esto contesta otra cosa
+ * distinta: **cuándo sale cada cosa**, que es lo que no se puede ver mes a mes
+ * cuando tienes proyectos que llegan hasta enero.
+ *
+ * Se devuelve todo lo vivo con sus fechas y lo que le queda por hacer, sin
+ * filtrar por mes: el recorte lo hace la pantalla, que es la que sabe cuántas
+ * columnas caben. Los que no tienen fecha vienen igual, marcados: un objetivo
+ * sin colocar no se esconde, se enseña para que lo coloques.
+ */
+focusModule.get('/plan', ah(async (req: AuthedRequest, res) => {
+  const filas = await db
+    .select({
+      id: focusItems.id,
+      title: focusItems.title,
+      scope: focusItems.scope,
+      status: focusItems.status,
+      startMonth: focusItems.startMonth,
+      startsOn: focusItems.startsOn,
+      dueOn: focusItems.dueOn,
+      doneAt: focusItems.doneAt,
+      sortOrder: focusItems.sortOrder,
+      total: sql<number>`(select count(*) from focus_tasks ft where ft.item_id = focus_items.id)`,
+      hechas: sql<number>`(select count(*) from focus_tasks ft join tasks t on t.id = ft.task_id
+        where ft.item_id = focus_items.id and t.status in ('completed','cancelled'))`,
+      enMarcha: sql<number>`(select count(*) from focus_tasks ft join tasks t on t.id = ft.task_id
+        where ft.item_id = focus_items.id and t.status in ('in_progress','in_review'))`,
+      bloqueadas: sql<number>`(select count(*) from focus_tasks ft join tasks t on t.id = ft.task_id
+        where ft.item_id = focus_items.id and t.status = 'blocked')`,
+    })
+    .from(focusItems)
+    .where(
+      and(
+        eq(focusItems.userId, req.userId!),
+        eq(focusItems.kind, 'melon'),
+        isNull(focusItems.archivedAt),
+        notInArray(focusItems.status, ['aparcado']),
+      ),
+    )
+    .orderBy(asc(focusItems.dueOn), asc(focusItems.startMonth), asc(focusItems.sortOrder));
+
+  res.json({
+    hoy: hoyMadrid(),
+    items: filas.map((f) => {
+      const total = Number(f.total ?? 0);
+      const hechas = Number(f.hechas ?? 0);
+      return {
+        ...f,
+        total,
+        hechas,
+        enMarcha: Number(f.enMarcha ?? 0),
+        bloqueadas: Number(f.bloqueadas ?? 0),
+        // lo que queda: es el dato que quiere ver sin entrar
+        pendientes: Math.max(0, total - hechas),
+      };
+    }),
+  });
+}));
+
 // ---------- Crear, editar, archivar ----------
 
 const crearInput = z.object({
@@ -160,12 +221,14 @@ const crearInput = z.object({
   title: z.string().trim().min(1).max(200),
   daily: z.boolean().optional(),
   month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+  startsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullish(),
+  dueOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullish(),
 });
 
 focusModule.post('/', ah(async (req: AuthedRequest, res) => {
   const parsed = crearInput.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
-  const { kind, scope, title, daily, month } = parsed.data;
+  const { kind, scope, title, daily, month, startsOn, dueOn } = parsed.data;
 
   const [{ n }] = await db
     .select({ n: sql<number>`min(sort_order)` })
@@ -179,7 +242,11 @@ focusModule.post('/', ah(async (req: AuthedRequest, res) => {
     title,
     // una formación nace con gesto diario; un melón nunca; un libro, si lo pides
     daily: (daily ?? kind === 'formacion') ? 1 : 0,
-    startMonth: month ?? mesDe(hoyMadrid()),
+    // El mes sale de la fecha de entrega si viene: crear «Redes» para mediados
+    // de septiembre no debe meterlo en el mes en curso.
+    startMonth: month ?? mesDe(startsOn ?? dueOn ?? hoyMadrid()),
+    startsOn: startsOn ?? null,
+    dueOn: dueOn ?? null,
     sortOrder: Number(n ?? 0) - 1,
   });
   const [row] = await db.select().from(focusItems).where(eq(focusItems.id, result.insertId));
@@ -192,6 +259,9 @@ const editarInput = z.object({
   scope: z.enum(SCOPES).optional(),
   status: z.enum(['activo', 'hecho', 'aparcado']).optional(),
   daily: z.boolean().optional(),
+  startsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  dueOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  startMonth: z.string().regex(/^\d{4}-\d{2}$/).optional(),
 });
 
 focusModule.patch('/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
@@ -210,6 +280,11 @@ focusModule.patch('/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
     if (v === undefined) continue;
     cambios[k] = k === 'daily' ? (v ? 1 : 0) : v;
   }
+  // Si se dice cuándo arranca, el mes va detrás: un objetivo que empieza en
+  // septiembre es de septiembre. Mover solo la ENTREGA no lo cambia de mes —uno
+  // que arrancó en agosto y se entrega en septiembre sigue siendo de agosto—.
+  if (parsed.data.startsOn && !parsed.data.startMonth) cambios.startMonth = mesDe(parsed.data.startsOn);
+
   // darlo por hecho pone la fecha sola; reabrirlo la quita
   if (parsed.data.status === 'hecho' && actual.status !== 'hecho') cambios.doneAt = actual.doneAt ?? hoyMadrid();
   else if (parsed.data.status && parsed.data.status !== 'hecho' && actual.status === 'hecho') cambios.doneAt = null;

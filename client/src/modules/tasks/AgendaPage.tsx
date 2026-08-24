@@ -7,6 +7,7 @@ import { eventsApi } from '../events/api';
 import { EventBand, EventsRadar } from '../events/components';
 import EventosTab from '../events/EventosTab';
 import MacroTab from '../focus/MacroTab';
+import PlanTab from '../focus/PlanTab';
 import { AddTaskModal } from './modals';
 import {
   daysUntil,
@@ -22,11 +23,13 @@ function isoLocal(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-type Vista = 'macro' | 'agenda' | 'eventos';
+type Vista = 'macro' | 'plan' | 'agenda' | 'eventos';
 
-// Las tres caras de lo mismo: el mes, el día a día y las fechas clave
+// Las cuatro caras de lo mismo, de lo lejano a lo inmediato: los meses que
+// vienen en Plan, el mes en Macro, el día a día en Agenda y las fechas clave.
 const VISTAS: [Vista, string][] = [
   ['macro', 'Macro'],
+  ['plan', 'Plan'],
   ['agenda', 'Agenda'],
   ['eventos', 'Eventos'],
 ];
@@ -110,7 +113,7 @@ export default function AgendaPage() {
   const [params, setParams] = useSearchParams();
   // Macro es la vista por defecto: es la portada del portal
   const pedida = params.get('tab');
-  const view: Vista = pedida === 'agenda' || pedida === 'eventos' ? pedida : 'macro';
+  const view: Vista = pedida === 'agenda' || pedida === 'eventos' || pedida === 'plan' ? pedida : 'macro';
   const setView = (v: Vista) => {
     setCreando(null);
     setParams(v === 'macro' ? {} : { tab: v }, { replace: true });
@@ -176,12 +179,17 @@ export default function AgendaPage() {
         </div>
       </div>
 
-      <p className="page-sub">El tiempo de un vistazo: el mes en Macro, la semana en Agenda y las fechas señaladas en Eventos.</p>
+      <p className="page-sub">
+        El tiempo de un vistazo: lo que viene en Plan, el mes en Macro, la semana en Agenda y las fechas señaladas en
+        Eventos.
+      </p>
 
       {view === 'eventos' ? (
         <EventosTab />
       ) : view === 'macro' ? (
         <MacroTab />
+      ) : view === 'plan' ? (
+        <PlanTab />
       ) : (
         <>
           {/* aquí solo lo inmediato: la semana entera está en Macro */}

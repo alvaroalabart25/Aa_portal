@@ -107,6 +107,33 @@ export default function MacroFichaPage() {
         {d.doneAt && <span className="badge">✓ Hecho el {fechaCorta(d.doneAt)}</span>}
       </div>
 
+      {/* Las fechas exactas se ponen aquí; en la plani se arrastran por semanas.
+          El gesto es rápido y basto, el formulario es preciso: cada uno a lo
+          suyo. */}
+      {d.kind === 'melon' && (
+        <div className="mc-fechas">
+          <label>
+            <span>Empieza</span>
+            <input
+              type="date"
+              value={d.startsOn ?? ''}
+              onChange={(e) => guardar({ startsOn: e.target.value || null })}
+            />
+          </label>
+          <label>
+            <span>Se saca</span>
+            <input type="date" value={d.dueOn ?? ''} onChange={(e) => guardar({ dueOn: e.target.value || null })} />
+          </label>
+          <span className="mc-fechas-nota">
+            {d.dueOn
+              ? d.startsOn
+                ? 'Se dibuja como una barra en la plani.'
+                : 'Se dibuja como un hito en la plani. Pon la fecha de inicio si dura semanas.'
+              : 'Sin fecha de entrega no sale en la plani.'}
+          </span>
+        </div>
+      )}
+
       {d.daily === 1 && <Diario item={d} onCambio={cargar} />}
 
       {d.kind === 'melon' && (

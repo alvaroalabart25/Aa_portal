@@ -496,6 +496,11 @@ export const focusItems = mysqlTable('focus_items', {
   notes: text('notes'),
   status: mysqlEnum('status', ['activo', 'hecho', 'aparcado']).notNull().default('activo'),
   startMonth: varchar('start_month', { length: 7 }).notNull(), // YYYY-MM
+  // Las fechas de la plani. Opcionales a propósito: un objetivo sin fecha no es
+  // un error, es uno que todavía no has colocado. `startsOn` solo hace falta en
+  // lo que dura semanas —entonces se dibuja como barra en vez de como hito—.
+  startsOn: date('starts_on', { mode: 'string' }),
+  dueOn: date('due_on', { mode: 'string' }),
   doneAt: date('done_at', { mode: 'string' }),
   daily: int('daily').notNull().default(0), // ¿tiene gesto diario?
   metaId: bigint('meta_id', { mode: 'number' }), // enganche futuro con las Macrometas; hoy NULL

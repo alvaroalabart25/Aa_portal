@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { projectsApi, spacesApi } from '../tasks/api';
+import Modal from '../../components/Modal';
+import { projectsApi, spacesApi, tasksApi } from '../tasks/api';
 import TaskTable from '../tasks/TaskTable';
-import type { Project, Space } from '../tasks/types';
-import { focusApi, nombreMes, NOMBRE_TIPO, type Candidata, type FocusDetalle } from './api';
+import type { Priority, Project, Space } from '../tasks/types';
+import { focusApi, nombreMes, NOMBRE_TIPO, type Candidata, type FocusDetalle, type ProyectoDelMelon } from './api';
 
 const cerrada = (s: string) => s === 'completed' || s === 'cancelled';
 
@@ -25,6 +26,8 @@ export default function MacroFichaPage() {
   const [d, setD] = useState<FocusDetalle | null>(null);
   const [error, setError] = useState('');
   const [buscando, setBuscando] = useState(false);
+  const [vinculando, setVinculando] = useState(false);
+  const [creando, setCreando] = useState(false);
 
   const cargar = useCallback(async () => {
     try {
@@ -151,16 +154,72 @@ export default function MacroFichaPage() {
           objetivo, y se lee antes de ponerse a hacer nada. */}
       <Notas valor={d.notes ?? ''} onGuardar={(notes) => guardar({ notes })} />
 
+      {/* De dónde sale este objetivo. Vincular un proyecto no arrastra sus
+          tareas: dice dónde buscarlas y dónde crear la siguiente. */}
+      {d.kind === 'melon' && (
+        <section className="section">
+          <div className="page-head">
+            <h2>Proyectos</h2>
+            <button className="btn ghost sm" onClick={() => setVinculando(true)}>
+              + Vincular proyecto
+            </button>
+          </div>
+          {d.projects.length === 0 ? (
+            <p className="muted mc-vacio">
+              Sin proyectos. Vincula uno y las tareas de este objetivo saldrán de ahí, en vez de buscarlas por todo el
+              portal.
+            </p>
+          ) : (
+            <div className="mc-proys">
+              {d.projects.map((p) => (
+                <span key={p.id} className="mc-proy">
+                  <span className="dot" style={{ background: p.spaceColor }} />
+                  <Link to={`/proyectos/${p.id}`}>{p.name}</Link>
+                  <em>{p.spaceName}</em>
+                  <button
+                    aria-label={`Quitar ${p.name} del objetivo`}
+                    title="Quitar del objetivo (las tareas ya asociadas se quedan)"
+                    onClick={async () => {
+                      await focusApi.quitarProyecto(d.id, p.id);
+                      cargar();
+                    }}
+                  >
+                    ✕
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          {vinculando && (
+            <VincularProyecto
+              itemId={d.id}
+              yaPuestos={d.projects.map((p) => p.id)}
+              onCerrar={(hubo) => {
+                setVinculando(false);
+                if (hubo) cargar();
+              }}
+            />
+          )}
+        </section>
+      )}
+
       {d.kind === 'melon' && (
         <section className="section">
           <div className="page-head">
             <h2>Tareas de este objetivo</h2>
-            <button className="btn ghost sm" onClick={() => setBuscando(true)}>
-              + Asociar tarea
-            </button>
+            <div className="head-acciones">
+              <button className="btn ghost sm" onClick={() => setBuscando(true)}>
+                + Asociar
+              </button>
+              <button className="btn sm" disabled={d.projects.length === 0} onClick={() => setCreando(true)}>
+                + Nueva tarea
+              </button>
+            </div>
           </div>
           <p className="muted" style={{ fontSize: 12.5, marginTop: 4, lineHeight: 1.6 }}>
-            Las tareas siguen viviendo en su proyecto y su espacio. Aquí solo se ven juntas porque comparten objetivo.
+            {d.projects.length === 0
+              ? 'Vincula un proyecto arriba para poder crear tareas desde aquí.'
+              : 'Las tareas siguen viviendo en su proyecto y su espacio. Aquí solo se ven juntas porque comparten objetivo.'}
           </p>
 
           {d.tasks.length === 0 ? (
@@ -183,6 +242,18 @@ export default function MacroFichaPage() {
               onCerrar={(huboCambios) => {
                 setBuscando(false);
                 if (huboCambios) cargar();
+              }}
+            />
+          )}
+
+          {creando && (
+            <NuevaTareaDelObjetivo
+              itemId={d.id}
+              proyectos={d.projects}
+              onCerrar={() => setCreando(false)}
+              onCreada={() => {
+                setCreando(false);
+                cargar();
               }}
             />
           )}
@@ -455,5 +526,171 @@ function Notas({ valor, onGuardar }: { valor: string; onGuardar: (v: string) => 
         style={{ width: '100%', lineHeight: 1.65, resize: 'vertical' }}
       />
     </section>
+  );
+}
+
+/**
+ * Vincular un proyecto al objetivo.
+ *
+ * Se listan los proyectos ACTIVOS agrupados por espacio, porque es como los
+ * tiene en la cabeza: «la web de la residencia» está en CSO Digital. Los que ya
+ * están vinculados no salen: volver a elegirlos no haría nada.
+ */
+function VincularProyecto({
+  itemId,
+  yaPuestos,
+  onCerrar,
+}: {
+  itemId: number;
+  yaPuestos: number[];
+  onCerrar: (hubo: boolean) => void;
+}) {
+  const [proyectos, setProyectos] = useState<Project[] | null>(null);
+  const [hubo, setHubo] = useState(false);
+  const [q, setQ] = useState('');
+
+  useEffect(() => {
+    projectsApi.list({ status: 'active' }).then(setProyectos).catch(() => setProyectos([]));
+  }, []);
+
+  const puestos = new Set(yaPuestos);
+  const visibles = (proyectos ?? []).filter(
+    (p) => !puestos.has(p.id) && (!q.trim() || p.name.toLowerCase().includes(q.trim().toLowerCase())),
+  );
+
+  return (
+    <Modal title="Vincular un proyecto" onClose={() => onCerrar(hubo)}>
+      <p className="muted" style={{ fontSize: 12.5, marginTop: -4 }}>
+        Vincularlo no trae sus tareas: dice de dónde salen las de este objetivo y dónde se crean las nuevas.
+      </p>
+      <input placeholder="Buscar un proyecto…" value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
+      <div className="mc-candidatas">
+        {proyectos === null ? (
+          <p className="muted">Cargando…</p>
+        ) : visibles.length === 0 ? (
+          <p className="muted">No queda ninguno por vincular.</p>
+        ) : (
+          visibles.map((p) => (
+            <button
+              key={p.id}
+              className="mc-candidata"
+              onClick={async () => {
+                await focusApi.asociarProyecto(itemId, p.id);
+                setHubo(true);
+                setProyectos((lista) => (lista ?? []).filter((x) => x.id !== p.id));
+              }}
+            >
+              <span className="dot" style={{ background: p.spaceColor }} />
+              <span className="mc-candidata-t">{p.name}</span>
+              <span className="muted">{p.spaceName}</span>
+            </button>
+          ))
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+/**
+ * Crear una tarea desde el objetivo.
+ *
+ * Nace ya vinculada —crearla aquí es decir que es de este objetivo— y en el
+ * proyecto que se elija. Con un solo proyecto vinculado no hay nada que
+ * elegir: viene puesto y el campo ni estorba.
+ */
+function NuevaTareaDelObjetivo({
+  itemId,
+  proyectos,
+  onCerrar,
+  onCreada,
+}: {
+  itemId: number;
+  proyectos: ProyectoDelMelon[];
+  onCerrar: () => void;
+  onCreada: () => void;
+}) {
+  const [titulo, setTitulo] = useState('');
+  const [proyecto, setProyecto] = useState(proyectos[0]?.id ?? 0);
+  const [vence, setVence] = useState('');
+  const [prioridad, setPrioridad] = useState<Priority>('medium');
+  const [guardando, setGuardando] = useState(false);
+
+  async function crear() {
+    if (!titulo.trim() || !proyecto || guardando) return;
+    setGuardando(true);
+    try {
+      // Se crea con la API de tareas de siempre —vive en su proyecto, como
+      // cualquier otra— y acto seguido se cuelga del objetivo.
+      const tarea = await tasksApi.create({
+        projectId: proyecto,
+        title: titulo.trim(),
+        priority: prioridad,
+        dueDate: vence || null,
+      });
+      await focusApi.asociarTarea(itemId, tarea.id);
+      onCreada();
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <Modal title="Nueva tarea" onClose={onCerrar}>
+      <form
+        style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+        onSubmit={(e) => {
+          e.preventDefault();
+          crear();
+        }}
+      >
+        <label>
+          <span>Qué hay que hacer</span>
+          <input autoFocus value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Página de contacto" />
+        </label>
+
+        {proyectos.length > 1 && (
+          <label>
+            <span>En qué proyecto</span>
+            <select value={proyecto} onChange={(e) => setProyecto(Number(e.target.value))}>
+              {proyectos.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} · {p.spaceName}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
+        <div style={{ display: 'flex', gap: 12 }}>
+          <label style={{ flex: 1, minWidth: 0 }}>
+            <span>Vence</span>
+            <input type="date" value={vence} onChange={(e) => setVence(e.target.value)} />
+          </label>
+          <label style={{ flex: 1, minWidth: 0 }}>
+            <span>Prioridad</span>
+            <select value={prioridad} onChange={(e) => setPrioridad(e.target.value as Priority)}>
+              <option value="low">Baja</option>
+              <option value="medium">Media</option>
+              <option value="high">Alta</option>
+            </select>
+          </label>
+        </div>
+
+        <p className="muted" style={{ fontSize: 12.5 }}>
+          {proyectos.length === 1
+            ? `Se creará en ${proyectos[0].name} y quedará colgada de este objetivo.`
+            : 'Quedará colgada de este objetivo, además de vivir en su proyecto.'}
+        </p>
+
+        <div className="modal-actions">
+          <button type="button" className="btn ghost sm" onClick={onCerrar}>
+            Cancelar
+          </button>
+          <button type="submit" className="btn sm" disabled={!titulo.trim() || guardando}>
+            Crear
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }

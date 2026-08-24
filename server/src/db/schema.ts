@@ -549,6 +549,23 @@ export const focusTasks = mysqlTable('focus_tasks', {
   createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+/**
+ * Los proyectos de un objetivo: de dónde salen sus tareas.
+ *
+ * No sustituye a `focusTasks`, que sigue siendo lo que manda —no todas las
+ * tareas de un proyecto son de este objetivo—. Los proyectos dicen dónde
+ * buscar, y dónde crear una tarea nueva desde la ficha del objetivo.
+ */
+export const focusProjects = mysqlTable('focus_projects', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  itemId: bigint('item_id', { mode: 'number' }).notNull(),
+  projectId: bigint('project_id', { mode: 'number' }).notNull(),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 // ============================================================
 // Módulo Sueños: macro (sueños de vida), micro (concretos) y lista de deseos
 // ============================================================

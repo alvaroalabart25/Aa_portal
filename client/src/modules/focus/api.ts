@@ -88,8 +88,20 @@ export interface Plan {
   items: PlanItem[];
 }
 
+/** Un proyecto del objetivo: de ahí salen sus tareas. */
+export interface ProyectoDelMelon {
+  id: number;
+  name: string;
+  spaceId: number;
+  spaceName: string;
+  spaceColor: string;
+  status: string;
+}
+
 export interface FocusDetalle extends Omit<FocusItem, 'tareas' | 'arrastra'> {
   tasks: TareaDelMelon[];
+  /** de dónde salen: vincular uno no arrastra sus tareas, solo dice dónde buscar */
+  projects: ProyectoDelMelon[];
   dias: { doneDate: string; mark: Marca }[];
   today: string;
 }
@@ -140,6 +152,10 @@ export const focusApi = {
   deTarea: (taskId: number) => get<MelonBreve[]>(`/focus/tarea/${taskId}`),
   asociarTarea: (id: number, taskId: number) => post<{ ok: boolean }>(`/focus/${id}/tasks`, { taskId }),
   quitarTarea: (id: number, taskId: number) => del<{ deleted: boolean }>(`/focus/${id}/tasks/${taskId}`),
+  asociarProyecto: (id: number, projectId: number) =>
+    post<{ ok: boolean }>(`/focus/${id}/projects`, { projectId }),
+  quitarProyecto: (id: number, projectId: number) =>
+    del<{ deleted: boolean }>(`/focus/${id}/projects/${projectId}`),
 };
 
 export const NOMBRE_TIPO: Record<FocusKind, { singular: string; plural: string; emoji: string }> = {

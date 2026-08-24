@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { and, asc, desc, eq, getTableColumns, inArray, isNull, notInArray, sql } from 'drizzle-orm';
 import { ah } from '../../lib/async';
 import { db } from '../../db';
-import { focusDaily, focusItems, focusTasks, projects, spaces, tasks } from '../../db/schema';
+import { focusDaily, focusItems, focusProjects, focusTasks, projects, spaces, tasks } from '../../db/schema';
 import type { AuthedRequest } from '../../core/auth/middleware';
 
 /**
@@ -328,7 +328,7 @@ focusModule.get('/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
   if (!item) return res.status(404).json({ error: 'No encontrado' });
 
   const hoy = hoyMadrid();
-  const [tareas, dias] = await Promise.all([
+  const [tareas, dias, suyos] = await Promise.all([
     // las tareas del melón, con su proyecto y su espacio: viven ahí, aquí solo
     // se enseñan juntas
     db
@@ -361,11 +361,28 @@ focusModule.get('/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
       .where(eq(focusDaily.itemId, id))
       .orderBy(desc(focusDaily.doneDate))
       .limit(120),
+    // De dónde salen sus tareas. Con su cuenta de tareas del objetivo, para
+    // saber de un vistazo qué proyecto está tirando del carro.
+    db
+      .select({
+        id: projects.id,
+        name: projects.name,
+        spaceId: spaces.id,
+        spaceName: spaces.name,
+        spaceColor: spaces.color,
+        status: projects.status,
+      })
+      .from(focusProjects)
+      .innerJoin(projects, eq(projects.id, focusProjects.projectId))
+      .innerJoin(spaces, eq(spaces.id, projects.spaceId))
+      .where(and(eq(focusProjects.itemId, id), eq(focusProjects.userId, req.userId!)))
+      .orderBy(asc(spaces.name), asc(projects.name)),
   ]);
 
   res.json({
     ...item,
     tasks: tareas,
+    projects: suyos,
     dias,
     racha: item.daily === 1 ? racha(dias.map((d) => d.doneDate), hoy) : 0,
     hoy: dias.find((d) => d.doneDate === hoy)?.mark ?? null,
@@ -473,6 +490,58 @@ focusModule.delete('/:id(\\d+)/tasks/:taskId(\\d+)', ah(async (req: AuthedReques
  * NO se ofrecen tareas cerradas: asociar algo ya hecho no aporta. Si una tarea
  * se completa DESPUÉS de asociarla, se queda en el melón y cuenta como avance.
  */
+/**
+ * POST /:id/projects — de aquí también salen tareas de este objetivo.
+ *
+ * Vincular un proyecto NO arrastra sus tareas: solo dice dónde buscarlas y
+ * dónde crear la siguiente. Meter todas sería confundir «el proyecto entero es
+ * el objetivo» con «este objetivo se nutre de este proyecto», que casi nunca es
+ * lo mismo.
+ */
+focusModule.post('/:id(\\d+)/projects', ah(async (req: AuthedRequest, res) => {
+  const id = Number(req.params.id);
+  const parsed = z.object({ projectId: z.number().int().positive() }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Falta el proyecto' });
+
+  const [suyo] = await db
+    .select({ id: focusItems.id })
+    .from(focusItems)
+    .where(and(eq(focusItems.id, id), eq(focusItems.userId, req.userId!)));
+  if (!suyo) return res.status(404).json({ error: 'No encontrado' });
+
+  const [proyecto] = await db
+    .select({ id: projects.id })
+    .from(projects)
+    .where(and(eq(projects.id, parsed.data.projectId), eq(projects.userId, req.userId!)));
+  if (!proyecto) return res.status(404).json({ error: 'Ese proyecto no existe' });
+
+  await db
+    .insert(focusProjects)
+    .values({ userId: req.userId!, itemId: id, projectId: parsed.data.projectId })
+    .onDuplicateKeyUpdate({ set: { itemId: id } });
+  res.status(201).json({ ok: true });
+}));
+
+/**
+ * DELETE /:id/projects/:projectId — quitar el proyecto del objetivo.
+ *
+ * Las tareas que ya estaban colgadas se quedan: se eligieron una a una y
+ * borrarlas por arrastre sería perder trabajo suyo sin pedirlo.
+ */
+focusModule.delete('/:id(\\d+)/projects/:projectId(\\d+)', ah(async (req: AuthedRequest, res) => {
+  const [r] = await db
+    .delete(focusProjects)
+    .where(
+      and(
+        eq(focusProjects.itemId, Number(req.params.id)),
+        eq(focusProjects.projectId, Number(req.params.projectId)),
+        eq(focusProjects.userId, req.userId!),
+      ),
+    );
+  if (!r.affectedRows) return res.status(404).json({ error: 'No estaba vinculado' });
+  res.json({ deleted: true });
+}));
+
 focusModule.get('/:id(\\d+)/candidatas', ah(async (req: AuthedRequest, res) => {
   const id = Number(req.params.id);
   const q = String(req.query.q ?? '').trim().slice(0, 80);
@@ -481,6 +550,15 @@ focusModule.get('/:id(\\d+)/candidatas', ah(async (req: AuthedRequest, res) => {
 
   const yaPuestas = await db.select({ taskId: focusTasks.taskId }).from(focusTasks).where(eq(focusTasks.itemId, id));
   const excluir = new Set(yaPuestas.map((x) => x.taskId));
+
+  // Si el objetivo tiene proyectos declarados, se busca SOLO en ellos: es la
+  // razón de declararlos. Si no tiene ninguno todavía, se busca en todo, que es
+  // como funcionaba antes y sigue siendo útil el primer día.
+  const suyos = await db
+    .select({ projectId: focusProjects.projectId })
+    .from(focusProjects)
+    .where(and(eq(focusProjects.itemId, id), eq(focusProjects.userId, req.userId!)));
+  const soloSuyos = suyos.map((p) => p.projectId);
 
   const filas = await db
     .select({
@@ -505,6 +583,7 @@ focusModule.get('/:id(\\d+)/candidatas', ah(async (req: AuthedRequest, res) => {
         q ? sql`${tasks.title} like ${'%' + q + '%'}` : sql`1 = 1`,
         Number.isInteger(spaceId) && spaceId > 0 ? eq(spaces.id, spaceId) : sql`1 = 1`,
         Number.isInteger(projectId) && projectId > 0 ? eq(tasks.projectId, projectId) : sql`1 = 1`,
+        soloSuyos.length ? inArray(tasks.projectId, soloSuyos) : sql`1 = 1`,
       ),
     )
     // las sin fecha al final: `due_date is null` ordena 0 antes que 1

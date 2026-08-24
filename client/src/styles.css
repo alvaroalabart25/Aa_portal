@@ -928,6 +928,8 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   overflow-wrap: anywhere;
 }
 .pla-nombre-s { font-size: 11px; color: var(--ink-muted); }
+/* La fecha en la columna del nombre: solo en móvil (ver la media query) */
+.pla-nombre-f { display: none; font-style: normal; }
 .pla-nombre:hover .pla-nombre-t { text-decoration: underline; }
 
 .pla-pista { position: relative; flex: 0 0 auto; display: flex; }
@@ -1065,8 +1067,12 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 /* En el móvil el nombre se queda con menos sitio: la plani se lee arrastrando
    de lado, y con 168 px de nombre solo caben cinco semanas de golpe. */
 @media (max-width: 640px) {
-  .pla-nombre { flex-basis: 132px; width: 132px; }
+  .pla-nombre { flex-basis: 124px; width: 124px; padding-right: 10px; }
   .pla-nombre-t { font-size: 12.5px; }
+  /* La etiqueta flotante se pisaba con la columna de al lado: en móvil la
+     fecha se lee en el nombre, y la barra se queda solo con su sitio. */
+  .pla-etq { display: none; }
+  .pla-nombre-f { display: block; margin-top: 2px; color: var(--ink-soft); }
 }
 
 /* Las fechas en la ficha del objetivo: lo preciso va aquí, el gesto en la plani */

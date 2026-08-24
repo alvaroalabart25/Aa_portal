@@ -65,7 +65,9 @@ export default function PlanTab() {
    * el scroll en cuanto el emoji caía cerca de un borde.
    */
   const [abierta, setAbierta] = useState<{ ev: ImportantEvent; x: number; y: number } | null>(null);
-  const pistaRef = useRef<HTMLDivElement>(null);
+  // Se mide una columna de semana de verdad: el ancho de la pista dividido
+  // entre 26 depende de que la pista mida lo que su contenido, y no siempre.
+  const planRef = useRef<HTMLDivElement>(null);
 
   const cargar = useCallback(
     () =>
@@ -94,11 +96,19 @@ export default function PlanTab() {
   /** En qué columna cae una fecha. Puede salirse del rango: se recorta al pintar. */
   const columna = useCallback((iso: string) => Math.floor(diasEntre(inicio, lunesDe(iso)) / 7), [inicio]);
 
-  /** Las cabeceras de mes, con cuántas semanas ocupa cada uno. */
+  /**
+   * Las cabeceras de mes, con cuántas semanas ocupa cada uno.
+   *
+   * Una semana se cuenta en el mes de su JUEVES, no de su lunes. Parece un
+   * detalle y no lo es: la semana del 31 de agosto al 6 de septiembre es «la
+   * primera de septiembre» para cualquiera, y etiquetándola por el lunes salía
+   * debajo de AGO —con las campañas del 6 de septiembre pintadas en agosto—.
+   * Es la misma regla que usa la norma ISO para numerar semanas.
+   */
   const meses = useMemo(() => {
     const grupos: { etiqueta: string; semanas: number }[] = [];
     for (let i = 0; i < SEMANAS; i += 1) {
-      const d = fecha(masDias(inicio, i * 7));
+      const d = fecha(masDias(inicio, i * 7 + 3));
       const etiqueta = MES_CORTO[d.getMonth()];
       const ultimo = grupos[grupos.length - 1];
       if (ultimo && ultimo.etiqueta === etiqueta) ultimo.semanas += 1;
@@ -137,9 +147,10 @@ export default function PlanTab() {
   function agarrar(e: ReactPointerEvent, i: PlanItem, borde: 'todo' | 'inicio' | 'fin') {
     e.preventDefault();
     e.stopPropagation();
-    const pista = pistaRef.current;
-    if (!pista) return;
-    const anchoSemana = pista.getBoundingClientRect().width / SEMANAS;
+    const columna = planRef.current?.querySelector('.pla-sem');
+    if (!columna) return;
+    const anchoSemana = columna.getBoundingClientRect().width;
+    if (!anchoSemana) return;
     const x0 = e.clientX;
     const { desde, hasta } = tramo(i);
     let cur: Arrastre = { id: i.id, desde, hasta };
@@ -208,10 +219,10 @@ export default function PlanTab() {
       </p>
 
       <div className="pla-wrap" onScroll={() => setAbierta(null)}>
-        <div className="pla" style={{ ['--sem' as string]: SEMANAS }}>
+        <div className="pla" ref={planRef} style={{ ['--sem' as string]: SEMANAS }}>
           <div className="pla-cab">
             <span className="pla-nombre pla-esquina" />
-            <div className="pla-pista pla-meses" ref={pistaRef}>
+            <div className="pla-pista pla-meses">
               {meses.map((m, n) => (
                 <span
                   key={`${m.etiqueta}-${n}`}
@@ -270,6 +281,11 @@ export default function PlanTab() {
                               ? 'sin tareas'
                               : `${i.pendientes} pendiente${i.pendientes === 1 ? '' : 's'}`}
                           {i.enMarcha > 0 && ` · ${i.enMarcha} en marcha`}
+                          {/* En el móvil la fecha va aquí: al lado de la barra
+                              no cabe y se pisaba con la columna siguiente. */}
+                          <em className="pla-nombre-f">
+                            {c1 > c0 ? `${cortita(desde)} → ${cortita(hasta)}` : cortita(hasta)}
+                          </em>
                         </span>
                       </Link>
                       <div className="pla-pista">
@@ -278,9 +294,13 @@ export default function PlanTab() {
                         ))}
                         <span
                           className={`pla-barra${hecho ? ' hecho' : ''}${arrastre?.id === i.id ? ' moviendo' : ''}`}
+                          // En píxeles y no en tantos por ciento: el % se
+                          // resuelve contra el ancho de la pista, y en Safari
+                          // esa medida no era la del contenido. Con `--sw` la
+                          // cuenta es la misma que la de las columnas.
                           style={{
-                            left: `${(100 * c0) / SEMANAS}%`,
-                            width: `${(100 * (c1 - c0 + 1)) / SEMANAS}%`,
+                            left: `calc(${c0} * var(--sw))`,
+                            width: `calc(${c1 - c0 + 1} * var(--sw))`,
                           }}
                           onPointerDown={(e) => agarrar(e, i, 'todo')}
                           title={`${cortita(desde)} → ${cortita(hasta)}`}
@@ -292,7 +312,7 @@ export default function PlanTab() {
                           <span className="pla-tirador de" onPointerDown={(e) => agarrar(e, i, 'fin')} />
                         </span>
                         {c1 === c0 && (
-                          <span className="pla-etq" style={{ left: `${(100 * (c0 + 1)) / SEMANAS}%` }}>
+                          <span className="pla-etq" style={{ left: `calc(${c0 + 1} * var(--sw))` }}>
                             {hecho ? '✓' : cortita(hasta)}
                           </span>
                         )}

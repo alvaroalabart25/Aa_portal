@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import type React from 'react';
 import { Link } from 'react-router-dom';
 import Modal from '../../components/Modal';
 import { eventsApi } from '../events/api';
@@ -68,6 +69,7 @@ export default function PlanTab() {
   // Se mide una columna de semana de verdad: el ancho de la pista dividido
   // entre 26 depende de que la pista mida lo que su contenido, y no siempre.
   const planRef = useRef<HTMLDivElement>(null);
+  const mesesRef = useRef<HTMLDivElement>(null);
 
   const cargar = useCallback(
     () =>
@@ -191,6 +193,18 @@ export default function PlanTab() {
     window.addEventListener('pointerup', onUp);
   }
 
+  /**
+   * La rejilla se ha movido de lado: se lleva la cabecera de meses con ella.
+   *
+   * Se toca el estilo a mano en vez de pasarlo por estado: esto se dispara en
+   * cada píxel de scroll y un `setState` por píxel se nota.
+   */
+  function alDesplazar(e: React.UIEvent<HTMLDivElement>) {
+    setAbierta(null);
+    const t = mesesRef.current;
+    if (t) t.style.transform = `translateX(${-e.currentTarget.scrollLeft}px)`;
+  }
+
   /** Abrir el globo de una fecha señalada, centrado bajo su emoji. */
   function abrir(boton: HTMLElement, ev: ImportantEvent) {
     const r = boton.getBoundingClientRect();
@@ -218,11 +232,17 @@ export default function PlanTab() {
         nombre para ver sus tareas.
       </p>
 
-      <div className="pla-wrap" onScroll={() => setAbierta(null)}>
-        <div className="pla" ref={planRef} style={{ ['--sem' as string]: SEMANAS }}>
-          <div className="pla-cab">
-            <span className="pla-nombre pla-esquina" />
-            <div className="pla-pista pla-meses">
+      {/* La zona del calendario: la cabecera de meses se queda pegada arriba
+          mientras se baja, y deja de estarlo al salir de aquí. */}
+      <div className="pla-zona">
+        <div className="pla-cab">
+          <span className="pla-nombre pla-esquina" />
+          {/* La cabecera vive FUERA del contenedor que hace scroll: dentro, un
+              `sticky` se pegaría al borde de ese contenedor y no al de la
+              pantalla, así que al bajar desaparecía. Se mueve de lado a mano,
+              siguiendo el scroll de la rejilla. */}
+          <div className="pla-meses-vp">
+            <div className="pla-pista pla-meses" ref={mesesRef}>
               {meses.map((m, n) => (
                 <span
                   key={`${m.etiqueta}-${n}`}
@@ -234,6 +254,10 @@ export default function PlanTab() {
               ))}
             </div>
           </div>
+        </div>
+
+        <div className="pla-wrap" onScroll={alDesplazar}>
+        <div className="pla" ref={planRef}>
 
           {porSemana.some((s) => s.length > 0) && (
             <div className="pla-fila pla-hitos">
@@ -323,6 +347,7 @@ export default function PlanTab() {
               </div>
             );
           })}
+        </div>
         </div>
       </div>
 

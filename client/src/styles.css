@@ -913,9 +913,21 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
    septiembre»— y porque un objetivo no tiene día. El nombre se queda fijo a la
    izquierda mientras la rejilla se desplaza: sin eso, al llegar a noviembre ya
    no sabes de qué objetivo es la barra que estás mirando. */
-.pla-wrap { overflow-x: auto; margin-top: 14px; padding-bottom: 6px; }
-.pla { min-width: max-content; --sw: 56px; } /* --sw: lo que mide una semana */
-.pla-cab, .pla-fila { display: flex; align-items: stretch; }
+/* La zona del calendario. `--sw` vive aquí y no en la rejilla porque la
+   cabecera de meses se ha quedado fuera del contenedor que hace scroll, y las
+   dos tienen que medir la semana igual. */
+.pla-zona { --sw: 56px; margin-top: 14px; }
+.pla-wrap { overflow-x: auto; padding-bottom: 6px; }
+.pla { min-width: max-content; }
+/* Los meses te acompañan al bajar: sin esto, a media pantalla ya no sabes si
+   estás mirando octubre o enero. Se pega al borde de la PANTALLA, y para eso
+   tiene que estar fuera del contenedor que se desplaza de lado. */
+.pla-cab {
+  position: sticky; top: 0; z-index: 5;
+  background: var(--paper); display: flex; align-items: stretch;
+}
+.pla-meses-vp { flex: 1; min-width: 0; overflow: hidden; }
+.pla-fila { display: flex; align-items: stretch; }
 .pla-nombre {
   position: sticky; left: 0; z-index: 2; flex: 0 0 190px; width: 190px;
   display: flex; flex-direction: column; gap: 2px; justify-content: center;

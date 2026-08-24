@@ -27,6 +27,11 @@
   --line: #e5e5e3;
   /* Lo conseguido. Mismo registro que el ámbar de lo aplazado: apagado, para
      que informe sin gritar. */
+  /* Los estados del trabajo en el aro de un objetivo. Mismo registro apagado
+     que el verde y el ámbar: informan, no decoran. */
+  --morado: #6a4ba5;
+  --azul: #2d6ca8;
+  --ambar: #b0640b;
   --verde: #1a6b45;
   --verde-linea: #b4dcc6;
   --verde-fondo: #eff7f2;

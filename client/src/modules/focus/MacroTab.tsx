@@ -196,15 +196,16 @@ function BloqueMelones({ mes, onCrear }: { mes: FocusMes; onCrear: () => void })
  * portada; el detalle está a un toque.
  */
 function TarjetaMelon({ item }: { item: FocusItem }) {
-  const { hechas, total } = item.tareas;
+  const { hechas, revision, progreso, bloqueadas, total } = item.tareas;
   const pct = total > 0 ? Math.round((hechas / total) * 100) : 0;
   const hecho = item.status === 'hecho';
+  const enMarcha = revision + progreso;
 
   return (
     <div className={`mk${hecho ? ' hecho' : ''}`}>
       <Link to={`/macro/${item.id}`} className="mk-todo" aria-label={item.title} />
 
-      <span className="mk-aro" style={{ ['--pct' as string]: `${pct}%` }} aria-hidden="true">
+      <span className="mk-aro" style={{ background: aro(item.tareas) }} aria-hidden="true">
         <span className="mk-aro-n">{total > 0 ? `${pct}%` : '—'}</span>
       </span>
 
@@ -213,12 +214,46 @@ function TarjetaMelon({ item }: { item: FocusItem }) {
         <span className="mk-sub">
           {item.scope === 'trabajo' ? 'Trabajo' : 'Personal'}
           {total > 0 ? ` · ${hechas} de ${total} ${total === 1 ? 'tarea' : 'tareas'}` : ' · sin tareas todavía'}
+          {enMarcha > 0 && ` · ${enMarcha} en marcha`}
+          {bloqueadas > 0 && ` · ${bloqueadas} atascada${bloqueadas === 1 ? '' : 's'}`}
           {item.arrastra && ` · viene de ${nombreMes(item.arrastra)}`}
         </span>
       </span>
 
     </div>
   );
+}
+
+/**
+ * El aro de la tarjeta, por tramos.
+ *
+ * Un objetivo con cinco tareas donde una está en revisión y otra en progreso no
+ * está «al 0%»: está empezado, y el aro plano lo escondía. Así que el aro se
+ * parte por estados, en el orden en que avanza el trabajo: lo hecho en negro,
+ * la revisión en morado, lo que está en marcha en azul, lo atascado en ámbar y
+ * lo que no se ha tocado sin color.
+ *
+ * Los tramos se acumulan en tantos por ciento exactos, sin redondear, para que
+ * la suma no se pase de la vuelta.
+ */
+function aro(t: FocusItem['tareas']): string {
+  if (t.total === 0) return 'var(--paper-soft)';
+  const tramos: [number, string][] = [
+    [t.hechas, 'var(--ink)'],
+    [t.revision, 'var(--morado)'],
+    [t.progreso, 'var(--azul)'],
+    [t.bloqueadas, 'var(--ambar)'],
+  ];
+  const partes: string[] = [];
+  let desde = 0;
+  for (const [n, color] of tramos) {
+    if (n <= 0) continue;
+    const hasta = desde + (100 * n) / t.total;
+    partes.push(`${color} ${desde}% ${hasta}%`);
+    desde = hasta;
+  }
+  partes.push(`var(--paper-soft) ${desde}% 100%`);
+  return `conic-gradient(${partes.join(', ')})`;
 }
 
 // ---------------------------------------------------------------- diario

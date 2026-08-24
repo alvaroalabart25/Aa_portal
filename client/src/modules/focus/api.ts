@@ -17,7 +17,8 @@ export interface FocusItem {
   daily: number;
   metaId: number | null;
   sortOrder: number;
-  tareas: { hechas: number; total: number };
+  /** lo hecho y lo que se está moviendo, por estados: es lo que pinta el aro */
+  tareas: { hechas: number; revision: number; progreso: number; bloqueadas: number; total: number };
   /** mes del que viene, si arrastra de uno anterior */
   arrastra: string | null;
   racha: number;

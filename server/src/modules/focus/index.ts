@@ -77,6 +77,15 @@ focusModule.get('/', ah(async (req: AuthedRequest, res) => {
       tareasTotal: sql<number>`(select count(*) from focus_tasks ft where ft.item_id = focus_items.id)`,
       tareasHechas: sql<number>`(select count(*) from focus_tasks ft join tasks t on t.id = ft.task_id
         where ft.item_id = focus_items.id and t.status in ('completed','cancelled'))`,
+      // El aro no puede estar a cero cuando hay cosas en marcha: eso es justo
+      // cuando más desmoraliza. Así que además de lo hecho se cuenta lo que se
+      // está moviendo, por estados, y el aro lo pinta.
+      tareasRevision: sql<number>`(select count(*) from focus_tasks ft join tasks t on t.id = ft.task_id
+        where ft.item_id = focus_items.id and t.status = 'in_review')`,
+      tareasProgreso: sql<number>`(select count(*) from focus_tasks ft join tasks t on t.id = ft.task_id
+        where ft.item_id = focus_items.id and t.status = 'in_progress')`,
+      tareasBloqueadas: sql<number>`(select count(*) from focus_tasks ft join tasks t on t.id = ft.task_id
+        where ft.item_id = focus_items.id and t.status = 'blocked')`,
     })
     .from(focusItems)
     .where(and(eq(focusItems.userId, req.userId!), isNull(focusItems.archivedAt)))
@@ -113,14 +122,22 @@ focusModule.get('/', ah(async (req: AuthedRequest, res) => {
     return semana.map((date) => ({ date, mark: suyas?.get(date) ?? null }));
   };
 
-  const items = delMes.map(({ tareasTotal, tareasHechas, ...f }) => ({
+  const items = delMes.map(
+    ({ tareasTotal, tareasHechas, tareasRevision, tareasProgreso, tareasBloqueadas, ...f }) => ({
     ...f,
-    tareas: { hechas: Number(tareasHechas ?? 0), total: Number(tareasTotal ?? 0) },
+    tareas: {
+      hechas: Number(tareasHechas ?? 0),
+      revision: Number(tareasRevision ?? 0),
+      progreso: Number(tareasProgreso ?? 0),
+      bloqueadas: Number(tareasBloqueadas ?? 0),
+      total: Number(tareasTotal ?? 0),
+    },
     arrastra: f.status === 'activo' && f.startMonth < mes ? f.startMonth : null,
     racha: f.daily === 1 ? racha(marcas.get(f.id) ?? [], hoy) : 0,
     hoy: f.daily === 1 ? (porFecha.get(f.id)?.get(hoy) ?? null) : null,
     semana: f.daily === 1 ? semanaDe(f.id) : [],
-  }));
+    }),
+  );
 
   // Recuento de melones activos por ámbito, para el aviso de dispersión
   const melones = items.filter((i) => i.kind === 'melon' && i.status === 'activo');

@@ -1294,3 +1294,26 @@ export const bankCategoryRules = mysqlTable('bank_category_rules', {
   createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 export type BankCategoryRule = typeof bankCategoryRules.$inferSelect;
+
+/**
+ * El bloc de notas: una fila por DÍA con contenido.
+ *
+ * No hay filas vacías. Si un día no escribes, ese día no existe —el bloc no
+ * puede ser una lista interminable de días en blanco—, así que la fila nace al
+ * escribir y se borra al vaciarla. La fecha es única por usuario, y eso es lo
+ * que hace que el título del día salga una sola vez por mucho que vuelvas.
+ */
+export const notes = mysqlTable('notes', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  noteDate: date('note_date', { mode: 'string' }).notNull(),
+  body: text('body').notNull(),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`)
+    .$onUpdateFn(() => new Date()),
+});
+export type Note = typeof notes.$inferSelect;

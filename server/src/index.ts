@@ -17,6 +17,7 @@ import { avisarGimnasio, pushModule, pushRunner } from './modules/push';
 import { trackModule, trackSetup } from './modules/track';
 import { dreamImagesRouter, dreamsModule } from './modules/dreams';
 import { focusModule } from './modules/focus';
+import { notasModule } from './modules/notas';
 import { gymModule } from './modules/gym';
 import { logSecurityEvent } from './lib/security';
 
@@ -150,6 +151,7 @@ app.use('/api/health-log', requireAuth, healthModule);
 app.use('/api/diary', requireAuth, diaryModule);
 app.use('/api/dreams', requireAuth, dreamsModule);
 app.use('/api/focus', requireAuth, focusModule);
+app.use('/api/notas', requireAuth, notasModule);
 app.use('/api/gym', requireAuth, gymModule);
 app.use('/api/push', requireAuth, pushModule);
 // Administración del portal: altas y uso. NO da acceso a datos de nadie.

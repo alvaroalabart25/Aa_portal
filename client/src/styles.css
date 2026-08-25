@@ -1239,6 +1239,41 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .task-table .row:hover .mc-tarea-x { color: var(--ink-muted); }
 .mc-tarea-x:hover { color: var(--danger); }
 
+/* ---------- Bloc de notas ----------
+   Cada día con algo escrito es un bloque con su fecha en negrita. El de hoy va
+   primero y siempre, aunque esté vacío: es al que vienes. */
+.nt-dias { display: flex; flex-direction: column; gap: 4px; margin-top: 16px; }
+.nt-dia { padding: 12px 0; border-bottom: 1px solid var(--line-suave); }
+.nt-dia:last-child { border-bottom: none; }
+.nt-dia-t { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.nt-dia-t b { font-family: var(--font-title); font-weight: 700; font-size: 14px; }
+.nt-dia-t em {
+  font-style: normal; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--paper); background: var(--ink); border-radius: 999px; padding: 2px 8px;
+}
+.nt-guardado { margin-left: auto; font-size: 11.5px; color: var(--ink-muted); }
+/* Sin marco: es un bloc, no un formulario. El único borde es el del día. */
+.nt-dia textarea {
+  width: 100%; border: none; background: none; padding: 0; resize: none;
+  font-family: var(--font-body); font-size: 14.5px; line-height: 1.65; color: var(--ink);
+  overflow: hidden;
+}
+.nt-dia textarea:focus { outline: none; }
+.nt-dia textarea::placeholder { color: var(--ink-muted); }
+
+.nt-viejos { margin-top: 30px; padding-top: 6px; border-top: 1px solid var(--line); }
+.nt-mes { border-bottom: 1px solid var(--line-suave); }
+.nt-mes:last-child { border-bottom: none; }
+.nt-mes-t {
+  display: flex; align-items: center; gap: 9px; width: 100%; padding: 12px 0;
+  background: none; border: none; cursor: pointer; text-align: left;
+  font-family: var(--font-title); font-weight: 600; font-size: 14px; color: inherit;
+}
+.nt-mes-t em { font-style: normal; margin-left: auto; font-size: 12px; color: var(--ink-muted); font-weight: 400; }
+.nt-mes-t .chev { display: inline-block; transition: transform .15s; color: var(--ink-muted); }
+.nt-mes-t .chev.open { transform: rotate(90deg); }
+.nt-mes .nt-dias { margin: 0 0 10px; padding-left: 18px; border-left: 1px solid var(--line); }
+
 /* Los proyectos de un objetivo: de dónde salen sus tareas */
 .mc-proys { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .mc-proy {

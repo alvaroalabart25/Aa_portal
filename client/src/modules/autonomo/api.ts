@@ -183,7 +183,12 @@ export interface Obligaciones {
 export interface DeudaFicha {
   id: number;
   nombre: string;
+  /** lo declarado MÁS lo que haya crecido después */
   total: number;
+  /** lo que se debía el día que se declaró, para poder explicar la diferencia */
+  declaradoTotal: number;
+  /** lo que ha hecho crecer o menguar la deuda, con su fecha y su porqué */
+  cambios: { id: number; fecha: string; importe: number; nota: string | null }[];
   mensual: number;
   desde: string;
   declarado: { hasta: string; importe: number };
@@ -240,6 +245,10 @@ export const obligacionesApi = {
   cambiarObjetivo: (id: number, cambios: { mensual?: number; meta?: number }) =>
     patch<{ ok: boolean }>(`/autonomo/obligaciones/objetivos/${id}`, cambios),
   /** Cuánto de ese pago era deuda. `null` = cuenta entero, como venía. */
+  apuntarCambio: (deudaId: number, datos: { importe: number; fecha: string; nota?: string | null }) =>
+    post<{ id: number; ok: boolean }>(`/autonomo/obligaciones/deudas/${deudaId}/cambios`, datos),
+  borrarCambio: (deudaId: number, cambioId: number) =>
+    del<{ deleted: boolean }>(`/autonomo/obligaciones/deudas/${deudaId}/cambios/${cambioId}`),
   parteDeuda: (deudaId: number, pagoId: number, importe: number | null) =>
     patch<{ ok: boolean; aDeuda: number; declarado: boolean }>(
       `/autonomo/obligaciones/deudas/${deudaId}/pagos/${pagoId}`,

@@ -26,14 +26,15 @@ function isoLocal(d: Date): string {
 
 type Vista = 'macro' | 'plan' | 'agenda' | 'eventos' | 'notas';
 
-// Las cuatro caras de lo mismo, de lo lejano a lo inmediato: los meses que
-// vienen en Plan, el mes en Macro, el día a día en Agenda y las fechas clave.
+// Las cinco caras de lo mismo, en el orden en que él las usa: el mes en Macro,
+// el día a día en Agenda, lo que se apunta al vuelo en el Bloc, los meses que
+// vienen en Plan y las fechas clave en Eventos.
 const VISTAS: [Vista, string][] = [
   ['macro', 'Macro'],
-  ['plan', 'Plan'],
   ['agenda', 'Agenda'],
-  ['eventos', 'Eventos'],
   ['notas', 'Bloc'],
+  ['plan', 'Plan'],
+  ['eventos', 'Eventos'],
 ];
 
 const STATUS_ORDER: Record<string, number> = { in_progress: 0, in_review: 1, blocked: 2, backlog: 3, completed: 4, cancelled: 5 };

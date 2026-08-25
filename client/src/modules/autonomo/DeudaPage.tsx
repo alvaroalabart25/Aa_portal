@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import Modal from '../../components/Modal';
 import { obligacionesApi, type DeudaFicha } from './api';
 import { OjoPrivacidad, useDinero } from './dinero';
 
@@ -23,6 +24,10 @@ import { OjoPrivacidad, useDinero } from './dinero';
 const mesLargo = (iso: string) =>
   new Date(iso).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
 
+/** «2026-08-25» → «25 ago 2026» */
+const fechaCorta = (iso: string) =>
+  new Date(`${iso}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+
 const mesCorto = (iso: string) =>
   new Date(iso).toLocaleDateString('es-ES', { month: 'short', year: '2-digit' });
 
@@ -31,6 +36,8 @@ const diaCorto = (iso: string) =>
 
 interface Fila {
   etiqueta: string;
+  /** solo en las subidas: por qué creció la deuda */
+  nota?: string;
   /** la fecha real de la fila prevista, para poder decir el mes en que acaba */
   iso?: string;
   importe: number;
@@ -63,6 +70,7 @@ export default function DeudaPage() {
   const [d, setD] = useState<DeudaFicha | null>(null);
   const [error, setError] = useState('');
   const [cuota, setCuota] = useState<number | null>(null);
+  const [apuntando, setApuntando] = useState(false);
   // qué pago se está acotando y con qué valor
   const [editando, setEditando] = useState<number | null>(null);
   const [valor, setValor] = useState('');
@@ -112,21 +120,39 @@ export default function DeudaPage() {
       });
     }
 
-    // 2. Lo real, agrupado por mes: sus pagos no son de 150 clavados, y de
-    //    algunos solo una parte amortiza —el resto era otra cosa que le pagó
+    // 2. Lo real, mes a mes: los pagos que amortizan y las veces que la deuda
+    //    CRECIÓ. Van mezclados y en orden, porque pedir 700 € en agosto entre
+    //    dos pagos de julio y septiembre es parte de la misma historia.
     const porMes = new Map<string, number>();
     for (const p of d.pagos) {
       if (p.aDeuda <= 0) continue;
       const k = p.fecha.slice(0, 7);
       porMes.set(k, (porMes.get(k) ?? 0) + Math.round(p.aDeuda * 100));
     }
-    for (const [mes, importe] of [...porMes].sort()) {
-      pendiente -= importe;
-      filas.push({ etiqueta: mesCorto(`${mes}-01`), importe: importe / 100, pendiente: pendiente / 100, real: true });
+
+    const sucesos = [
+      ...[...porMes].map(([mes, importe]) => ({ mes, tipo: 'pago' as const, importe, nota: null as string | null })),
+      ...d.cambios.map((c) => ({
+        mes: c.fecha.slice(0, 7),
+        tipo: 'cambio' as const,
+        importe: Math.round(c.importe * 100),
+        nota: c.nota,
+      })),
+    ].sort((a, z) => (a.mes === z.mes ? (a.tipo === 'pago' ? -1 : 1) : a.mes < z.mes ? -1 : 1));
+
+    for (const x of sucesos) {
+      pendiente += x.tipo === 'pago' ? -x.importe : x.importe;
+      filas.push({
+        etiqueta: mesCorto(`${x.mes}-01`),
+        importe: (x.tipo === 'pago' ? x.importe : -x.importe) / 100,
+        pendiente: pendiente / 100,
+        real: true,
+        nota: x.tipo === 'cambio' ? (x.nota ?? 'La deuda creció') : undefined,
+      });
     }
 
     // 3. Lo que queda, a la cuota que se esté probando
-    const ultimoReal = [...porMes.keys()].sort().pop() ?? d.declarado.hasta.slice(0, 7);
+    const ultimoReal = sucesos.map((x) => x.mes).sort().pop() ?? d.declarado.hasta.slice(0, 7);
     const cursor = new Date(`${ultimoReal}-01T00:00:00Z`);
     const cuotaCent = Math.round(cuota * 100);
     let vueltas = 0;
@@ -303,15 +329,85 @@ export default function DeudaPage() {
             <span>Pendiente</span>
           </div>
           {cuadro.map((f, i) => (
-            <div key={`${f.etiqueta}-${i}`} className={`dp-fila${f.real ? ' real' : ''}`}>
-              <span>{f.etiqueta}</span>
-              <span>{eur(f.importe)}</span>
+            <div key={`${f.etiqueta}-${i}`} className={`dp-fila${f.real ? ' real' : ''}${f.nota ? ' sube' : ''}`}>
+              <span>
+                {f.etiqueta}
+                {f.nota && <em className="dp-nota">{f.nota}</em>}
+              </span>
+              <span>
+                {f.importe < 0 && '+'}
+                {eur(Math.abs(f.importe))}
+              </span>
               <span>{eur(f.pendiente)}</span>
             </div>
           ))}
         </div>
         <p className="ob-nota">En negro lo pagado, en gris la previsión.</p>
       </section>
+
+      {/* Cómo ha cambiado de tamaño la deuda. Es corto a propósito: no es un
+          libro de movimientos, es la explicación de por qué el total de hoy no
+          es el del primer día. */}
+      <section className="section mc-bloque">
+        <div className="mc-head">
+          <h2>Historial de la deuda</h2>
+          <button className="btn ghost sm" onClick={() => setApuntando(true)}>
+            + Apuntar cambio
+          </button>
+        </div>
+        <div className="dp-hist">
+          <div className="dp-hist-f">
+            <span className="dp-hist-fecha">{fechaCorta(d.desde)}</span>
+            <span className="dp-hist-i base">{eur(d.declaradoTotal)} €</span>
+            <span className="dp-hist-t">Deuda inicial</span>
+          </div>
+          {d.cambios.map((c) => (
+            <div key={c.id} className="dp-hist-f">
+              <span className="dp-hist-fecha">{fechaCorta(c.fecha)}</span>
+              <span className={`dp-hist-i${c.importe > 0 ? ' sube' : ' baja'}`}>
+                {c.importe > 0 ? '+' : '−'}
+                {eur(Math.abs(c.importe))} €
+              </span>
+              <span className="dp-hist-t">{c.nota ?? 'Sin concepto'}</span>
+              <button
+                className="dp-hist-x"
+                aria-label="Borrar este cambio"
+                title="Borrar este cambio"
+                onClick={async () => {
+                  await obligacionesApi.borrarCambio(d.id, c.id);
+                  await cargar();
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+          {d.cambios.length > 0 && (
+            <div className="dp-hist-f total">
+              <span className="dp-hist-fecha">hoy</span>
+              <span className="dp-hist-i">{eur(d.total)} €</span>
+              <span className="dp-hist-t">Deuda total</span>
+            </div>
+          )}
+        </div>
+        {d.cambios.length === 0 && (
+          <p className="ob-nota">
+            Si algún día le pides más, apúntalo aquí: el total sube y queda dicho por qué, en vez de cambiar el número
+            sin más.
+          </p>
+        )}
+      </section>
+
+      {apuntando && (
+        <ApuntarCambio
+          deudaId={d.id}
+          onCerrar={() => setApuntando(false)}
+          onHecho={async () => {
+            setApuntando(false);
+            await cargar();
+          }}
+        />
+      )}
         </>
       )}
 
@@ -328,4 +424,86 @@ function adelanto(cuadro: Fila[], d: DeudaFicha): number {
   const conSuCuota = Math.ceil(pendiente / d.mensual);
   const ahora = cuadro.filter((f) => !f.real).length;
   return Math.max(0, conSuCuota - ahora);
+}
+
+/**
+ * Apuntar que la deuda ha cambiado de tamaño.
+ *
+ * Pide fecha, importe y concepto, y los tres importan: sin fecha no se puede
+ * colocar en el cuadro, y sin concepto dentro de seis meses el número no
+ * significa nada.
+ */
+function ApuntarCambio({
+  deudaId,
+  onCerrar,
+  onHecho,
+}: {
+  deudaId: number;
+  onCerrar: () => void;
+  onHecho: () => void;
+}) {
+  const hoy = new Date();
+  const iso = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+  const [fecha, setFecha] = useState(iso);
+  const [importe, setImporte] = useState('');
+  const [nota, setNota] = useState('');
+  const [guardando, setGuardando] = useState(false);
+
+  const n = Number(importe.replace(',', '.'));
+  const vale = fecha !== '' && Number.isFinite(n) && n !== 0;
+
+  async function guardar() {
+    if (!vale || guardando) return;
+    setGuardando(true);
+    try {
+      await obligacionesApi.apuntarCambio(deudaId, { importe: n, fecha, nota: nota.trim() || null });
+      onHecho();
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <Modal title="Apuntar un cambio" onClose={onCerrar}>
+      <form
+        style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+        onSubmit={(e) => {
+          e.preventDefault();
+          guardar();
+        }}
+      >
+        <div style={{ display: 'flex', gap: 12 }}>
+          <label style={{ flex: 1, minWidth: 0 }}>
+            <span>Cuándo</span>
+            <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+          </label>
+          <label style={{ flex: 1, minWidth: 0 }}>
+            <span>Cuánto</span>
+            <input
+              inputMode="decimal"
+              autoFocus
+              value={importe}
+              onChange={(e) => setImporte(e.target.value)}
+              placeholder="700"
+            />
+          </label>
+        </div>
+        <label>
+          <span>Por qué</span>
+          <input value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Revisión Seat Ibiza" />
+        </label>
+        <p className="muted" style={{ fontSize: 12.5 }}>
+          En positivo la deuda crece; en negativo, te la rebajan. Saldrá en el cuadro en su mes y en el historial.
+        </p>
+        <div className="modal-actions">
+          <button type="button" className="btn ghost sm" onClick={onCerrar}>
+            Cancelar
+          </button>
+          <button type="submit" className="btn sm" disabled={!vale || guardando}>
+            Apuntar
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
 }

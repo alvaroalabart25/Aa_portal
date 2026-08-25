@@ -1225,6 +1225,26 @@ export const commitmentPaymentParts = mysqlTable('commitment_payment_parts', {
 export type CommitmentPaymentPart = typeof commitmentPaymentParts.$inferSelect;
 
 /**
+ * Lo que hace que una deuda cambie de tamaño.
+ *
+ * El total declarado es lo que se debía el día que se declaró. Si luego le
+ * pides más, la deuda es otra — y el número no puede cambiar sin dejar rastro
+ * de por qué. Positivo, la deuda crece; negativo, te la rebajan.
+ */
+export const commitmentChanges = mysqlTable('commitment_changes', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  commitmentId: bigint('commitment_id', { mode: 'number' }).notNull(),
+  changeDate: date('change_date', { mode: 'string' }).notNull(),
+  amount: decimal('amount', { precision: 12, scale: 2 }).notNull(),
+  note: varchar('note', { length: 160 }),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+export type CommitmentChange = typeof commitmentChanges.$inferSelect;
+
+/**
  * Objetivos de ahorro. Cada uno apunta a una cuenta real, así que su progreso
  * es el SALDO leído del banco y no un número declarado que hay que mantener: si
  * un día sacas dinero del colchón, el objetivo retrocede solo.

@@ -7,6 +7,7 @@ import {
   bankAccounts,
   bankConnections,
   bankTransactions,
+  commitmentChanges,
   commitmentPaymentParts,
   financialCommitments,
   financialGoals,
@@ -85,6 +86,33 @@ async function partesDeclaradas(userId: number) {
     },
     nota: (deudaId: number, txId: number) => mapa.get(`${deudaId}-${txId}`)?.note ?? null,
     declarado: (deudaId: number, txId: number) => mapa.has(`${deudaId}-${txId}`),
+  };
+}
+
+/**
+ * Lo que ha hecho crecer (o menguar) cada deuda desde que se declaró.
+ *
+ * El total de una deuda NO es el declarado: es el declarado más todo lo que se
+ * haya apuntado después. Devolverlo agrupado evita una consulta por deuda.
+ */
+async function cambiosDeDeuda(userId: number) {
+  const filas = await db
+    .select({
+      id: commitmentChanges.id,
+      commitmentId: commitmentChanges.commitmentId,
+      fecha: commitmentChanges.changeDate,
+      importe: commitmentChanges.amount,
+      nota: commitmentChanges.note,
+    })
+    .from(commitmentChanges)
+    .where(eq(commitmentChanges.userId, userId))
+    .orderBy(commitmentChanges.changeDate, commitmentChanges.id);
+
+  const por = new Map<number, typeof filas>();
+  for (const f of filas) (por.get(f.commitmentId) ?? por.set(f.commitmentId, []).get(f.commitmentId)!).push(f);
+  return {
+    lista: (deudaId: number) => por.get(deudaId) ?? [],
+    suma: (deudaId: number) => (por.get(deudaId) ?? []).reduce((a, c) => a + cent(c.importe), 0),
   };
 }
 
@@ -364,6 +392,54 @@ obligacionesRouter.patch('/deudas/:id(\\d+)/pagos/:txId(\\d+)', ah(async (req: A
   res.json({ ok: true, aDeuda: cuerpo.data.importe, declarado: true });
 }));
 
+/**
+ * POST /deudas/:id/cambios — la deuda ha cambiado de tamaño.
+ *
+ * Le pides 700 € más para arreglar el coche y la deuda ya no es la misma. Se
+ * apunta con su fecha y su concepto en vez de reescribir el total: un número
+ * que cambia sin explicación no se puede auditar seis meses después.
+ */
+obligacionesRouter.post('/deudas/:id(\\d+)/cambios', ah(async (req: AuthedRequest, res) => {
+  const deudaId = Number(req.params.id);
+  const cuerpo = z
+    .object({
+      importe: z.number().refine((n) => n !== 0, 'Un cambio de cero no cambia nada'),
+      fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      nota: z.string().trim().max(160).nullish(),
+    })
+    .safeParse(req.body);
+  if (!cuerpo.success) return res.status(400).json({ error: cuerpo.error.issues[0].message });
+
+  const [deuda] = await db
+    .select({ id: financialCommitments.id })
+    .from(financialCommitments)
+    .where(and(eq(financialCommitments.id, deudaId), eq(financialCommitments.userId, req.userId!)));
+  if (!deuda) return res.status(404).json({ error: 'No existe esa deuda' });
+
+  const [r] = await db.insert(commitmentChanges).values({
+    userId: req.userId!,
+    commitmentId: deudaId,
+    changeDate: cuerpo.data.fecha,
+    amount: cuerpo.data.importe.toFixed(2),
+    note: cuerpo.data.nota?.trim() || null,
+  });
+  res.status(201).json({ id: r.insertId, ok: true });
+}));
+
+obligacionesRouter.delete('/deudas/:id(\\d+)/cambios/:cambioId(\\d+)', ah(async (req: AuthedRequest, res) => {
+  const [r] = await db
+    .delete(commitmentChanges)
+    .where(
+      and(
+        eq(commitmentChanges.id, Number(req.params.cambioId)),
+        eq(commitmentChanges.commitmentId, Number(req.params.id)),
+        eq(commitmentChanges.userId, req.userId!),
+      ),
+    );
+  if (!r.affectedRows) return res.status(404).json({ error: 'No existe ese cambio' });
+  res.json({ deleted: true });
+}));
+
 obligacionesRouter.get('/deudas/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
   const [deuda] = await db
     .select()
@@ -404,11 +480,22 @@ obligacionesRouter.get('/deudas/:id(\\d+)', ah(async (req: AuthedRequest, res) =
     : [];
 
   const partes = await partesDeclaradas(req.userId!);
+  const cambios = await cambiosDeDeuda(req.userId!);
+  const subidas = cambios.lista(deuda.id);
 
   res.json({
     id: deuda.id,
     nombre: deuda.name,
-    total: euros(cent(deuda.total)),
+    // Lo declarado MÁS lo que haya crecido después: el total de una deuda no es
+    // el del día que se declaró.
+    total: euros(cent(deuda.total) + cambios.suma(deuda.id)),
+    declaradoTotal: euros(cent(deuda.total)),
+    cambios: subidas.map((c) => ({
+      id: c.id,
+      fecha: c.fecha,
+      importe: Number(c.importe),
+      nota: c.nota,
+    })),
     mensual: euros(cent(deuda.monthly)),
     desde: deuda.startedOn,
     // lo pagado antes de que el banco tuviera histórico: declarado, no visto
@@ -655,6 +742,7 @@ obligacionesRouter.get('/', ah(async (req: AuthedRequest, res) => {
     .where(and(eq(financialCommitments.userId, userId), isNull(financialCommitments.archivedAt)));
 
   const partes = await partesDeclaradas(userId);
+  const cambios = await cambiosDeDeuda(userId);
 
   const deudas = compromisos.map((d) => {
     const pagos = movimientos.filter(
@@ -669,7 +757,9 @@ obligacionesRouter.get('/', ah(async (req: AuthedRequest, res) => {
     const aDeuda = (m: { id: number; importe: string }) => partes.cuenta(d.id, m.id, cent(m.importe));
     const pagadoDespues = pagos.reduce((a, m) => a + aDeuda(m), 0);
     const pagado = cent(d.paidBefore) + pagadoDespues;
-    const queda = Math.max(0, cent(d.total) - pagado);
+    // el total no es el declarado: es el declarado más lo que haya crecido
+    const total = cent(d.total) + cambios.suma(d.id);
+    const queda = Math.max(0, total - pagado);
     const mensual = cent(d.monthly);
     const mesesQueQuedan = mensual > 0 ? Math.ceil(queda / mensual) : 0;
     const fin = new Date();
@@ -680,10 +770,10 @@ obligacionesRouter.get('/', ah(async (req: AuthedRequest, res) => {
     return {
       id: d.id,
       nombre: d.name,
-      total: euros(cent(d.total)),
+      total: euros(total),
       pagado: euros(pagado),
       queda: euros(queda),
-      porcentaje: Math.round((100 * pagado) / cent(d.total)),
+      porcentaje: total > 0 ? Math.round((100 * pagado) / total) : 0,
       mensual: euros(mensual),
       desde: d.startedOn,
       termina: queda > 0 ? fin.toISOString().slice(0, 7) : null,

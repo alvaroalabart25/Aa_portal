@@ -130,6 +130,11 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   .head-acciones { gap: 6px; }
   .head-acciones .seg { padding: 2px; }
   .head-acciones .seg button { padding: 5px 11px; font-size: 12.5px; }
+  /* Tres pestañas a la vista y el resto desplazándose. Es `min-width` y no un
+     ancho fijo: si una etiqueta necesita más, se lo queda —antes que recortar
+     el texto, que parece un fallo— y entonces se verán dos y media, que ya
+     avisa por sí sola de que hay más de lado. Se descuentan los dos huecos. */
+  .seg button { min-width: calc((100% - 4px) / 3); }
   /* Donde la cabecera todavía lleva botón (Metas) hay que apretar un punto más;
      donde solo hay pestañas, respiran. */
   .page-head:has(.head-acciones .btn) h1 { font-size: 20px; }

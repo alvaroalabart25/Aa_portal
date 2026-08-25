@@ -730,6 +730,30 @@ export type Task = typeof tasks.$inferSelect;
 export type AutonomoProfile = typeof autonomoProfile.$inferSelect;
 export type InvoiceClient = typeof invoiceClients.$inferSelect;
 export type Invoice = typeof invoices.$inferSelect;
+
+/**
+ * El escaneo de una factura: la foto del móvil.
+ *
+ * Mismo esquema que las imágenes de Metas: metadatos aquí y bytes aparte, para
+ * que listar facturas no arrastre megas de fotos en cada consulta.
+ */
+export const invoiceImages = mysqlTable('invoice_images', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  invoiceId: bigint('invoice_id', { mode: 'number' }).notNull(),
+  mime: varchar('mime', { length: 40 }).notNull().default('image/webp'),
+  bytes: int('bytes').notNull().default(0),
+  sortOrder: int('sort_order').notNull().default(0),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const invoiceImageData = mysqlTable('invoice_image_data', {
+  imageId: bigint('image_id', { mode: 'number' }).primaryKey(),
+  thumb: longblob('thumb').notNull(),
+  full: longblob('full').notNull(),
+});
 export type Dream = typeof dreams.$inferSelect;
 export type DreamCategory = typeof dreamCategories.$inferSelect;
 export type DreamStep = typeof dreamSteps.$inferSelect;

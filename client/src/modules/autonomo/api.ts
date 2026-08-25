@@ -2,6 +2,11 @@ import { del, get, openBlob, patch, post } from '../../lib/api';
 import type { AutonomoProfile, Invoice, InvoiceClient, QuarterSummary } from './types';
 
 export const autonomoApi = {
+  /** Subir el escaneo de una factura, ya reducido en el navegador. */
+  subirFoto: (facturaId: number, datos: { mime: string; thumb: string; full: string }) =>
+    post<{ id: number; thumbUrl: string; fullUrl: string }>(`/autonomo/invoices/${facturaId}/fotos`, datos),
+  borrarFoto: (fotoId: number) => del<{ deleted: boolean }>(`/autonomo/invoices/fotos/${fotoId}`),
+
   profile: () => get<AutonomoProfile | null>('/autonomo/profile'),
   clients: () => get<InvoiceClient[]>('/autonomo/clients'),
   createClient: (data: Partial<InvoiceClient>) => post<InvoiceClient>('/autonomo/clients', data),

@@ -16,6 +16,7 @@ import { diaryModule } from './modules/diary';
 import { avisarGimnasio, pushModule, pushRunner } from './modules/push';
 import { trackModule, trackSetup } from './modules/track';
 import { dreamImagesRouter, dreamsModule } from './modules/dreams';
+import { facturaFotosRouter } from './modules/autonomo';
 import { focusModule } from './modules/focus';
 import { notasModule } from './modules/notas';
 import { gymModule } from './modules/gym';
@@ -139,6 +140,9 @@ app.use('/api', trackLimiter, trackModule);
 // Imágenes de Sueños: sin JWT porque una etiqueta <img> no puede mandar
 // cabeceras. Van firmadas en la propia dirección y así el navegador las cachea.
 app.use('/api/dreams', dreamImagesRouter);
+// las fotos de facturas van firmadas y sin sesión, como las de Metas: el <img>
+// del navegador no manda la cabecera de autorización
+app.use('/api/autonomo', facturaFotosRouter);
 
 // Módulos (todos protegidos por login). Añadir un módulo = una línea más aquí.
 app.use('/api', requireAuth, trackSetup);

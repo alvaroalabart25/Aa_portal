@@ -1,6 +1,7 @@
 import { useSearchParams } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import FacturasTab from './FacturasTab';
+import RecibidasTab from './RecibidasTab';
 import EmpresasTab from './EmpresasTab';
 import CuentasTab from './CuentasTab';
 import TrimestralesTab from './TrimestralesTab';
@@ -38,9 +39,10 @@ const SECCIONES: Seccion[] = [
   {
     id: 'facturas',
     titulo: 'Facturas',
-    lema: 'Tus facturas emitidas y las empresas a las que facturas, con los plazos de Hacienda a la vista.',
+    lema: 'Lo que facturas y lo que te facturan, con sus escaneos y los plazos de Hacienda a la vista.',
     sub: [
       { id: 'emitidas', titulo: 'Emitidas', pinta: () => <FacturasTab /> },
+      { id: 'recibidas', titulo: 'Recibidas', pinta: () => <RecibidasTab /> },
       { id: 'empresas', titulo: 'Empresas', pinta: () => <EmpresasTab /> },
     ],
   },

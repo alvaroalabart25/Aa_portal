@@ -1,9 +1,11 @@
 import { Router } from 'express';
+import express from 'express';
+import crypto from 'node:crypto';
 import { z } from 'zod';
-import { and, asc, desc, eq, isNull, like } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, like, max } from 'drizzle-orm';
 import { ah } from '../../lib/async';
 import { db } from '../../db';
-import { autonomoProfile, invoiceClients, invoices } from '../../db/schema';
+import { autonomoProfile, invoiceClients, invoiceImageData, invoiceImages, invoices } from '../../db/schema';
 import type { AuthedRequest } from '../../core/auth/middleware';
 import { buildInvoicePdf } from './pdf';
 import { sendInvoiceEmail, smtpConfigured } from './mailer';
@@ -100,6 +102,131 @@ autonomoModule.patch('/clients/:id', ah(async (req: AuthedRequest, res) => {
 }));
 
 // ---------- Facturas ----------
+// ---------- El escaneo de una factura ----------
+
+/**
+ * Firma de una foto. No caduca a propósito: si caducara, el navegador no podría
+ * cachearla y cada visita volvería a pedir los bytes. Lo que protege es que sin
+ * el secreto del servidor la dirección no se puede fabricar. Es la misma pieza
+ * que ya usan las imágenes de Metas.
+ */
+function firmaFoto(id: number, size: 'thumb' | 'full'): string {
+  return crypto
+    .createHmac('sha256', process.env.JWT_SECRET as string)
+    .update(`invoice-img:${id}:${size}`)
+    .digest('hex')
+    .slice(0, 32);
+}
+
+const urlFoto = (id: number, size: 'thumb' | 'full') =>
+  `/api/autonomo/facturas/foto/${id}/${size}?t=${firmaFoto(id, size)}`;
+
+/** Las fotos de un puñado de facturas, agrupadas. Una consulta, no una por factura. */
+async function fotosDe(userId: number, facturas: number[]) {
+  if (!facturas.length) return new Map<number, { id: number; thumbUrl: string; fullUrl: string }[]>();
+  const filas = await db
+    .select({ id: invoiceImages.id, invoiceId: invoiceImages.invoiceId })
+    .from(invoiceImages)
+    .where(and(eq(invoiceImages.userId, userId), inArray(invoiceImages.invoiceId, facturas)))
+    .orderBy(asc(invoiceImages.sortOrder), asc(invoiceImages.id));
+
+  const por = new Map<number, { id: number; thumbUrl: string; fullUrl: string }[]>();
+  for (const f of filas) {
+    const lista = por.get(f.invoiceId) ?? por.set(f.invoiceId, []).get(f.invoiceId)!;
+    lista.push({ id: f.id, thumbUrl: urlFoto(f.id, 'thumb'), fullUrl: urlFoto(f.id, 'full') });
+  }
+  return por;
+}
+
+// La dirección de los bytes va firmada y NO exige sesión: el <img> del
+// navegador no manda la cabecera de autorización. Sin la firma no se puede
+// fabricar, y la firma solo sale en respuestas que sí exigieron sesión.
+export const facturaFotosRouter = Router();
+facturaFotosRouter.get('/facturas/foto/:id(\\d+)/:size', ah(async (req, res) => {
+  const id = Number(req.params.id);
+  const size = req.params.size === 'full' ? 'full' : 'thumb';
+
+  const esperada = firmaFoto(id, size);
+  const recibida = String(req.query.t ?? '');
+  const ok =
+    recibida.length === esperada.length &&
+    crypto.timingSafeEqual(Buffer.from(recibida), Buffer.from(esperada));
+  if (!ok) return res.status(403).json({ error: 'Firma inválida' });
+
+  const [ficha] = await db.select({ mime: invoiceImages.mime }).from(invoiceImages).where(eq(invoiceImages.id, id));
+  if (!ficha) return res.status(404).json({ error: 'Foto no encontrada' });
+
+  const [datos] = await db
+    .select(size === 'full' ? { bytes: invoiceImageData.full } : { bytes: invoiceImageData.thumb })
+    .from(invoiceImageData)
+    .where(eq(invoiceImageData.imageId, id));
+  if (!datos) return res.status(404).json({ error: 'Foto no encontrada' });
+
+  res.setHeader('Content-Type', ficha.mime);
+  res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  // el front vive en otro dominio que la API: sin esto el navegador no la pinta
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.send(datos.bytes);
+}));
+
+// El navegador manda la foto ya reducida en base64, en dos tamaños. Este cuerpo
+// es más grande que el resto de la API y por eso lleva su propio analizador.
+const subirFoto = z.object({
+  mime: z.enum(['image/webp', 'image/jpeg', 'image/png']).default('image/webp'),
+  thumb: z.string().min(1),
+  full: z.string().min(1),
+});
+const LIMITE_FOTO = 1_500_000; // bytes por versión, ya reducida
+
+autonomoModule.post(
+  '/invoices/:id(\\d+)/fotos',
+  express.json({ limit: '4mb' }),
+  ah(async (req: AuthedRequest, res) => {
+    const facturaId = Number(req.params.id);
+    const parsed = subirFoto.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
+
+    const [suya] = await db
+      .select({ id: invoices.id })
+      .from(invoices)
+      .where(and(eq(invoices.id, facturaId), eq(invoices.userId, req.userId!)));
+    if (!suya) return res.status(404).json({ error: 'Factura no encontrada' });
+
+    const thumb = Buffer.from(parsed.data.thumb, 'base64');
+    const full = Buffer.from(parsed.data.full, 'base64');
+    if (!thumb.length || !full.length) return res.status(400).json({ error: 'La foto llegó vacía' });
+    if (thumb.length > LIMITE_FOTO || full.length > LIMITE_FOTO) {
+      return res.status(413).json({ error: 'La foto es demasiado grande' });
+    }
+
+    const [{ n }] = await db
+      .select({ n: max(invoiceImages.sortOrder) })
+      .from(invoiceImages)
+      .where(eq(invoiceImages.invoiceId, facturaId));
+
+    const [r] = await db.insert(invoiceImages).values({
+      userId: req.userId!,
+      invoiceId: facturaId,
+      mime: parsed.data.mime,
+      bytes: full.length,
+      sortOrder: (n ?? 0) + 1,
+    });
+    await db.insert(invoiceImageData).values({ imageId: r.insertId, thumb, full });
+
+    res.status(201).json({ id: r.insertId, thumbUrl: urlFoto(r.insertId, 'thumb'), fullUrl: urlFoto(r.insertId, 'full') });
+  }),
+);
+
+autonomoModule.delete('/invoices/fotos/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
+  const id = Number(req.params.id);
+  const [r] = await db
+    .delete(invoiceImages)
+    .where(and(eq(invoiceImages.id, id), eq(invoiceImages.userId, req.userId!)));
+  if (!r.affectedRows) return res.status(404).json({ error: 'Foto no encontrada' });
+  await db.delete(invoiceImageData).where(eq(invoiceImageData.imageId, id));
+  res.json({ deleted: true });
+}));
+
 // GET /invoices?year=&kind= — no archivadas, más recientes primero
 autonomoModule.get('/invoices', ah(async (req: AuthedRequest, res) => {
   const conds = [eq(invoices.userId, req.userId!), isNull(invoices.archivedAt)];
@@ -112,7 +239,9 @@ autonomoModule.get('/invoices', ah(async (req: AuthedRequest, res) => {
     .from(invoices)
     .where(and(...conds))
     .orderBy(desc(invoices.issueDate), desc(invoices.number));
-  res.json(rows);
+
+  const fotos = await fotosDe(req.userId!, rows.map((r) => r.id));
+  res.json(rows.map((r) => ({ ...r, fotos: fotos.get(r.id) ?? [] })));
 }));
 
 autonomoModule.get('/invoices/next-number', ah(async (req: AuthedRequest, res) => {

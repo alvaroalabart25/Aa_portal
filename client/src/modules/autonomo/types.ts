@@ -40,6 +40,8 @@ export interface Invoice {
   total: string;
   emailedTo: string | null;
   emailedAt: string | null;
+  /** los escaneos: la foto que se hace con el móvil */
+  fotos?: { id: number; thumbUrl: string; fullUrl: string }[];
 }
 
 export const INVOICE_STATUS: Record<InvoiceStatus, { label: string; color: string }> = {

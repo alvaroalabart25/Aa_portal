@@ -289,17 +289,33 @@ function notesToHtml(value: string | null): string {
   return sanitizeNotes(marked.parse(value, { breaks: true, async: false }) as string);
 }
 
-// Notas: editor enriquecido siempre activo (negrita/cursiva/subrayado/listas)
-// con AUTOGUARDADO (debounce 1s + al salir del campo + al salir de la página).
-export function NotesBox({
+/**
+ * El editor enriquecido del portal: negrita, cursiva, subrayado, tachado y
+ * listas, sin salir del sitio y guardando solo.
+ *
+ * Es la pieza que comparten las notas de una tarea y el bloc de notas. Guarda
+ * HTML saneado; si lo que llega es texto plano de antes, se convierte al vuelo.
+ *
+ * `barra: 'alEnfocar'` esconde los botones hasta que se escribe en él: en una
+ * lista de varios editores —el bloc, un día por caja— cinco barras de
+ * herramientas a la vez son más ruido que ayuda.
+ */
+export function EditorRico({
   value,
   onSave,
+  placeholder = 'Escribe aquí… (guardado automático)',
+  barra = 'siempre',
+  onEstado,
 }: {
   value: string | null;
   onSave: (notes: string) => Promise<void>;
+  placeholder?: string;
+  barra?: 'siempre' | 'alEnfocar';
+  onEstado?: (etiqueta: string) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<'idle' | 'pending' | 'saving' | 'saved'>('idle');
+  const [enfocado, setEnfocado] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dirtyRef = useRef(false);
 
@@ -343,46 +359,74 @@ export function NotesBox({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const etiqueta = { idle: '', pending: 'Sin guardar…', saving: 'Guardando…', saved: '✓ Guardado' }[status];
+  useEffect(() => onEstado?.(etiqueta), [etiqueta, onEstado]);
+
   function cmd(command: string) {
     document.execCommand(command);
     ref.current?.focus();
     onInput();
   }
 
-  const statusLabel = { idle: '', pending: 'Sin guardar…', saving: 'Guardando…', saved: '✓ Guardado' }[status];
+  const verBarra = barra === 'siempre' || enfocado;
 
   return (
-    <div className="section notes-box">
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-        <h2>Notas</h2>
-        <span className="muted" style={{ fontSize: 12 }}>{statusLabel}</span>
-      </div>
-      <div className="notes-toolbar">
-        <button type="button" title="Negrita (⌘B)" style={{ fontWeight: 700 }} onMouseDown={(e) => { e.preventDefault(); cmd('bold'); }}>
-          B
-        </button>
-        <button type="button" title="Cursiva (⌘I)" style={{ fontStyle: 'italic' }} onMouseDown={(e) => { e.preventDefault(); cmd('italic'); }}>
-          I
-        </button>
-        <button type="button" title="Subrayado (⌘U)" onMouseDown={(e) => { e.preventDefault(); cmd('underline'); }}>
-          <u>U</u>
-        </button>
-        <button type="button" title="Lista" onMouseDown={(e) => { e.preventDefault(); cmd('insertUnorderedList'); }}>
-          • Lista
-        </button>
-        <button type="button" title="Tachado" onMouseDown={(e) => { e.preventDefault(); cmd('strikeThrough'); }}>
-          <s>S</s>
-        </button>
-      </div>
+    <>
+      {verBarra && (
+        <div className="notes-toolbar">
+          <button type="button" title="Negrita (⌘B)" style={{ fontWeight: 700 }} onMouseDown={(e) => { e.preventDefault(); cmd('bold'); }}>
+            B
+          </button>
+          <button type="button" title="Cursiva (⌘I)" style={{ fontStyle: 'italic' }} onMouseDown={(e) => { e.preventDefault(); cmd('italic'); }}>
+            I
+          </button>
+          <button type="button" title="Subrayado (⌘U)" onMouseDown={(e) => { e.preventDefault(); cmd('underline'); }}>
+            <u>U</u>
+          </button>
+          <button type="button" title="Lista" onMouseDown={(e) => { e.preventDefault(); cmd('insertUnorderedList'); }}>
+            • Lista
+          </button>
+          <button type="button" title="Tachado" onMouseDown={(e) => { e.preventDefault(); cmd('strikeThrough'); }}>
+            <s>S</s>
+          </button>
+          {barra === 'alEnfocar' && etiqueta && <span className="notes-estado">{etiqueta}</span>}
+        </div>
+      )}
       <div
         ref={ref}
         className="notes-editor"
         contentEditable
         suppressContentEditableWarning
-        data-placeholder="Escribe aquí… (guardado automático)"
+        data-placeholder={placeholder}
         onInput={onInput}
-        onBlur={doSave}
+        onFocus={() => setEnfocado(true)}
+        onBlur={(e) => {
+          // los botones de la barra no roban el foco (hacen preventDefault),
+          // así que si el foco se va de verdad, es que se ha ido del editor
+          if (!e.currentTarget.parentElement?.contains(e.relatedTarget as Node)) setEnfocado(false);
+          void doSave();
+        }}
       />
+    </>
+  );
+}
+
+// Notas de una tarea: el editor de arriba con su cabecera y su estado.
+export function NotesBox({
+  value,
+  onSave,
+}: {
+  value: string | null;
+  onSave: (notes: string) => Promise<void>;
+}) {
+  const [etiqueta, setEtiqueta] = useState('');
+  return (
+    <div className="section notes-box">
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+        <h2>Notas</h2>
+        <span className="muted" style={{ fontSize: 12 }}>{etiqueta}</span>
+      </div>
+      <EditorRico value={value} onSave={onSave} onEstado={setEtiqueta} />
     </div>
   );
 }

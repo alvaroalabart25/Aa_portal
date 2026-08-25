@@ -85,7 +85,14 @@ notasModule.put('/:fecha', ah(async (req: AuthedRequest, res) => {
   if (!cuerpo.success) return res.status(400).json({ error: 'Texto no válido' });
 
   const texto = cuerpo.data.texto;
-  if (!texto.trim()) {
+  // Lo que llega es HTML del editor: «vacío» es no tener texto DENTRO de las
+  // etiquetas, no que la cadena esté vacía. Un `<p><br></p>` es una nota vacía.
+  const soloTexto = texto
+    .replace(/<br\s*\/?>/gi, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/<[^>]+>/g, '')
+    .trim();
+  if (!soloTexto) {
     await db.delete(notes).where(and(eq(notes.userId, req.userId!), eq(notes.noteDate, fecha)));
     return res.json({ fecha, texto: '', borrada: true });
   }

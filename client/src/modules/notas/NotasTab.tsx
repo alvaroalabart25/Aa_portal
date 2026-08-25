@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { EditorRico } from '../tasks/components';
 import { notasApi, type MesDeNotas, type Nota } from './api';
 
 /**
@@ -111,12 +112,12 @@ export default function NotasTab() {
 }
 
 /**
- * Un día del bloc. Se guarda solo al dejar de escribir, como las notas de un
- * objetivo: en un bloc no hay un botón de guardar que valga.
+ * Un día del bloc, con el mismo editor que las notas de una tarea: negrita,
+ * cursiva, listas… y guardado solo, que en un bloc no hay botón de guardar que
+ * valga.
  *
- * La caja crece con lo que escribes y no al revés: una caja de diez líneas para
- * una frase ocupa media pantalla, y una de dos para media página obliga a
- * hacer scroll dentro del scroll.
+ * La barra de herramientas solo sale en el día que se está escribiendo: cinco
+ * barras a la vez, una por día, son más ruido que ayuda.
  */
 function Dia({
   fecha,
@@ -129,53 +130,21 @@ function Dia({
   esHoy?: boolean;
   onGuardado: () => void;
 }) {
-  const [txt, setTxt] = useState(texto);
-  const [estado, setEstado] = useState<'' | 'guardado'>('');
-  const timer = useRef<number | undefined>(undefined);
-  const ultimo = useRef(texto);
-  const caja = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    setTxt(texto);
-    ultimo.current = texto;
-  }, [texto]);
-  useEffect(() => () => window.clearTimeout(timer.current), []);
-
-  // que la caja mida lo que el texto, sin barra de scroll propia
-  useEffect(() => {
-    const c = caja.current;
-    if (!c) return;
-    c.style.height = 'auto';
-    c.style.height = `${Math.max(c.scrollHeight, 46)}px`;
-  }, [txt]);
-
-  function cambiar(v: string) {
-    setTxt(v);
-    window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(async () => {
-      if (v === ultimo.current) return;
-      ultimo.current = v;
-      await notasApi.guardar(fecha, v);
-      setEstado('guardado');
-      window.setTimeout(() => setEstado(''), 1500);
-      // Vaciar una nota la borra, y eso cambia la lista: hay que recargar.
-      if (!v.trim()) onGuardado();
-    }, 700);
-  }
-
   return (
     <div className={`nt-dia${esHoy ? ' hoy' : ''}`}>
       <div className="nt-dia-t">
         <b>{diaLargo(fecha)}</b>
         {esHoy && <em>hoy</em>}
-        {estado && <span className="nt-guardado">Guardado</span>}
       </div>
-      <textarea
-        ref={caja}
-        value={txt}
-        onChange={(e) => cambiar(e.target.value)}
+      <EditorRico
+        value={texto}
+        barra="alEnfocar"
         placeholder={esHoy ? 'Escribe lo que sea…' : ''}
-        rows={1}
+        onSave={async (html) => {
+          await notasApi.guardar(fecha, html);
+          // Vaciar una nota la borra, y eso cambia la lista de días
+          if (!html) onGuardado();
+        }}
       />
     </div>
   );

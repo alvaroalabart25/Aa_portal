@@ -286,6 +286,10 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 /* Crear + pestañas, en este orden y en la misma esquina en todo el portal, y
    en la misma línea que el título: es una sola cabecera, no dos. */
 .head-acciones { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; justify-content: flex-end; }
+/* El nombre de un botón no se parte en dos renglones: antes de eso, el grupo
+   entero baja a su propia línea —para eso la cabecera lleva `flex-wrap`—. Un
+   «+ Nueva / tarea» a dos alturas parece un fallo, no un botón. */
+.head-acciones .btn { white-space: nowrap; }
 /* La cabecera es UNA línea: título a la izquierda, pestañas —y lo que las
    acompañe, como el ojo de los importes— a la derecha. Da igual si cuelgan de
    `.head-acciones`, de `.page-acciones` o directamente de la cabecera.
@@ -534,12 +538,39 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 12px;
   max-height: calc(100vh - 32px); overflow-y: auto; overscroll-behavior: contain;
 }
-.modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+.modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
 .modal-head h2 { margin: 0; min-width: 0; }
-.modal-x { flex: 0 0 auto; }
+/* Cerrar es un botón de solo icono, como los tres puntos o el ojo: redondo,
+   con el borde suave. Con el borde negro del botón normal pesaba más que el
+   título que tiene al lado. */
+.modal-x {
+  flex: 0 0 auto; width: 30px; height: 30px; padding: 0; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; border-color: var(--line); color: var(--ink-muted);
+}
+.modal-x:hover { color: var(--ink); border-color: var(--ink-muted); }
 .modal .form-grid { margin-top: 0; }
-.field { display: flex; flex-direction: column; }
+.field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.field > label { margin-bottom: 0; }
+/* Dos campos en una fila se reparten el ancho por igual; a partir de 150 px
+   cada uno, se bajan el uno debajo del otro solos. */
+.form-grid > .field, .form-grid > label { flex: 1 1 150px; }
+/* La nota que explica dónde va a caer lo que se crea. Separada por una raya
+   suave: es una consecuencia de lo rellenado, no un campo más. */
+.modal-nota {
+  margin: 2px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--ink-muted);
+  border-top: 1px solid var(--line-suave); padding-top: 12px;
+}
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
+
+/* Un campo escrito como `<label><span>nombre</span><control/></label>`: el
+   nombre va ENCIMA y el control debajo, a todo lo ancho. Sin esto el span se
+   queda en línea y el nombre sale pegado al campo, que es como estaba el panel
+   de nueva tarea de un objetivo. */
+label:not([class]) > span { display: block; margin-bottom: 5px; }
+label:not([class]) > span + input,
+label:not([class]) > span + select,
+label:not([class]) > span + textarea { display: block; width: 100%; }
 
 /* ---------- Menú desplegable (Organización) ---------- */
 .nav-group-head {

@@ -637,7 +637,7 @@ function NuevaTareaDelObjetivo({
   return (
     <Modal title="Nueva tarea" onClose={onCerrar}>
       <form
-        style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+        style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
         onSubmit={(e) => {
           e.preventDefault();
           crear();
@@ -661,12 +661,14 @@ function NuevaTareaDelObjetivo({
           </label>
         )}
 
-        <div style={{ display: 'flex', gap: 12 }}>
-          <label style={{ flex: 1, minWidth: 0 }}>
+        {/* Vence y prioridad son dos datos cortos: comparten renglón y se
+            reparten el ancho, y en una pantalla estrecha se bajan solos. */}
+        <div className="form-grid">
+          <label>
             <span>Vence</span>
             <input type="date" value={vence} onChange={(e) => setVence(e.target.value)} />
           </label>
-          <label style={{ flex: 1, minWidth: 0 }}>
+          <label>
             <span>Prioridad</span>
             <select value={prioridad} onChange={(e) => setPrioridad(e.target.value as Priority)}>
               <option value="low">Baja</option>
@@ -676,7 +678,7 @@ function NuevaTareaDelObjetivo({
           </label>
         </div>
 
-        <p className="muted" style={{ fontSize: 12.5 }}>
+        <p className="modal-nota">
           {proyectos.length === 1
             ? `Se creará en ${proyectos[0].name} y quedará colgada de este objetivo.`
             : 'Quedará colgada de este objetivo, además de vivir en su proyecto.'}

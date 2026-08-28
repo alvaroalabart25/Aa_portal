@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { EditorRico } from '../tasks/components';
 import { passkeysSoportadas } from '../../lib/passkeys';
 import {
@@ -45,6 +46,7 @@ export default function PersonaPage() {
   const [abierto, setAbierto] = useState(hayPase());
   const [abriendo, setAbriendo] = useState(false);
   const [error, setError] = useState('');
+  const [sinLlave, setSinLlave] = useState(false);
   const [datos, setDatos] = useState<MesDePersona | null>(null);
   const [meses, setMeses] = useState<{ mes: string; dias: number }[]>([]);
   const [viejos, setViejos] = useState<Record<string, EntradaPersona[]>>({});
@@ -76,13 +78,19 @@ export default function PersonaPage() {
   async function abrir(otroDispositivo = false) {
     setAbriendo(true);
     setError('');
+    setSinLlave(false);
     try {
       await abrirPersona(otroDispositivo);
       setAbierto(true);
     } catch (e) {
       const err = e as Error;
       if (err.name === 'NotAllowedError') {
-        setError('Se canceló, o este aparato no tiene tu llave. Prueba «Usar otro dispositivo».');
+        // Chrome y Safari dicen lo mismo para dos cosas distintas: que has
+        // cancelado, o que en ESTE aparato no hay ninguna llave del portal. Lo
+        // segundo es lo normal la primera vez que abres desde un ordenador, y
+        // tiene arreglo en un minuto: registrar una aquí.
+        setSinLlave(true);
+        setError('');
       } else {
         // El nombre del error delante: es lo que dice qué ha pasado de verdad.
         setError(`${err.name ? `${err.name}: ` : ''}${err.message || 'No se pudo abrir'}`);
@@ -115,6 +123,14 @@ export default function PersonaPage() {
           </>
         ) : (
           <p className="muted">Este navegador no tiene Face ID. Entra desde el móvil o registra una llave en Configuración.</p>
+        )}
+        {sinLlave && (
+          <p className="pe-ayuda">
+            Este aparato no tiene ninguna llave de acceso del portal. Registra una aquí —te pedirá Touch ID y tarda diez
+            segundos— o firma con el iPhone desde «Usar otro dispositivo».
+            <br />
+            <Link to="/configuracion">Añadir una llave en este dispositivo →</Link>
+          </p>
         )}
         {error && <p className="error-msg">{error}</p>}
       </div>

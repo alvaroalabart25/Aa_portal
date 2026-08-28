@@ -1584,6 +1584,12 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
   color: var(--ink-muted); text-decoration: underline; cursor: pointer;
 }
 .pe-otro:hover { color: var(--ink); }
+/* Cuando el aparato no tiene llave: no es un error, es un paso que falta. */
+.pe-ayuda {
+  font-size: 13px; line-height: 1.6; color: var(--ink-soft);
+  background: var(--paper-soft); border-radius: var(--r-md); padding: 12px 14px; max-width: 40ch;
+}
+.pe-ayuda a { font-weight: 600; text-decoration: underline; }
 .page-sub { font-size: 13.5px; line-height: 1.6; margin: 6px 0 0; max-width: 60ch; }
 
 /* La pregunta del día: una excusa para arrancar, no un enunciado que haya que

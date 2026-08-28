@@ -1601,6 +1601,14 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .pe-pregunta-vieja { font-size: 13px; margin: 0 0 6px; color: var(--ink-muted); }
 .pe-hoy { margin-top: 18px; }
 .pe-dia { max-width: 100%; }
+/* Sin marco, como el bloc: esto es escribir a vuelapluma, no rellenar un
+   formulario. La caja la hace el propio texto. */
+.pe-hoy .notes-editor {
+  border: none; background: none; padding: 0 0 0 6px; min-height: 0;
+  font-size: 14.5px; line-height: 1.65;
+}
+.pe-hoy .notes-editor:focus { outline: none; box-shadow: none; }
+.pe-hoy .notes-toolbar { margin: 0 0 8px; }
 
 /* ---------- La bitácora: las notas fechadas de una tarea o un proyecto ----------
    Mismo aspecto que el bloc, porque es el mismo gesto: cada día su renglón, sin
@@ -3508,4 +3516,19 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
   }
   .ficha > div:last-child { border-bottom: none; }
   .ficha label { font-size: 10.5px; flex: 0 0 auto; }
+}
+
+/* El iPhone hace ZOOM al tocar un campo cuya letra mide menos de 16 px. No es
+   un capricho suyo y no se puede desactivar sin bloquear también el zoom a
+   dedo, que sí hace falta. La única forma limpia es que la letra mida 16 donde
+   se escribe de verdad: las notas, en sus tres sitios.
+
+   Va al final del fichero y nombrando los tres casos porque cada uno tiene su
+   regla de tamaño más abajo: una media query no añade especificidad, solo
+   cuenta el orden. */
+@media (max-width: 720px) {
+  .notes-editor,
+  .nt-dia .notes-editor,
+  .bit-dia .notes-editor,
+  .pe-hoy .notes-editor { font-size: 16px; }
 }

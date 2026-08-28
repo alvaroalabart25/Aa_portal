@@ -87,7 +87,7 @@ export default function TaskPage() {
         <EditableTitle value={task.title} onSave={async (title) => update({ title })} />
       </div>
 
-      <div className="form-grid" style={{ marginTop: 18 }}>
+      <div className="form-grid tk-ficha" style={{ marginTop: 18 }}>
         <div>
           <label>Estado</label>
           <StatusSelect value={task.status} onChange={(status) => update({ status })} />

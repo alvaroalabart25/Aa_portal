@@ -135,7 +135,6 @@ function PortadaDelMes({ mes }: { mes: FocusMes }) {
     }),
     { hechas: 0, revision: 0, progreso: 0, bloqueadas: 0, total: 0 },
   );
-  const pct = suma.total > 0 ? Math.round((100 * suma.hechas) / suma.total) : 0;
 
   // Los días que le quedan al mes, contando hoy. Es lo que convierte un «vas
   // por el 30%» en una decisión.
@@ -159,17 +158,6 @@ function PortadaDelMes({ mes }: { mes: FocusMes }) {
           ? 'Sin objetivos todavía: elige qué quieres mover este mes.'
           : `${activos} ${activos === 1 ? 'objetivo' : 'objetivos'} entre manos · ${suma.hechas} de ${suma.total} ${suma.total === 1 ? 'tarea' : 'tareas'}`}
       </p>
-      {suma.total > 0 && (
-        <>
-          <span className="mc-portada-b" aria-hidden="true">
-            <b style={{ width: `${(100 * suma.hechas) / suma.total}%`, background: 'var(--ink)' }} />
-            <b style={{ width: `${(100 * suma.revision) / suma.total}%`, background: 'var(--morado)' }} />
-            <b style={{ width: `${(100 * suma.progreso) / suma.total}%`, background: 'var(--azul)' }} />
-            <b style={{ width: `${(100 * suma.bloqueadas) / suma.total}%`, background: 'var(--ambar)' }} />
-          </span>
-          <span className="mc-portada-p">{pct}%</span>
-        </>
-      )}
     </section>
   );
 }
@@ -343,21 +331,25 @@ function BloqueConstancia({
   onCrear: (k: FocusKind) => void;
   onCambio: () => void;
 }) {
+  // Los libros solo aparecen si hay alguno: no los está leyendo ahora y una
+  // columna con «ninguno este mes» es sitio gastado en decir que no hay nada.
+  // El «+ Libro» de la cabecera es por dónde vuelven cuando toque.
+  const hayLibros = libros.length > 0;
+
   return (
-    <section className="section mc-bloque">
+    <section className="section mc-bloque oscuro">
       <div className="mc-head">
         <h2>Constancia</h2>
+        {!hayLibros && (
+          <button className="mc-col-mas" onClick={() => onCrear('libro')}>
+            + Libro
+          </button>
+        )}
       </div>
 
-      <div className="mc-cols">
-        <ColumnaDiaria
-          kind="formacion"
-          items={formaciones}
-          vacio="Ninguna este mes"
-          onCrear={onCrear}
-          onCambio={onCambio}
-        />
-        <ColumnaDiaria kind="libro" items={libros} vacio="Ninguno este mes" onCrear={onCrear} onCambio={onCambio} />
+      <div className={`mc-cols${hayLibros ? '' : ' dos'}`}>
+        <ColumnaDiaria kind="formacion" items={formaciones} onCrear={onCrear} onCambio={onCambio} />
+        {hayLibros && <ColumnaDiaria kind="libro" items={libros} onCrear={onCrear} onCambio={onCambio} />}
 
         <div className="mc-col">
           <div className="mc-col-t">
@@ -377,13 +369,11 @@ function BloqueConstancia({
 function ColumnaDiaria({
   kind,
   items,
-  vacio,
   onCrear,
   onCambio,
 }: {
   kind: FocusKind;
   items: FocusItem[];
-  vacio: string;
   onCrear: (k: FocusKind) => void;
   onCambio: () => void;
 }) {
@@ -402,7 +392,7 @@ function ColumnaDiaria({
         </button>
       </div>
       {activos.length === 0 && hechos.length === 0 ? (
-        <p className="muted mc-col-vacio">{vacio}</p>
+        <p className="muted mc-col-vacio">Ninguna este mes</p>
       ) : (
         [...activos, ...hechos].map((i) => <TarjetaDiaria key={i.id} item={i} onCambio={onCambio} />)
       )}

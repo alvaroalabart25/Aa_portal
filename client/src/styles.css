@@ -1162,22 +1162,16 @@ label:not([class]) > span + textarea { display: block; width: 100%; }
 .mc-portada-t h2 { font-size: 30px; }
 .mc-portada-q { font-size: 12.5px; color: var(--ink-muted); white-space: nowrap; }
 .mc-portada-d { flex: 1 0 100%; margin: 0; font-size: 13.5px; color: var(--ink-soft); }
-/* La misma barra por estados que el aro de cada tarjeta, sumada: lo hecho en
-   negro, la revisión en morado, lo que está en marcha en azul y lo atascado en
-   ámbar. Si no coinciden los colores, no se lee como lo mismo. */
-.mc-portada-b {
-  flex: 1 1 200px; display: flex; height: 6px; border-radius: var(--r-bar);
-  background: var(--paper-soft); overflow: hidden;
-}
-.mc-portada-b b { display: block; height: 100%; }
-.mc-portada-p { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); flex: 0 0 auto; }
 
 /* ---------- Constancia: tres columnas de lo que se sostiene ---------- */
-.mc-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 12px; }
-.mc-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.mc-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px 18px; margin-top: 14px; }
+.mc-cols.dos { grid-template-columns: repeat(2, 1fr); }
+.mc-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+/* El nombre de cada cosa manda dentro de su columna: es el titular de lo que
+   estás sosteniendo, no una etiqueta de campo. */
 .mc-col-t {
   display: flex; align-items: baseline; gap: 10px;
-  font-size: 12.5px; font-weight: 600; color: var(--ink-soft);
+  font-family: var(--font-title); font-size: 16px; font-weight: 700; color: var(--ink);
 }
 /* El «+» de cada columna no es un botón más: es un enlace discreto, porque
    añadir un libro no compite con marcar el día. */
@@ -1187,10 +1181,17 @@ label:not([class]) > span + textarea { display: block; width: 100%; }
 }
 .mc-col-mas:hover { color: var(--ink); }
 .mc-col-vacio { font-size: 12.5px; margin: 2px 0 0; }
+/* Constancia va en negro: es el bloque de lo que se sostiene, y separarlo por
+   color hace que no se confunda con los objetivos, que son de otra cosa. */
+.mc-bloque.oscuro { padding: 18px 20px 22px; }
+.mc-bloque.oscuro > .mc-head h2 { margin-top: 0; }
 /* Dentro de una columna las tarjetas mandan poco: son un gesto, no una ficha */
 .mc-col .mk { padding: 12px 14px; }
 @media (max-width: 900px) {
-  .mc-cols { grid-template-columns: 1fr; gap: 20px; }
+  /* `.dos` pesa más que `.mc-cols`, así que hay que nombrarlo también o en el
+     móvil se queda en dos columnas de 150 px. */
+  .mc-cols,
+  .mc-cols.dos { grid-template-columns: 1fr; gap: 22px; }
   .mc-portada-t h2 { font-size: 25px; }
 }
 /* el primer bloque va pegado a la línea del mes: el aire es para SEPARAR

@@ -531,10 +531,14 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   display: inline-flex; align-items: center; min-width: 0;
 }
 .title-editable:hover { background: var(--paper-soft); border-color: var(--line); }
+/* Al editar, el campo ocupa TODO el ancho del título. `flex: 1` no bastaba: en
+   la cabecera de una ficha el contenedor es una columna, así que ese 1 repartía
+   alto y no ancho, y el campo se quedaba en el tamaño por defecto de un input
+   —veinte y pico caracteres— cortando el nombre que estabas escribiendo. */
 .title-input {
   font-family: var(--font-title); font-size: 26px; font-weight: 600;
   padding: 2px 8px; margin-left: -8px; border-radius: var(--radius);
-  border: 1px solid var(--ink); min-width: 260px; flex: 1;
+  border: 1px solid var(--ink); width: 100%; min-width: 0; flex: 1 1 auto;
 }
 
 /* ---------- Cabecera de grupo por espacio ---------- */

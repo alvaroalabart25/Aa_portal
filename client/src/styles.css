@@ -1473,15 +1473,20 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .nt-dia { padding: 12px 0; border-bottom: 1px solid var(--line-suave); }
 .nt-dia:last-child { border-bottom: none; }
 .nt-dia-t { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
-.nt-dia-t b { font-family: var(--font-title); font-weight: 700; font-size: 14px; }
+/* 800, no 700: dentro de una nota también hay negritas, y si la fecha pesa lo
+   mismo que ellas deja de leerse como el encabezado del día. La variable de
+   Bricolage llega a 800 y ahí ya se distingue de un vistazo. */
+.nt-dia-t b { font-family: var(--font-title); font-weight: 800; font-size: 14px; }
 .nt-dia-t em {
   font-style: normal; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase;
   color: var(--paper); background: var(--ink); border-radius: var(--radius); padding: 2px 8px;
 }
 .nt-guardado { margin-left: auto; font-size: 11.5px; color: var(--ink-muted); }
 /* Sin marco: es un bloc, no un formulario. El único borde es el del día. */
+/* Sangrado mínimo: lo justo para que el texto se lea colgando de SU fecha y no
+   como un párrafo que empieza en el mismo sitio que el titular. */
 .nt-dia .notes-editor {
-  border: none; background: none; padding: 0; min-height: 0;
+  border: none; background: none; padding: 0 0 0 6px; min-height: 0;
   font-size: 14.5px; line-height: 1.65;
 }
 .nt-dia .notes-editor:focus { outline: none; box-shadow: none; }
@@ -1499,14 +1504,15 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .bit-dia:last-child { border-bottom: none; }
 .bit-fecha {
   display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px;
-  font-family: var(--font-title); font-weight: 700; font-size: 14px;
+  /* 800 por lo mismo que en el bloc: por encima de las negritas del texto */
+  font-family: var(--font-title); font-weight: 800; font-size: 14px;
 }
 .bit-fecha em {
   font-style: normal; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase;
   color: var(--paper); background: var(--ink); border-radius: var(--radius); padding: 2px 8px;
 }
 .bit-dia .notes-editor {
-  border: none; background: none; padding: 0; min-height: 0;
+  border: none; background: none; padding: 0 0 0 6px; min-height: 0;
   font-size: 14.5px; line-height: 1.65;
 }
 .bit-dia .notes-editor:focus { outline: none; box-shadow: none; }

@@ -97,9 +97,22 @@ export default function TaskTable({
           <b>
             {marcadas.size} {marcadas.size === 1 ? 'tarea' : 'tareas'}
           </b>
-          <label>
+          {/* Con clase propia a propósito: un `label` sin clase lo coge la regla
+              de los campos de formulario —nombre encima, campo a lo ancho— y
+              aquí lo que hace falta es lo contrario, todo en línea. */}
+          <label className="tt-fecha">
             <span>Nueva fecha</span>
-            <input type="date" disabled={moviendo} onChange={(e) => moverTodas(e.target.value || null)} />
+            {/* Solo una fecha COMPLETA mueve nada. En el móvil, el selector va
+                lanzando `change` mientras giras las ruedas y alguno llega con
+                el valor a medias o vacío: con `|| null` eso quitaba la fecha a
+                todas las marcadas y desaparecían del día sin haber elegido. */}
+            <input
+              type="date"
+              disabled={moviendo}
+              onChange={(e) => {
+                if (/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) moverTodas(e.target.value);
+              }}
+            />
           </label>
           <button disabled={moviendo} onClick={() => moverTodas(enDias(0))}>
             Hoy
@@ -110,7 +123,7 @@ export default function TaskTable({
           <button disabled={moviendo} onClick={() => moverTodas(enDias(7))}>
             +1 semana
           </button>
-          <button className="tt-barra-x" onClick={() => setMarcadas(new Set())}>
+          <button className="tt-barra-x" aria-label="Quitar selección" onClick={() => setMarcadas(new Set())}>
             Quitar selección
           </button>
         </div>

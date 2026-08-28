@@ -223,7 +223,29 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   .task-table.con-sel td:nth-child(4) { order: 3; }
   .task-table.con-sel td:nth-child(5) { order: 4; }
   .task-table.con-sel td:nth-child(6) { order: 5; }
-  .tt-barra { position: sticky; bottom: calc(72px + env(safe-area-inset-bottom)); z-index: 40; }
+  /* La barra de lo marcado, flotando encima del menú. FIJA, no pegajosa: una
+     pegajosa ocupa su sitio en la página, así que al marcar la primera tarea
+     todo lo de debajo daba un salto —el «mini scroll» de nada—. Fija no empuja
+     a nadie.
+     Y en dos renglones: arriba cuántas van y la fecha, que es a lo que se
+     viene; abajo los atajos. La ✕ sustituye a «Quitar selección», que en 375 px
+     se comía media línea él solo. */
+  .tt-barra {
+    position: fixed; left: 12px; right: 12px; bottom: calc(72px + env(safe-area-inset-bottom));
+    z-index: 40; margin: 0; padding: 10px 12px; gap: 8px 10px;
+    box-shadow: 0 6px 20px rgba(10, 10, 10, 0.28);
+    /* que el calendario nativo se pinte de noche, como la barra */
+    color-scheme: dark;
+  }
+  .tt-barra b { order: 0; }
+  .tt-barra label { order: 1; }
+  .tt-barra label span { display: none; }
+  .tt-barra input[type='date'] { padding: 4px 8px; }
+  .tt-barra button { order: 2; }
+  /* `.tt-barra button` pesa más que `.tt-barra-x`, así que hay que nombrar los
+     dos para que el texto se apague y quede solo la ✕. */
+  .tt-barra button.tt-barra-x { order: 3; font-size: 0; padding: 4px 8px; }
+  .tt-barra-x::before { content: '✕'; font-size: 14px; }
   .task-table .mc-tarea-x { color: var(--ink-muted); font-size: 16px; padding: 0 2px; }
   .task-table td[data-empty="true"] { display: none; }
   /* El marco es la TARJETA: dentro no hay más marcos. Estado, prioridad, fecha

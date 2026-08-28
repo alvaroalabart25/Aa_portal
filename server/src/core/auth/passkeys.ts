@@ -84,8 +84,12 @@ passkeysRouter.post('/passkeys/register/options', requireAuth, ah(async (req: Au
     userName: user.username,
     userDisplayName: user.username,
     attestationType: 'none',
-    // no permitimos registrar dos veces la misma llave
-    excludeCredentials: previas.map((c) => ({ id: c.credentialId })),
+    // No registrar dos veces la misma llave EN ESTE DISPOSITIVO. El matiz de
+    // `internal` importa: sin él, el navegador puede ponerse a buscar la llave
+    // por el móvil para comprobar si ya la tienes, y en el Mac eso se queda
+    // colgado —«no carga»— cuando la llave vive solo en el iPhone. Con la
+    // pista, mira su propio llavero y si no está, deja registrar una nueva.
+    excludeCredentials: previas.map((c) => ({ id: c.credentialId, transports: ['internal' as Transporte] })),
     authenticatorSelection: {
       residentKey: 'required', // así se puede entrar sin escribir el usuario
       userVerification: 'required', // exige Face ID / huella, no solo presencia
@@ -180,7 +184,7 @@ type Transporte = NonNullable<
 >[number];
 
 passkeysRouter.post('/passkeys/unlock/options', requireAuth, ah(async (req: AuthedRequest, res) => {
-  const r = await opcionesDeLlave(req.userId!);
+  const r = await opcionesDeLlave(req.userId!, req.body?.otro === true);
   if (!r) return res.status(400).json({ error: 'No tienes ninguna llave registrada' });
   res.json(r);
 }));
@@ -192,7 +196,7 @@ passkeysRouter.post('/passkeys/unlock/options', requireAuth, ah(async (req: Auth
  * llave otra vez para abrirse. Está aquí y no duplicado allí porque esto es
  * criptografía: una copia mal hecha es un agujero.
  */
-export async function opcionesDeLlave(userId: number) {
+export async function opcionesDeLlave(userId: number, otroDispositivo = false) {
   const llaves = await db
     .select({ credentialId: webauthnCredentials.credentialId, transports: webauthnCredentials.transports })
     .from(webauthnCredentials)
@@ -204,14 +208,18 @@ export async function opcionesDeLlave(userId: number) {
     userVerification: 'required',
     allowCredentials: llaves.map((k) => {
       const transportes = k.transports?.split(',').filter(Boolean) ?? [];
-      // Si la llave vive en este dispositivo, se ofrece SOLO esa vía. Dejar
-      // también 'hybrid' haría que el iPhone preguntase «¿esta o otro
-      // dispositivo?» en vez de ir derecho a Face ID, que es justo lo que
-      // queremos evitar al desbloquear.
-      const soloLocal = transportes.includes('internal') ? ['internal'] : transportes;
+      // Por defecto, si la llave vive en el dispositivo se ofrece SOLO esa vía:
+      // dejar también 'hybrid' hace que el iPhone pregunte «¿esta o otro
+      // dispositivo?» en vez de ir derecho a Face ID.
+      //
+      // Pero eso deja tirado al ordenador que NO tiene la llave en su llavero:
+      // el navegador dice «no tienes llaves de acceso» y no hay salida. Para
+      // eso está `otroDispositivo`: se ofrecen todas las vías y aparece el
+      // código QR para firmar con el iPhone.
+      const vias = otroDispositivo || !transportes.includes('internal') ? transportes : ['internal'];
       return {
         id: k.credentialId,
-        transports: (soloLocal.length ? soloLocal : undefined) as Transporte[] | undefined,
+        transports: (vias.length ? vias : undefined) as Transporte[] | undefined,
       };
     }),
   });

@@ -76,9 +76,15 @@ function requierePase(req: AuthedRequest, res: import('express').Response, next:
   next();
 }
 
-/** Las opciones para pedir Face ID. Necesita sesión, pero no pase. */
+/**
+ * Las opciones para pedir Face ID. Necesita sesión, pero no pase.
+ *
+ * Con `otro: true` se ofrecen todas las vías y sale el código QR para firmar
+ * con el móvil: es la salida del ordenador que no tiene la llave en su llavero,
+ * que si no se queda en «no tienes llaves de acceso» sin más.
+ */
 personaModule.post('/llave/opciones', ah(async (req: AuthedRequest, res) => {
-  const r = await opcionesDeLlave(req.userId!);
+  const r = await opcionesDeLlave(req.userId!, req.body?.otro === true);
   if (!r) return res.status(400).json({ error: 'Necesitas una llave de acceso registrada para abrir Persona' });
   res.json(r);
 }));

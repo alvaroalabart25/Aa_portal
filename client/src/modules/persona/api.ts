@@ -29,12 +29,19 @@ export const cerrarPersona = () => {
   pase = null;
 };
 
-/** Pide Face ID y guarda el pase si la firma es buena. */
-export async function abrirPersona(): Promise<void> {
+/**
+ * Pide Face ID y guarda el pase si la firma es buena.
+ *
+ * `otroDispositivo` es para el ordenador que no tiene la llave en su llavero:
+ * pide las opciones sin atarlas a este aparato y el navegador saca el código QR
+ * para firmar con el iPhone. Sin eso, el Mac dice «no tienes llaves de acceso»
+ * y no hay por dónde salir.
+ */
+export async function abrirPersona(otroDispositivo = false): Promise<void> {
   const { flowId, options } = await api<{
     flowId: string;
     options: Parameters<typeof startAuthentication>[0]['optionsJSON'];
-  }>('/persona/llave/opciones', { method: 'POST', body: '{}' });
+  }>('/persona/llave/opciones', { method: 'POST', body: JSON.stringify({ otro: otroDispositivo }) });
 
   const response = await startAuthentication({ optionsJSON: options });
   const r = await api<{ pase: string }>('/persona/llave/abrir', {

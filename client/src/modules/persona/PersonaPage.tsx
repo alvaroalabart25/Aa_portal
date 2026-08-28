@@ -73,11 +73,11 @@ export default function PersonaPage() {
     setAbierto(false);
   }
 
-  async function abrir() {
+  async function abrir(otroDispositivo = false) {
     setAbriendo(true);
     setError('');
     try {
-      await abrirPersona();
+      await abrirPersona(otroDispositivo);
       setAbierto(true);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'No se pudo abrir';
@@ -98,9 +98,16 @@ export default function PersonaPage() {
           Lo que escribes aquí es solo tuyo. Se abre con Face ID cada vez, aunque ya hayas entrado en el portal.
         </p>
         {passkeysSoportadas() ? (
-          <button className="btn" disabled={abriendo} onClick={abrir}>
-            {abriendo ? 'Abriendo…' : 'Abrir con Face ID'}
-          </button>
+          <>
+            <button className="btn" disabled={abriendo} onClick={() => abrir()}>
+              {abriendo ? 'Abriendo…' : 'Abrir con Face ID'}
+            </button>
+            {/* Salida para el ordenador que no tiene la llave en su llavero:
+                el navegador saca el QR y se firma con el iPhone. */}
+            <button className="pe-otro" disabled={abriendo} onClick={() => abrir(true)}>
+              Usar otro dispositivo
+            </button>
+          </>
         ) : (
           <p className="muted">Este navegador no tiene Face ID. Entra desde el móvil o registra una llave en Configuración.</p>
         )}

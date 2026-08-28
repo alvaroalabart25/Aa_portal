@@ -14,7 +14,6 @@ import DeudaPage from './modules/autonomo/DeudaPage';
 import BancoPage from './modules/autonomo/BancoPage';
 import RoadmapPage from './modules/roadmap/RoadmapPage';
 import RutinaPage from './modules/routine/RutinaPage';
-import DiarioPage from './modules/health/DiarioPage';
 import PersonaPage from './modules/persona/PersonaPage';
 import SuenosPage from './modules/dreams/SuenosPage';
 import SuenoDetallePage from './modules/dreams/SuenoDetallePage';
@@ -44,7 +43,7 @@ function RequireAuth() {
 const PORTADA: Record<string, string> = {
   agenda: '/agenda',
   org: '/proyectos',
-  salud: '/diario',
+  salud: '/rutina',
   suenos: '/suenos',
   autonomo: '/autonomo/facturas',
   roadmap: '/roadmap',
@@ -107,7 +106,10 @@ export default function App() {
             {/* enlaces antiguos: siguen funcionando */}
             <Route path="/notificaciones" element={<Navigate to="/configuracion?tab=notificaciones" replace />} />
             <Route path="/seguridad" element={<Navigate to="/configuracion" replace />} />
-            <Route path="/diario" element={<DiarioPage />} />
+            {/* El Diario se retiró: pedía demasiado para lo que devolvía sin
+                una app de verdad. Su dirección lleva a Hábitos, que es lo que
+                se queda de aquello: marcar lo que sostiene el día. */}
+            <Route path="/diario" element={<Navigate to="/rutina" replace />} />
             {/* Persona se cierra sola: la página pide Face ID al entrar */}
             <Route path="/persona" element={<PersonaPage />} />
           </Route>

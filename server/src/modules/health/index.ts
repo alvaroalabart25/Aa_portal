@@ -125,16 +125,59 @@ healthModule.get('/checks', ah(async (req: AuthedRequest, res) => {
     .orderBy(desc(healthEntries.id))
     .limit(1);
 
+  // La racha y los últimos siete días: sin eso, marcar es apretar un botón; con
+  // eso, marcar es no romper algo. Se traen 60 días de una vez y se cuenta en
+  // memoria —son cuatro filas por hábito— en vez de una consulta por hábito.
+  const desde = new Date(`${date}T12:00:00`);
+  desde.setDate(desde.getDate() - 59);
+  const historial = await db
+    .select({ checkId: dailyCheckDone.checkId, dia: dailyCheckDone.checkDate })
+    .from(dailyCheckDone)
+    .where(
+      and(
+        eq(dailyCheckDone.userId, req.userId!),
+        gte(dailyCheckDone.checkDate, desde.toISOString().slice(0, 10)),
+        lte(dailyCheckDone.checkDate, date),
+      ),
+    );
+  const porCheck = new Map<number, Set<string>>();
+  for (const h of historial) {
+    if (!porCheck.has(h.checkId)) porCheck.set(h.checkId, new Set());
+    porCheck.get(h.checkId)!.add(String(h.dia).slice(0, 10));
+  }
+  const dia = (n: number) => {
+    const d = new Date(`${date}T12:00:00`);
+    d.setDate(d.getDate() - n);
+    return d.toISOString().slice(0, 10);
+  };
+  /** Días seguidos hasta hoy. Si hoy no está hecho todavía, la racha es la que
+   *  traes de ayer: aún estás a tiempo, no se ha roto nada. */
+  function racha(hechos: Set<string>): number {
+    let n = 0;
+    let i = hechos.has(dia(0)) ? 0 : 1;
+    while (hechos.has(dia(i))) {
+      n += 1;
+      i += 1;
+    }
+    return n;
+  }
+
   res.json({
     date,
-    checks: checks.map((c) => ({
-      id: c.id,
-      title: c.title,
-      emoji: c.emoji,
-      kind: c.kind,
-      done: c.kind === 'peso' ? Boolean(pesoRow) : doneIds.has(c.id),
-      peso: c.kind === 'peso' && pesoRow ? { id: pesoRow.id, value: pesoRow.value, time: pesoRow.entryTime } : null,
-    })),
+    checks: checks.map((c) => {
+      const hechos = porCheck.get(c.id) ?? new Set<string>();
+      return {
+        id: c.id,
+        title: c.title,
+        emoji: c.emoji,
+        kind: c.kind,
+        done: c.kind === 'peso' ? Boolean(pesoRow) : doneIds.has(c.id),
+        racha: c.kind === 'peso' ? 0 : racha(hechos),
+        // de más antiguo a hoy, para pintarlos en ese orden
+        semana: [6, 5, 4, 3, 2, 1, 0].map((n) => ({ dia: dia(n), hecho: hechos.has(dia(n)) })),
+        peso: c.kind === 'peso' && pesoRow ? { id: pesoRow.id, value: pesoRow.value, time: pesoRow.entryTime } : null,
+      };
+    }),
   });
 }));
 

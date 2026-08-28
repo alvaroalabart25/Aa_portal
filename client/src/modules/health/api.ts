@@ -35,6 +35,10 @@ export interface DailyCheck {
   emoji: string;
   kind: 'plain' | 'peso';
   done: boolean;
+  /** Días seguidos hasta hoy. Si hoy no está hecho, la que traes de ayer. */
+  racha: number;
+  /** Los últimos siete días, del más antiguo a hoy. */
+  semana: { dia: string; hecho: boolean }[];
   peso: { id: number; value: number | null; time: string | null } | null;
 }
 

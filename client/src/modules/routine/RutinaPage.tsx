@@ -1,37 +1,27 @@
-import { useState } from 'react';
-import EnDesarrollo from '../../components/EnDesarrollo';
-import MiDiaTab from './MiDiaTab';
-import RutinaEventosTab from './RutinaEventosTab';
+import HabitosTab from './HabitosTab';
 
-// Página Rutina (Salud): el PLAN — "Mi día" (evolución + checks + plantilla
-// semanal) y "Eventos" (catálogo, compartido con el Diario). La realidad vive
-// en Salud · Diario; la tab Realidad (RealidadTab) queda dormida hasta que
-// toque enfrentar plan y realidad.
+/**
+ * Rutina: los microhábitos que hacen tu día.
+ *
+ * Antes esto era un plan —plantilla semanal, franjas, checks por hora— y era
+ * demasiado trabajo para lo que devolvía. Ahora es lo que de verdad se sostiene:
+ * beber agua, escribir, pasear. Sin horas y sin planificar; solo «hoy he hecho
+ * esto y esto».
+ *
+ * El trabajo de decidir QUIÉN quieres ser —y qué hábitos salen de ahí— llegará.
+ * Primero, el hábito de mapear los hábitos y marcarlos.
+ */
 export default function RutinaPage() {
-  const [sub, setSub] = useState<'dia' | 'eventos'>('dia');
-
   return (
     <div>
       <div className="page-head">
-        <h1>Rutina</h1>
-        <div className="seg" role="tablist">
-          <button role="tab" aria-selected={sub === 'dia'} className={sub === 'dia' ? 'active' : ''} onClick={() => setSub('dia')}>
-            Mi día
-          </button>
-          <button role="tab" aria-selected={sub === 'eventos'} className={sub === 'eventos' ? 'active' : ''} onClick={() => setSub('eventos')}>
-            Eventos
-          </button>
-        </div>
+        <h1>Hábitos</h1>
       </div>
+      <p className="page-sub">
+        Lo pequeño que sostiene el día. Sin horas y sin plan: solo lo que has hecho hoy.
+      </p>
 
-      <p className="page-sub">El plan de tu día a día: tus checks y tu plantilla semanal.</p>
-
-      <EnDesarrollo>
-        Pendiente de darle una vuelta: la plantilla semanal es demasiado trabajo para lo que devuelve. La idea es que
-        el plan salga en buena parte de lo que el Diario ya registra, en vez de tener que escribirlo a mano.
-      </EnDesarrollo>
-
-      {sub === 'dia' ? <MiDiaTab /> : <RutinaEventosTab />}
+      <HabitosTab />
     </div>
   );
 }

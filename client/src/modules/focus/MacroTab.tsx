@@ -4,6 +4,7 @@ import Modal from '../../components/Modal';
 import { tasksApi } from '../tasks/api';
 import TaskTable from '../tasks/TaskTable';
 import BloqueGimnasio from '../gym/BloqueGimnasio';
+import HabitosDeHoy from '../routine/HabitosDeHoy';
 import type { Task } from '../tasks/types';
 import {
   focusApi,
@@ -336,6 +337,7 @@ function BloqueConstancia({
   // El «+ Libro» de la cabecera es por dónde vuelven cuando toque.
   const hayLibros = libros.length > 0;
 
+
   return (
     <section className="section mc-bloque oscuro">
       <div className="mc-head">
@@ -347,7 +349,9 @@ function BloqueConstancia({
         )}
       </div>
 
-      <div className={`mc-cols${hayLibros ? '' : ' dos'}`}>
+      <div className="mc-cols">
+        {/* Los hábitos, delante: son lo que se toca todos los días */}
+        <HabitosDeHoy />
         <ColumnaDiaria kind="formacion" items={formaciones} onCrear={onCrear} onCambio={onCambio} />
         {hayLibros && <ColumnaDiaria kind="libro" items={libros} onCrear={onCrear} onCambio={onCambio} />}
 

@@ -1185,8 +1185,10 @@ label:not([class]) > span + textarea { display: block; width: 100%; }
 .mc-portada-d { flex: 1 0 100%; margin: 0; font-size: 13.5px; color: var(--ink-soft); }
 
 /* ---------- Constancia: tres columnas de lo que se sostiene ---------- */
-.mc-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px 18px; margin-top: 14px; }
-.mc-cols.dos { grid-template-columns: repeat(2, 1fr); }
+/* Las columnas se acomodan solas: dos, tres o cuatro según lo que haya activo
+   ese mes. Con un ancho mínimo por columna, en el móvil se apilan sin regla
+   aparte y no hay que tocar nada al añadir o quitar una. */
+.mc-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px 18px; margin-top: 14px; }
 .mc-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 /* El nombre de cada cosa manda dentro de su columna: es el titular de lo que
    estás sosteniendo, no una etiqueta de campo. */
@@ -1209,10 +1211,7 @@ label:not([class]) > span + textarea { display: block; width: 100%; }
 /* Dentro de una columna las tarjetas mandan poco: son un gesto, no una ficha */
 .mc-col .mk { padding: 12px 14px; }
 @media (max-width: 900px) {
-  /* `.dos` pesa más que `.mc-cols`, así que hay que nombrarlo también o en el
-     móvil se queda en dos columnas de 150 px. */
-  .mc-cols,
-  .mc-cols.dos { grid-template-columns: 1fr; gap: 22px; }
+  .mc-cols { grid-template-columns: 1fr; gap: 22px; }
   .mc-portada-t h2 { font-size: 25px; }
 }
 /* el primer bloque va pegado a la línea del mes: el aire es para SEPARAR
@@ -1562,6 +1561,98 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 /* La barra solo aparece en el día que se escribe, y va debajo del título */
 .nt-dia .notes-toolbar { margin: 0 0 8px; }
 .notes-estado { margin-left: auto; font-size: 11.5px; color: var(--ink-muted); align-self: center; }
+
+/* ---------- Hábitos: lo pequeño que sostiene el día ----------
+   Marcar tiene que dar gusto, así que no es un checkbox: el círculo se dibuja,
+   la fila se ilumina un momento y la racha sube delante de ti. */
+.hb-cuenta {
+  display: flex; align-items: baseline; gap: 8px; margin: 16px 0 14px;
+  transition: color .2s;
+}
+.hb-cuenta b { font-family: var(--font-title); font-size: 30px; font-weight: 700; line-height: 1; }
+.hb-cuenta span { font-size: 13.5px; color: var(--ink-muted); }
+.hb-cuenta.completo { color: var(--verde); }
+.hb-cuenta.completo b { animation: hb-salto .5s ease-out; }
+.hb-cuenta.completo span { color: var(--verde); font-weight: 600; }
+@keyframes hb-salto {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+.hb-lista { display: flex; flex-direction: column; gap: 8px; }
+.hb {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  border: 1px solid var(--line); border-radius: var(--r-md); background: var(--paper);
+  padding: 12px 14px; cursor: pointer; color: inherit;
+  transition: border-color .15s, background .3s;
+}
+.hb:hover { border-color: var(--ink-muted); }
+/* La marca: un círculo que se rellena y un palote que se dibuja solo */
+.hb-marca {
+  flex: none; width: 26px; height: 26px; border-radius: 50%;
+  border: 1.5px solid var(--line); color: transparent;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background .18s, border-color .18s, color .18s;
+}
+.hb-marca svg path { stroke-dasharray: 24; stroke-dashoffset: 24; }
+.hb.hecho .hb-marca { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.hb.hecho .hb-marca svg path { stroke-dashoffset: 0; transition: stroke-dashoffset .28s ease-out .06s; }
+.hb-emoji { flex: none; font-size: 19px; line-height: 1; }
+.hb-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.hb-t { font-family: var(--font-title); font-weight: 600; font-size: 15px; }
+.hb.hecho .hb-t { color: var(--ink-muted); }
+.hb-sub { font-size: 12px; color: var(--ink-muted); }
+/* Los siete días, del más viejo a hoy */
+.hb-semana { flex: none; display: flex; gap: 3px; }
+.hb-semana i { width: 6px; height: 6px; border-radius: 50%; background: var(--line); }
+.hb-semana i.si { background: var(--ink); }
+/* El momento de marcarlo: un destello y ya. Nada que haya que esperar. */
+.hb.celebra { animation: hb-destello .7s ease-out; }
+@keyframes hb-destello {
+  0% { background: var(--paper); transform: scale(1); }
+  18% { background: var(--verde-fondo); border-color: var(--verde-linea); transform: scale(1.012); }
+  100% { background: var(--paper); transform: scale(1); }
+}
+
+/* El pesaje no se marca a mano: se cumple al pesarte. Que no parezca un botón
+   que no hace nada. */
+.hb.solo { cursor: default; }
+.hb.solo:hover { border-color: var(--line); }
+.hb-mas { margin-top: 12px; }
+.hb-nuevo { margin-top: 12px; border: 1px dashed var(--line); border-radius: var(--r-md); padding: 12px 14px; }
+.hb-emojis { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.hb-emoji-op {
+  font-size: 17px; line-height: 1; padding: 5px 7px; border-radius: var(--radius);
+  border: 1px solid transparent; background: none; cursor: pointer;
+}
+.hb-emoji-op.puesto { border-color: var(--ink); background: var(--paper-soft); }
+.hb-nuevo-fila { display: flex; gap: 8px; flex-wrap: wrap; }
+.hb-nuevo-fila input { flex: 1 1 200px; min-width: 0; }
+/* Quitar un hábito no es una acción del día a día: va al final y en pequeño */
+.hb-quitar { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 26px; }
+.hb-quitar button {
+  font: inherit; font-size: 11.5px; color: var(--ink-muted); background: none;
+  border: 1px solid var(--line-suave); border-radius: var(--radius); padding: 3px 9px; cursor: pointer;
+}
+.hb-quitar button:hover { color: var(--danger); border-color: #eed4d4; }
+
+/* Los hábitos en la portada del mes: pastillas, no lista. */
+.hh { display: flex; flex-wrap: wrap; gap: 6px; }
+.hh-p {
+  display: inline-flex; align-items: center; gap: 6px;
+  font: inherit; font-size: 12.5px; cursor: pointer;
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--paper); color: var(--ink); padding: 5px 10px;
+  transition: background .25s, border-color .15s, color .15s;
+}
+.hh-p:hover { border-color: var(--ink-muted); }
+/* Hecho: se apaga y se tacha. Sigue ahí —ver lo hecho es media gracia— pero
+   deja de pedir nada. */
+.hh-p.hecho { color: var(--ink-muted); border-color: var(--line-suave); text-decoration: line-through; }
+.hh-p.hecho span { filter: grayscale(1); opacity: .7; }
+.hh-mas { align-self: center; font-size: 12px; color: var(--ink-muted); }
+.hh.completo .hh-p { border-color: var(--verde-linea); }
 
 /* ---------- Persona: el diario de conocerse ----------
    Cerrado con llave. La pantalla de fuera no enseña NADA de lo que hay dentro

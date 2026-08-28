@@ -487,28 +487,12 @@ bancoRouter.post('/sincronizar/:id(\\d+)', ah(async (req: AuthedRequest, res) =>
       for (const m of movimientos) {
         // Sin referencia del banco no hay forma de saber si ya lo tenemos: se
         // compone una con lo que sí es estable. Mejor eso que duplicar.
-        const sintetica = `${m.booking_date ?? ''}|${m.transaction_amount?.amount ?? ''}|${(m.remittance_information ?? []).join(' ').slice(0, 40)}`;
-        const referencia = m.entry_reference ?? sintetica;
+        const referencia =
+          m.entry_reference ??
+          `${m.booking_date ?? ''}|${m.transaction_amount?.amount ?? ''}|${(m.remittance_information ?? []).join(' ').slice(0, 40)}`;
         const importe = m.transaction_amount?.amount;
         if (!importe) continue;
         vistas.push(referencia.slice(0, 140));
-
-        // Un movimiento PENDIENTE llega sin referencia del banco, así que se
-        // guardó con la sintética; cuando se contabiliza, el banco ya le pone
-        // una de verdad y la clave única deja de reconocerlo: se duplicaría, y
-        // con él un cobro entero. Antes de insertar, si ahora hay referencia
-        // real, se le pone a la fila que ya existía con la sintética.
-        if (m.entry_reference && m.entry_reference !== sintetica) {
-          await db
-            .update(bankTransactions)
-            .set({ entryReference: m.entry_reference.slice(0, 140) })
-            .where(
-              and(
-                eq(bankTransactions.accountId, cuenta.id),
-                eq(bankTransactions.entryReference, sintetica.slice(0, 140)),
-              ),
-            );
-        }
 
         const concepto = (m.remittance_information ?? []).join(' ').slice(0, 500) || null;
         const codigoBanco = m.bank_transaction_code?.code?.slice(0, 40) ?? null;
@@ -545,14 +529,20 @@ bancoRouter.post('/sincronizar/:id(\\d+)', ah(async (req: AuthedRequest, res) =>
         if (r.affectedRows === 1) nuevos += 1;
       }
 
-      // Un pendiente es EFÍMERO: el banco devuelve los que siguen pendientes, y
-      // el día que se contabiliza vuelve con otra referencia, otra fecha o
-      // hasta otro concepto —«COMPRA TARJETA» pasa a ser el nombre del
-      // comercio—. Adoptar la fila vieja solo funciona si nada de eso cambia,
-      // así que hace falta la red de abajo: lo que teníamos como pendiente y ya
-      // no viene en esta respuesta, o se contabilizó (y el bueno acaba de
-      // entrar) o se anuló. En los dos casos nuestra copia sobra, y si se queda
-      // infla los ingresos del ciclo y hunde la reconstrucción del patrimonio.
+      // Un pendiente es EFÍMERO, y esa es la única regla fiable aquí. Cuando se
+      // contabiliza puede volver con otra referencia, otra fecha —pendiente el
+      // sábado, contabilizado el lunes— o hasta otro concepto, así que
+      // reconocerlo por parecido es adivinar. Lo que sí se sabe: el banco
+      // devuelve en cada pasada los que SIGUEN pendientes. El que teníamos y ya
+      // no viene, o se contabilizó (y el bueno acaba de entrar con su
+      // referencia buena) o se anuló. En los dos casos nuestra copia sobra, y
+      // si se queda infla los ingresos del ciclo y hunde la reconstrucción del
+      // patrimonio.
+      //
+      // Barrer y volver a insertar, nunca reescribir la referencia de la fila
+      // vieja: al contabilizarse, el bueno YA está guardado con esa referencia
+      // y el intento choca con la clave única —que fue justo lo que dejó a
+      // Santander sin poder sincronizar—.
       //
       // Solo dentro de la ventana que se ha pedido, y solo si el banco ha
       // devuelto algo: con una respuesta vacía —un fallo, un cupo agotado— no

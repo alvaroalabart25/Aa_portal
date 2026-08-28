@@ -264,6 +264,8 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .tk-vence { display: flex; align-items: center; gap: 12px; }
 .tk-vence input { flex: 0 0 auto; width: auto; }
 .tk-aplazos { flex: 1 1 130px; min-width: 0; margin: 0; font-size: 12.5px; line-height: 1.4; color: var(--ink-muted); }
+
+
 .tk-aplazos.bola { color: #b0640b; }
 
 /* Día de la agenda: el título y su «+ Nueva», en la misma línea */
@@ -3113,4 +3115,32 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .legal-pie {
   display: flex; align-items: center; gap: 10px; margin-top: 44px;
   padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-muted);
+}
+
+/* La cabecera de una tarea en el MÓVIL: estado, prioridad y vencimiento.
+   Dejan de ser tres cajas sueltas de alturas distintas y pasan a ser una sola
+   lista dentro de un marco —etiqueta a la izquierda, control a la derecha—,
+   con el mismo alto. Va al FINAL del fichero a propósito: las reglas base
+   de `.form-grid` y `.tk-vence` están más abajo que el bloque de móvil y lo
+   pisaban —una media query no añade especificidad, solo cuenta el orden—. */
+@media (max-width: 720px) {
+  .form-grid {
+    display: flex; flex-direction: column; gap: 0; align-items: stretch;
+    border: 1px solid var(--line); border-radius: 12px; padding: 0 14px; margin-top: 16px;
+  }
+  .form-grid > div {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; padding: 11px 0;
+    border-bottom: 1px solid var(--line-suave);
+  }
+  .form-grid > div:last-child { border-bottom: none; }
+  .form-grid label { margin: 0; flex: 0 0 auto; font-size: 13px; color: var(--ink-muted); font-weight: 500; }
+  .form-grid select, .form-grid input { min-height: 38px; }
+  .form-grid .status-btn { min-height: 38px; }
+
+  /* El vencimiento: la fecha a la derecha y el aviso debajo, a todo lo ancho.
+     `flex-basis: 100%` lo baja a su propio renglón dentro de la celda; sin eso
+     empuja al campo fuera del marco. */
+  .form-grid .tk-vence { flex: 1 1 auto; min-width: 0; justify-content: flex-end; flex-wrap: wrap; }
+  .form-grid .tk-aplazos { flex: 1 0 100%; text-align: right; margin-top: 4px; }
 }

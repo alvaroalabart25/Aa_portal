@@ -74,7 +74,9 @@ function fallo(e: unknown): { status: number; error: string } {
   if (/HUB046|\(429\)/.test(mensaje)) {
     return {
       status: 429,
-      error: 'El banco solo permite unas cuantas consultas al día y hoy ya están gastadas. Mañana vuelve a funcionar solo.',
+      // No decir «mañana»: la espera es de HORAS_DE_ESPERA horas y la pantalla
+      // enseña la hora exacta al lado. Decir mañana hacía que ni se intentara.
+      error: `El banco solo permite unas cuantas consultas al día y ahora mismo están gastadas. Se puede volver a intentar en unas ${HORAS_DE_ESPERA} horas.`,
     };
   }
   // El consentimiento caducado se arregla volviendo a autorizar, no esperando

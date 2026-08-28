@@ -237,14 +237,17 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
     /* que el calendario nativo se pinte de noche, como la barra */
     color-scheme: dark;
   }
-  .tt-barra b { order: 0; }
-  .tt-barra label { order: 1; }
-  .tt-barra label span { display: none; }
-  .tt-barra input[type='date'] { padding: 4px 8px; }
-  .tt-barra button { order: 2; }
+  /* Arriba, la frase entera: «Mover 2 tareas a [fecha] [Mover]». Abajo, los
+     atajos y la ✕. Es el orden en el que se decide. */
+  .tt-que { order: 0; flex: 0 0 auto; font-size: 12.5px; }
+  /* El campo se lleva lo que sobra del primer renglón: así «Mover 2 tareas a
+     [fecha] [Mover]» cabe entero y los atajos bajan solos al siguiente. */
+  .tt-barra input[type='date'] { order: 1; flex: 1 1 90px; min-width: 0; padding: 4px 6px; }
+  .tt-mover { order: 2; flex: 0 0 auto; padding: 4px 9px; }
+  .tt-barra button { order: 3; }
   /* `.tt-barra button` pesa más que `.tt-barra-x`, así que hay que nombrar los
      dos para que el texto se apague y quede solo la ✕. */
-  .tt-barra button.tt-barra-x { order: 3; font-size: 0; padding: 4px 8px; }
+  .tt-barra button.tt-barra-x { order: 4; font-size: 0; padding: 4px 8px; }
   .tt-barra-x::before { content: '✕'; font-size: 14px; }
   .task-table .mc-tarea-x { color: var(--ink-muted); font-size: 16px; padding: 0 2px; }
   .task-table td[data-empty="true"] { display: none; }
@@ -1572,8 +1575,10 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
   background: var(--ink); color: var(--paper); border-radius: var(--r-md); font-size: 13px;
 }
 .tt-barra b { font-family: var(--font-title); font-weight: 600; }
-.tt-barra label { display: flex; align-items: center; gap: 7px; margin: 0; }
-.tt-barra label span { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; opacity: .7; }
+/* «Mover 2 tareas a …»: la frase dice qué va a pasar, así que el campo de al
+   lado no necesita etiqueta ni el botón explicación. */
+.tt-que { white-space: nowrap; }
+.tt-mover { font-weight: 600; }
 .tt-barra input[type="date"] {
   font: inherit; font-size: 12.5px; padding: 3px 8px; border-radius: var(--radius);
   border: 1px solid rgba(255, 255, 255, .35); background: none; color: var(--paper);

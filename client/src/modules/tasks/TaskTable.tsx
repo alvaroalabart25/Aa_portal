@@ -38,6 +38,8 @@ export default function TaskTable({
   // tiene que decir que quiere las casillas.
   const [marcadas, setMarcadas] = useState<Set<number>>(new Set());
   const [moviendo, setMoviendo] = useState(false);
+  // La fecha elegida a mano, esperando a que se pulse «Mover»
+  const [fecha, setFecha] = useState('');
 
   // Si la lista cambia (se recarga, se filtra), se olvida lo que ya no está:
   // arrastrar una selección invisible es la forma de tocar lo que no querías.
@@ -73,6 +75,7 @@ export default function TaskTable({
     try {
       await Promise.all([...marcadas].map((id) => tasksApi.update(id, { dueDate })));
       setMarcadas(new Set());
+      setFecha('');
       onChanged();
     } finally {
       setMoviendo(false);
@@ -94,26 +97,33 @@ export default function TaskTable({
     <>
       {seleccionable && marcadas.size > 0 && (
         <div className="tt-barra">
-          <b>
-            {marcadas.size} {marcadas.size === 1 ? 'tarea' : 'tareas'}
-          </b>
-          {/* Con clase propia a propósito: un `label` sin clase lo coge la regla
-              de los campos de formulario —nombre encima, campo a lo ancho— y
-              aquí lo que hace falta es lo contrario, todo en línea. */}
-          <label className="tt-fecha">
-            <span>Nueva fecha</span>
-            {/* Solo una fecha COMPLETA mueve nada. En el móvil, el selector va
-                lanzando `change` mientras giras las ruedas y alguno llega con
-                el valor a medias o vacío: con `|| null` eso quitaba la fecha a
-                todas las marcadas y desaparecían del día sin haber elegido. */}
-            <input
-              type="date"
-              disabled={moviendo}
-              onChange={(e) => {
-                if (/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) moverTodas(e.target.value);
-              }}
-            />
-          </label>
+          <span className="tt-que">
+            Mover{' '}
+            <b>
+              {marcadas.size} {marcadas.size === 1 ? 'tarea' : 'tareas'}
+            </b>{' '}
+            a
+          </span>
+          {/* El calendario NO mueve nada al vuelo. En el móvil, el selector va
+              lanzando `change` mientras giras las ruedas: aplicarlo a la
+              primera cerraba la barra a mitad de elegir —«no puedo seleccionar
+              las fechas»— y antes, con un valor a medias, hasta les quitaba la
+              fecha. Aquí solo se apunta; mueve el botón de al lado. */}
+          <input
+            className="tt-fecha"
+            type="date"
+            value={fecha}
+            disabled={moviendo}
+            aria-label="Nueva fecha"
+            onChange={(e) => setFecha(e.target.value)}
+          />
+          <button
+            className="tt-mover"
+            disabled={moviendo || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)}
+            onClick={() => moverTodas(fecha)}
+          >
+            Mover
+          </button>
           <button disabled={moviendo} onClick={() => moverTodas(enDias(0))}>
             Hoy
           </button>

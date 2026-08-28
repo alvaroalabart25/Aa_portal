@@ -80,8 +80,13 @@ export default function PersonaPage() {
       await abrirPersona(otroDispositivo);
       setAbierto(true);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'No se pudo abrir';
-      setError(/NotAllowed|abort/i.test(msg) ? 'Se canceló' : msg);
+      const err = e as Error;
+      if (err.name === 'NotAllowedError') {
+        setError('Se canceló, o este aparato no tiene tu llave. Prueba «Usar otro dispositivo».');
+      } else {
+        // El nombre del error delante: es lo que dice qué ha pasado de verdad.
+        setError(`${err.name ? `${err.name}: ` : ''}${err.message || 'No se pudo abrir'}`);
+      }
     } finally {
       setAbriendo(false);
     }

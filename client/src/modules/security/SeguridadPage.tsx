@@ -47,8 +47,16 @@ function LlavesDeAcceso() {
         setMsg('Este dispositivo ya tiene llave (te ha llegado por iCloud). Puedes entrar con Touch ID sin registrar nada.');
       } else if (err.name === 'NotAllowedError') {
         setMsg('Cancelado.');
+      } else if (err.name === 'NotSupportedError' || err.name === 'ConstraintError') {
+        // Safari solo guarda llaves en el llavero de iCloud: sin él activado,
+        // no hay dónde meterla por mucho que el Mac tenga Touch ID.
+        setMsg(
+          'Este navegador no puede guardar la llave. En Safari hace falta el llavero de iCloud activado; prueba también con Chrome.',
+        );
       } else {
-        setMsg(err.message || 'No se pudo registrar');
+        // El nombre del error va delante a propósito: «NotReadableError» dice
+        // muchísimo más que «no se pudo», y es lo primero que se pregunta.
+        setMsg(`${err.name ? `${err.name}: ` : ''}${err.message || 'No se pudo registrar'}`);
       }
     } finally {
       setBusy(false);

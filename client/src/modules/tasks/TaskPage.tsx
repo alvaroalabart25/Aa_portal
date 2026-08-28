@@ -108,20 +108,24 @@ export default function TaskPage() {
         </div>
         <div>
           <label htmlFor="t-due">Vencimiento</label>
-          <input
-            id="t-due"
-            type="date"
-            value={task.dueDate ?? ''}
-            onChange={(e) => update({ dueDate: e.target.value || null })}
-          />
-          {/* El dato honesto de esta ficha: cuántas veces la he empujado. Solo
-              cuenta empujarla hacia adelante, no cada vez que toco la fecha. */}
-          {!!task.postponedCount && (
-            <p className={`tk-aplazos${task.postponedCount >= 4 ? ' bola' : ''}`}>
-              Aplazada {task.postponedCount} {task.postponedCount === 1 ? 'vez' : 'veces'}
-              {task.lastPostponedAt && ` · la última, el ${fechaCorta(task.lastPostponedAt)}`}
-            </p>
-          )}
+          {/* La fecha y su historia en la misma línea: el aviso es sobre ESA
+              fecha, y debajo parecía una nota al pie de todo el formulario. */}
+          <div className="tk-vence">
+            <input
+              id="t-due"
+              type="date"
+              value={task.dueDate ?? ''}
+              onChange={(e) => update({ dueDate: e.target.value || null })}
+            />
+            {/* El dato honesto de esta ficha: cuántas veces la he empujado. Solo
+                cuenta empujarla hacia adelante, no cada vez que toco la fecha. */}
+            {!!task.postponedCount && (
+              <p className={`tk-aplazos${task.postponedCount >= 4 ? ' bola' : ''}`}>
+                Aplazada {task.postponedCount} {task.postponedCount === 1 ? 'vez' : 'veces'}
+                {task.lastPostponedAt && ` · la última, el ${fechaCorta(task.lastPostponedAt)}`}
+              </p>
+            )}
+          </div>
         </div>
       </div>
 

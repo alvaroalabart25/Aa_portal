@@ -44,7 +44,7 @@ export default function TasksPage() {
 
       <EventsRadar scope="space" />
       <div style={{ marginTop: 12 }}>
-        <TaskTable tasks={tasks} onChanged={load} />
+        <TaskTable tasks={tasks} onChanged={load} seleccionable />
       </div>
 
       {adding && <AddTaskModal onClose={() => setAdding(false)} onCreated={load} />}

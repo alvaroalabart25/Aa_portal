@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { tasksApi } from './api';
 import { Aplazada, DueDateEdit, PrioritySelect, SpaceTag, StatusSelect } from './components';
@@ -11,6 +11,7 @@ export default function TaskTable({
   showProject = true,
   onChanged,
   acciones,
+  seleccionable = false,
 }: {
   tasks: Task[];
   showProject?: boolean;
@@ -18,6 +19,8 @@ export default function TaskTable({
   /** Un control extra al final de cada fila, para quien lo necesite (quitar la
    *  tarea de un objetivo, por ejemplo). Sin él, la tabla es la de siempre. */
   acciones?: (t: Task) => ReactNode;
+  /** Casillas para marcar varias y cambiarles la fecha de una vez. */
+  seleccionable?: boolean;
 }) {
   const navigate = useNavigate();
   // Desde dónde se abre la tarea. La tabla no sabe en qué pantalla vive, pero
@@ -31,12 +34,101 @@ export default function TaskTable({
     onChanged();
   }
 
+  // Lo marcado vive aquí dentro: la tabla se basta sola y quien la usa solo
+  // tiene que decir que quiere las casillas.
+  const [marcadas, setMarcadas] = useState<Set<number>>(new Set());
+  const [moviendo, setMoviendo] = useState(false);
+
+  // Si la lista cambia (se recarga, se filtra), se olvida lo que ya no está:
+  // arrastrar una selección invisible es la forma de tocar lo que no querías.
+  const ids = tasks.map((t) => t.id).join(',');
+  useEffect(() => {
+    setMarcadas((s) => {
+      const vivos = new Set(tasks.map((t) => t.id));
+      const quedan = [...s].filter((id) => vivos.has(id));
+      return quedan.length === s.size ? s : new Set(quedan);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ids]);
+
+  function marcar(id: number, si: boolean) {
+    setMarcadas((s) => {
+      const n = new Set(s);
+      if (si) n.add(id);
+      else n.delete(id);
+      return n;
+    });
+  }
+
+  /**
+   * Cambiar la fecha de todas las marcadas.
+   *
+   * Van en paralelo y CADA UNA por su endpoint de siempre: así el contador de
+   * aplazamientos cuenta como debe —seis tareas empujadas son seis aplazos— en
+   * vez de inventar una vía rápida que se salte las reglas.
+   */
+  async function moverTodas(dueDate: string | null) {
+    if (!marcadas.size || moviendo) return;
+    setMoviendo(true);
+    try {
+      await Promise.all([...marcadas].map((id) => tasksApi.update(id, { dueDate })));
+      setMarcadas(new Set());
+      onChanged();
+    } finally {
+      setMoviendo(false);
+    }
+  }
+
+  /** Hoy + n días, en la zona del navegador. */
+  function enDias(n: number): string {
+    const d = new Date();
+    d.setDate(d.getDate() + n);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
   if (tasks.length === 0) return <div className="empty">No hay tareas aquí.</div>;
 
+  const todas = marcadas.size === tasks.length && tasks.length > 0;
+
   return (
-    <table className="table task-table">
+    <>
+      {seleccionable && marcadas.size > 0 && (
+        <div className="tt-barra">
+          <b>
+            {marcadas.size} {marcadas.size === 1 ? 'tarea' : 'tareas'}
+          </b>
+          <label>
+            <span>Nueva fecha</span>
+            <input type="date" disabled={moviendo} onChange={(e) => moverTodas(e.target.value || null)} />
+          </label>
+          <button disabled={moviendo} onClick={() => moverTodas(enDias(0))}>
+            Hoy
+          </button>
+          <button disabled={moviendo} onClick={() => moverTodas(enDias(1))}>
+            Mañana
+          </button>
+          <button disabled={moviendo} onClick={() => moverTodas(enDias(7))}>
+            +1 semana
+          </button>
+          <button className="tt-barra-x" onClick={() => setMarcadas(new Set())}>
+            Quitar selección
+          </button>
+        </div>
+      )}
+
+    <table className={`table task-table${seleccionable ? ' con-sel' : ''}`}>
       <thead>
         <tr>
+          {seleccionable && (
+            <th style={{ width: '3%' }}>
+              <input
+                type="checkbox"
+                checked={todas}
+                aria-label={todas ? 'Desmarcar todas' : 'Marcar todas'}
+                onChange={(e) => setMarcadas(e.target.checked ? new Set(tasks.map((t) => t.id)) : new Set())}
+              />
+            </th>
+          )}
           <th style={{ width: '14%' }}>Estado</th>
           <th>Nombre</th>
           <th style={{ width: '12%' }}>Vencimiento</th>
@@ -49,7 +141,7 @@ export default function TaskTable({
         {tasks.map((t) => (
           <tr
             key={t.id}
-            className="row"
+            className={`row${marcadas.has(t.id) ? ' marcada' : ''}`}
             onClick={(e) => {
               // Los controles de la fila (estado, fecha, prioridad) se manejan
               // solos. Antes esto se hacía parando la propagación en la CELDA
@@ -60,6 +152,16 @@ export default function TaskTable({
               navigate(`/tareas/${t.id}`, { state: { volverA } });
             }}
           >
+            {seleccionable && (
+              <td className="tt-sel">
+                <input
+                  type="checkbox"
+                  checked={marcadas.has(t.id)}
+                  aria-label={`Marcar ${t.title}`}
+                  onChange={(e) => marcar(t.id, e.target.checked)}
+                />
+              </td>
+            )}
             <td>
               <StatusSelect value={t.status} onChange={(s) => changeStatus(t, s)} />
             </td>
@@ -100,5 +202,6 @@ export default function TaskTable({
         ))}
       </tbody>
     </table>
+    </>
   );
 }

@@ -93,12 +93,12 @@ function AgendaSection({
       {split ? (
         <>
           <h3 className="prio-sub high">↑ Prioridad alta · {high.length}</h3>
-          <TaskTable tasks={high} onChanged={onChanged} />
+          <TaskTable tasks={high} onChanged={onChanged} seleccionable />
           <h3 className="prio-sub">Media y baja · {rest.length}</h3>
-          <TaskTable tasks={rest} onChanged={onChanged} />
+          <TaskTable tasks={rest} onChanged={onChanged} seleccionable />
         </>
       ) : (
-        <TaskTable tasks={tasks} onChanged={onChanged} />
+        <TaskTable tasks={tasks} onChanged={onChanged} seleccionable />
       )}
     </section>
   );

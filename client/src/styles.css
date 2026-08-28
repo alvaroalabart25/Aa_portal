@@ -255,7 +255,10 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
     margin-bottom: 2px;
   }
   .task-table .tt-proy::after { content: none; }
-  .task-table .tt-nombre { font-size: 14px; }
+  /* El nombre (con su proyecto encima) es el bloque que se lee primero: un
+     pelín de aire arriba y abajo lo separa del estado y de la línea de datos,
+     y la tarjeta deja de leerse como tres renglones pegados. */
+  .task-table .tt-nombre { font-size: 14px; margin: 2px 0; }
 
   /* Tablas de datos (Cuentas/Trimestrales): scroll horizontal con la
      primera columna fija, en vez de apilar las celdas */

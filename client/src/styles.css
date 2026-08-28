@@ -272,19 +272,22 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
    al lado del campo— antes que caerse debajo, que es donde no se lee como lo
    que es: una advertencia sobre ESA fecha. */
 /* ---------- La cabecera de un detalle ----------
-   De una pieza. Antes eran tres renglones grises flotando uno sobre otro —las
-   migas, el antetítulo y el título— y debajo, suelta, la tira de datos. Ahora
-   una línea de color a la izquierda los cose a los cuatro, y ese color es el
-   del ESPACIO: es la única fuente de color del portal y no llegaba hasta aquí,
-   que es donde más falta hacía para saber dónde estás. */
-.fh { display: flex; gap: 16px; }
-.fh::before {
-  content: ''; flex: 0 0 3px; border-radius: var(--r-bar);
-  background: var(--c, var(--ink));
+   Una banda negra a lo ancho de la página, con todo lo que ES la ficha
+   dentro: el volver, dónde vive, el nombre y sus datos. Lo que se
+   HACE con ella —el objetivo del mes, las notas, las tareas— se queda fuera,
+   sobre el blanco. Ocupa el ancho entero de la página, con sus esquinas
+   redondeadas —las mismas que la tarjeta del patrimonio—. El negro lo pone
+   `oscuro`, el mismo modificador de Analíticas y Entrenar: redefine los tokens
+   y todo lo de dentro se invierte solo. */
+.fh {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
+  width: 100%; border-radius: var(--r-md);
+  padding: 18px 22px 24px; margin-bottom: 28px;
 }
-.fh-cuerpo { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.fh .tk-crumbs { width: 100%; margin-bottom: 16px; }
 /* La ruta: dónde vive esto. El punto trae el color del espacio, igual que en
-   las listas, y sustituye a las migas de arriba: una línea menos. */
+   las listas, y se lleva las migas y el antetítulo, que decían lo mismo en dos
+   renglones. */
 .fh-ruta { display: flex; align-items: center; gap: 7px; min-width: 0; font-size: 12.5px; color: var(--ink-muted); }
 .fh-ruta a:hover { color: var(--ink); text-decoration: underline; }
 .fh-ruta .dot { width: 7px; height: 7px; }
@@ -292,6 +295,12 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 /* Lo que se hace con la ficha (borrar, quitar) se va al extremo de la línea de
    volver: así no le roba sitio al título ni abre su menú fuera de pantalla. */
 .fh-acciones { margin-left: auto; flex: 0 0 auto; }
+/* Sobre negro, el ámbar apagado no se lee: sube de tono lo justo. */
+.fh .ficha-nota.aviso { color: #e0a458; }
+/* Y el color del estado tampoco: el punto lo mantiene —es el que informa de un
+   vistazo— y el texto pasa a blanco. El `!important` es porque el color se lo
+   pone el componente en línea, según el estado. */
+.oscuro .status-btn { color: var(--ink) !important; }
 
 /* ---------- La tira de datos de la ficha ----------
    Estado, prioridad, fechas… dejaban de estar sueltos flotando bajo el título
@@ -3157,15 +3166,26 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
    así que se adapta solo sin repetir una sola regla. Lo único que se queda
    fuera es lo que lleva color fijo —las insignias ámbar y rojas de
    Cobertura—, y por eso ese bloque no se pinta en oscuro. */
-.section.oscuro {
+/* `oscuro` es un MODIFICADOR, no una sección: redefine los tokens de color y
+   todo lo que cae dentro (textos apagados, bordes, barras, botones) se invierte
+   solo. Lo usan el bloque de Analíticas y Entrenar… y la cabecera de una ficha,
+   que es negra a sangre. */
+.oscuro {
+  /* Que el navegador sepa que aquí dentro es de noche: sin esto el icono del
+     calendario de un `input[type=date]` y el desplegable de un `select` salen
+     con los colores del sistema en claro y no se ven. */
+  color-scheme: dark;
   --ink: #ffffff;
   --ink-soft: #c9c9c9;
   --ink-muted: #8f8f8f;
   --paper: #0a0a0a;
   --paper-soft: #1c1c1c;
   --line: #2f2f2f;
+  --line-suave: #262626;
   background: #0a0a0a;
   color: #ffffff;
+}
+.section.oscuro {
   border-radius: var(--r-md);
   padding: 20px 18px 22px;
 }
@@ -3215,6 +3235,8 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
    abajo que el bloque de móvil y lo pisaban —una media query no añade
    especificidad, solo cuenta el orden—. */
 @media (max-width: 720px) {
+  .fh { padding: 16px 16px 20px; margin-bottom: 22px; }
+  .fh .tk-crumbs { margin-bottom: 14px; }
   /* La fila (tira + insignias) ocupa el ancho entero: si no, la tira se queda
      con el ancho que pidan sus casillas y flota a la izquierda. */
   .ficha-fila { width: 100%; }

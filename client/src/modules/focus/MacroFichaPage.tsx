@@ -1,15 +1,25 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import Modal from '../../components/Modal';
-import { projectsApi, spacesApi, tasksApi } from '../tasks/api';
-import TaskTable from '../tasks/TaskTable';
-import type { Priority, Project, Space } from '../tasks/types';
-import { focusApi, nombreMes, NOMBRE_TIPO, type Candidata, type FocusDetalle, type ProyectoDelMelon } from './api';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import Modal from "../../components/Modal";
+import { projectsApi, spacesApi, tasksApi } from "../tasks/api";
+import TaskTable from "../tasks/TaskTable";
+import type { Priority, Project, Space } from "../tasks/types";
+import {
+  focusApi,
+  nombreMes,
+  NOMBRE_TIPO,
+  type Candidata,
+  type FocusDetalle,
+  type ProyectoDelMelon,
+} from "./api";
 
-const cerrada = (s: string) => s === 'completed' || s === 'cancelled';
+const cerrada = (s: string) => s === "completed" || s === "cancelled";
 
 function fechaCorta(iso: string): string {
-  return new Date(`${iso}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+  return new Date(`${iso}T12:00:00`).toLocaleDateString("es-ES", {
+    day: "numeric",
+    month: "short",
+  });
 }
 
 /**
@@ -24,7 +34,7 @@ export default function MacroFichaPage() {
   const itemId = Number(id);
   const navigate = useNavigate();
   const [d, setD] = useState<FocusDetalle | null>(null);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [buscando, setBuscando] = useState(false);
   const [vinculando, setVinculando] = useState(false);
   const [creando, setCreando] = useState(false);
@@ -33,7 +43,7 @@ export default function MacroFichaPage() {
     try {
       setD(await focusApi.detalle(itemId));
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo cargar');
+      setError(e instanceof Error ? e.message : "No se pudo cargar");
     }
   }, [itemId]);
 
@@ -73,48 +83,46 @@ export default function MacroFichaPage() {
 
   return (
     <div>
-      <div className="tk-crumbs">
-        <Link to="/agenda?tab=macro" className="btn ghost sm tk-back">
-          ‹ Macro
-        </Link>
-        <span className="fh-acciones">
-          <button
-            className="btn ghost sm"
-            onClick={async () => {
-              if (!confirm(`¿Quitar «${d.title}» de Macro?`)) return;
-              await focusApi.borrar(d.id);
-              navigate('/agenda?tab=macro');
-            }}
-          >
-            Quitar
-          </button>
-        </span>
-      </div>
-
-      {/* La misma cabecera que una tarea: ruta, título y datos cosidos por una
-          línea de color. El objetivo no tiene espacio propio, así que toma el
-          del primer proyecto al que sirve; sin proyectos, negro. */}
-      <div className="fh" style={{ '--c': d.projects[0]?.spaceColor ?? 'var(--ink)' } as CSSProperties}>
-        <div className="fh-cuerpo">
-          <span className="fh-ruta">
-            <span>
-              {t.emoji} {t.singular}
-            </span>
-            <span className="tk-sep">›</span>
-            <em>{d.scope === 'trabajo' ? 'Trabajo' : 'Mis cosas'}</em>
-            {d.startMonth && (
-              <>
-                <span className="tk-sep">›</span>
-                <span>desde {nombreMes(d.startMonth)}</span>
-              </>
-            )}
+      {/* La misma cabecera negra que una tarea: dentro, lo que ES el objetivo;
+          fuera, sobre el blanco, lo que se hace con él. */}
+      <div className="fh oscuro">
+        <div className="tk-crumbs">
+          <Link to="/agenda?tab=macro" className="btn ghost sm tk-back">
+            ‹ Macro
+          </Link>
+          <span className="fh-acciones">
+            <button
+              className="btn ghost sm"
+              onClick={async () => {
+                if (!confirm(`¿Quitar «${d.title}» de Macro?`)) return;
+                await focusApi.borrar(d.id);
+                navigate("/agenda?tab=macro");
+              }}
+            >
+              Quitar
+            </button>
           </span>
-          <Titulo valor={d.title} onGuardar={(title) => guardar({ title })} />
+        </div>
+
+        <span className="fh-ruta">
+          <span>
+            {t.emoji} {t.singular}
+          </span>
+          <span className="tk-sep">›</span>
+          <em>{d.scope === "trabajo" ? "Trabajo" : "Mis cosas"}</em>
+          {d.startMonth && (
+            <>
+              <span className="tk-sep">›</span>
+              <span>desde {nombreMes(d.startMonth)}</span>
+            </>
+          )}
+        </span>
+        <Titulo valor={d.title} onGuardar={(title) => guardar({ title })} />
 
         {/* La ficha del objetivo: estado y fechas en la misma tira que la de una
-            tarea. Las fechas exactas se ponen aquí; en la plani se arrastran por
-            semanas. El gesto es rápido y basto, el formulario es preciso: cada
-            uno a lo suyo. */}
+          tarea. Las fechas exactas se ponen aquí; en la plani se arrastran por
+          semanas. El gesto es rápido y basto, el formulario es preciso: cada
+          uno a lo suyo. */}
         <div className="ficha-fila">
           <div className="ficha">
             <div>
@@ -122,22 +130,26 @@ export default function MacroFichaPage() {
               <select
                 id="o-estado"
                 value={d.status}
-                onChange={(e) => guardar({ status: e.target.value as FocusDetalle['status'] })}
+                onChange={(e) =>
+                  guardar({ status: e.target.value as FocusDetalle["status"] })
+                }
               >
                 <option value="activo">En marcha</option>
                 <option value="hecho">Hecho</option>
                 <option value="aparcado">Aparcado</option>
               </select>
             </div>
-            {d.kind === 'melon' && (
+            {d.kind === "melon" && (
               <>
                 <div>
                   <label htmlFor="o-empieza">Empieza</label>
                   <input
                     id="o-empieza"
                     type="date"
-                    value={d.startsOn ?? ''}
-                    onChange={(e) => guardar({ startsOn: e.target.value || null })}
+                    value={d.startsOn ?? ""}
+                    onChange={(e) =>
+                      guardar({ startsOn: e.target.value || null })
+                    }
                   />
                 </div>
                 <div>
@@ -145,7 +157,7 @@ export default function MacroFichaPage() {
                   <input
                     id="o-saca"
                     type="date"
-                    value={d.dueOn ?? ''}
+                    value={d.dueOn ?? ""}
                     onChange={(e) => guardar({ dueOn: e.target.value || null })}
                   />
                 </div>
@@ -154,44 +166,48 @@ export default function MacroFichaPage() {
           </div>
           {d.daily === 1 && (
             <span className="badge">
-              🔥 {d.racha} {d.racha === 1 ? 'día seguido' : 'días seguidos'}
+              🔥 {d.racha} {d.racha === 1 ? "día seguido" : "días seguidos"}
             </span>
           )}
-          {d.doneAt && <span className="badge">✓ Hecho el {fechaCorta(d.doneAt)}</span>}
+          {d.doneAt && (
+            <span className="badge">✓ Hecho el {fechaCorta(d.doneAt)}</span>
+          )}
         </div>
 
-        {d.kind === 'melon' && (
+        {d.kind === "melon" && (
           <p className="ficha-nota">
             {d.dueOn
               ? d.startsOn
-                ? 'Se dibuja como una barra en la plani.'
-                : 'Se dibuja como un hito en la plani. Pon la fecha de inicio si dura semanas.'
-              : 'Sin fecha de entrega no sale en la plani.'}
+                ? "Se dibuja como una barra en la plani."
+                : "Se dibuja como un hito en la plani. Pon la fecha de inicio si dura semanas."
+              : "Sin fecha de entrega no sale en la plani."}
           </p>
         )}
-        </div>
       </div>
 
       {d.daily === 1 && <Diario item={d} onCambio={cargar} />}
 
       {/* Las notas, antes que las tareas: es donde se apunta el porqué del
           objetivo, y se lee antes de ponerse a hacer nada. */}
-      <Notas valor={d.notes ?? ''} onGuardar={(notes) => guardar({ notes })} />
+      <Notas valor={d.notes ?? ""} onGuardar={(notes) => guardar({ notes })} />
 
       {/* De dónde sale este objetivo. Vincular un proyecto no arrastra sus
           tareas: dice dónde buscarlas y dónde crear la siguiente. */}
-      {d.kind === 'melon' && (
+      {d.kind === "melon" && (
         <section className="section">
           <div className="page-head">
             <h2>Proyectos</h2>
-            <button className="btn ghost sm" onClick={() => setVinculando(true)}>
+            <button
+              className="btn ghost sm"
+              onClick={() => setVinculando(true)}
+            >
               + Vincular proyecto
             </button>
           </div>
           {d.projects.length === 0 ? (
             <p className="muted mc-vacio">
-              Sin proyectos. Vincula uno y las tareas de este objetivo saldrán de ahí, en vez de buscarlas por todo el
-              portal.
+              Sin proyectos. Vincula uno y las tareas de este objetivo saldrán
+              de ahí, en vez de buscarlas por todo el portal.
             </p>
           ) : (
             <div className="mc-proys">
@@ -227,34 +243,52 @@ export default function MacroFichaPage() {
         </section>
       )}
 
-      {d.kind === 'melon' && (
+      {d.kind === "melon" && (
         <section className="section">
           <div className="page-head">
             <h2>Tareas de este objetivo</h2>
             <div className="head-acciones">
-              <button className="btn ghost sm" onClick={() => setBuscando(true)}>
+              <button
+                className="btn ghost sm"
+                onClick={() => setBuscando(true)}
+              >
                 + Asociar
               </button>
-              <button className="btn sm" disabled={d.projects.length === 0} onClick={() => setCreando(true)}>
+              <button
+                className="btn sm"
+                disabled={d.projects.length === 0}
+                onClick={() => setCreando(true)}
+              >
                 + Nueva tarea
               </button>
             </div>
           </div>
-          <p className="muted" style={{ fontSize: 12.5, marginTop: 4, lineHeight: 1.6 }}>
+          <p
+            className="muted"
+            style={{ fontSize: 12.5, marginTop: 4, lineHeight: 1.6 }}
+          >
             {d.projects.length === 0
-              ? 'Vincula un proyecto arriba para poder crear tareas desde aquí.'
-              : 'Las tareas siguen viviendo en su proyecto y su espacio. Aquí solo se ven juntas porque comparten objetivo.'}
+              ? "Vincula un proyecto arriba para poder crear tareas desde aquí."
+              : "Las tareas siguen viviendo en su proyecto y su espacio. Aquí solo se ven juntas porque comparten objetivo."}
           </p>
 
           {d.tasks.length === 0 ? (
             <p className="empty">Sin tareas asociadas todavía.</p>
           ) : (
             <>
-              <TaskTable tasks={abiertas} onChanged={cargar} acciones={quitar} />
+              <TaskTable
+                tasks={abiertas}
+                onChanged={cargar}
+                acciones={quitar}
+              />
               {cerradas.length > 0 && (
                 <>
                   <h3 className="mc-sub">Cerradas · {cerradas.length}</h3>
-                  <TaskTable tasks={cerradas} onChanged={cargar} acciones={quitar} />
+                  <TaskTable
+                    tasks={cerradas}
+                    onChanged={cargar}
+                    acciones={quitar}
+                  />
                 </>
               )}
             </>
@@ -283,14 +317,19 @@ export default function MacroFichaPage() {
           )}
         </section>
       )}
-
     </div>
   );
 }
 
 // ---------------------------------------------------------------- piezas
 
-function Titulo({ valor, onGuardar }: { valor: string; onGuardar: (v: string) => void }) {
+function Titulo({
+  valor,
+  onGuardar,
+}: {
+  valor: string;
+  onGuardar: (v: string) => void;
+}) {
   const [editando, setEditando] = useState(false);
   const [txt, setTxt] = useState(valor);
   useEffect(() => setTxt(valor), [valor]);
@@ -310,15 +349,19 @@ function Titulo({ valor, onGuardar }: { valor: string; onGuardar: (v: string) =>
       onChange={(e) => setTxt(e.target.value)}
       onBlur={cerrar}
       onKeyDown={(e) => {
-        if (e.key === 'Enter') cerrar();
-        if (e.key === 'Escape') {
+        if (e.key === "Enter") cerrar();
+        if (e.key === "Escape") {
           setTxt(valor);
           setEditando(false);
         }
       }}
     />
   ) : (
-    <h1 className="title-editable" onClick={() => setEditando(true)} title="Pulsa para renombrar">
+    <h1
+      className="title-editable"
+      onClick={() => setEditando(true)}
+      title="Pulsa para renombrar"
+    >
       {valor}
     </h1>
   );
@@ -338,38 +381,43 @@ function BuscarTareas({
   itemId: number;
   onCerrar: (huboCambios: boolean) => void;
 }) {
-  const [q, setQ] = useState('');
+  const [q, setQ] = useState("");
   const [espacios, setEspacios] = useState<Space[]>([]);
   const [proyectos, setProyectos] = useState<Project[]>([]);
-  const [spaceId, setSpaceId] = useState<number | ''>('');
-  const [projectId, setProjectId] = useState<number | ''>('');
+  const [spaceId, setSpaceId] = useState<number | "">("");
+  const [projectId, setProjectId] = useState<number | "">("");
   const [lista, setLista] = useState<Candidata[]>([]);
   const [cargando, setCargando] = useState(true);
   const [añadidas, setAñadidas] = useState(0);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const caja = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    spacesApi.list().then(setEspacios).catch(() => {});
+    spacesApi
+      .list()
+      .then(setEspacios)
+      .catch(() => {});
     // El buscador se abre al final de la lista de tareas: en el móvil quedaba
     // fuera de pantalla y parecía que el botón no hacía nada. Un cuadro después
     // de pintar, porque el autoFocus del campo también mueve el scroll.
-    requestAnimationFrame(() => caja.current?.scrollIntoView({ block: 'center' }));
+    requestAnimationFrame(() =>
+      caja.current?.scrollIntoView({ block: "center" }),
+    );
   }, []);
 
   // los proyectos se filtran por el espacio elegido
   useEffect(() => {
     if (!spaceId) {
       setProyectos([]);
-      setProjectId('');
+      setProjectId("");
       return;
     }
     projectsApi
-      .list({ spaceId: Number(spaceId), status: 'active' })
+      .list({ spaceId: Number(spaceId), status: "active" })
       .then(setProyectos)
       .catch(() => {});
-    setProjectId('');
+    setProjectId("");
   }, [spaceId]);
 
   const buscar = useCallback(async () => {
@@ -399,7 +447,7 @@ function BuscarTareas({
     try {
       await focusApi.asociarTarea(itemId, c.id);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo asociar');
+      setError(e instanceof Error ? e.message : "No se pudo asociar");
       setLista((prev) => [c, ...prev]);
       setAñadidas((n) => n - 1);
     }
@@ -408,14 +456,24 @@ function BuscarTareas({
   return (
     <div className="mc-buscar" ref={caja}>
       <div className="mc-buscar-head">
-        <input placeholder="Buscar entre todas tus tareas…" value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
+        <input
+          placeholder="Buscar entre todas tus tareas…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          autoFocus
+        />
         <button className="btn" onClick={() => onCerrar(añadidas > 0)}>
-          {añadidas > 0 ? `Listo (${añadidas})` : 'Cerrar'}
+          {añadidas > 0 ? `Listo (${añadidas})` : "Cerrar"}
         </button>
       </div>
 
       <div className="mc-filtros">
-        <select value={spaceId} onChange={(e) => setSpaceId(e.target.value ? Number(e.target.value) : '')}>
+        <select
+          value={spaceId}
+          onChange={(e) =>
+            setSpaceId(e.target.value ? Number(e.target.value) : "")
+          }
+        >
           <option value="">Todos los espacios</option>
           {espacios.map((e) => (
             <option key={e.id} value={e.id}>
@@ -425,12 +483,16 @@ function BuscarTareas({
         </select>
         <select
           value={projectId}
-          onChange={(e) => setProjectId(e.target.value ? Number(e.target.value) : '')}
+          onChange={(e) =>
+            setProjectId(e.target.value ? Number(e.target.value) : "")
+          }
           disabled={!spaceId}
         >
           {/* sin espacio elegido el selector va apagado: decía «Elige un espacio»
               y parecían dos selectores de espacio, uno al lado del otro */}
-          <option value="">{spaceId ? 'Todos los proyectos' : 'Proyecto'}</option>
+          <option value="">
+            {spaceId ? "Todos los proyectos" : "Proyecto"}
+          </option>
           {proyectos.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
@@ -445,12 +507,18 @@ function BuscarTareas({
         <p className="muted mc-buscar-nota">Buscando…</p>
       ) : lista.length === 0 ? (
         <p className="muted mc-buscar-nota">
-          {añadidas > 0 ? 'No queda nada más que asociar con esos filtros.' : 'Nada que asociar con eso.'}
+          {añadidas > 0
+            ? "No queda nada más que asociar con esos filtros."
+            : "Nada que asociar con eso."}
         </p>
       ) : (
         <div className="mc-candidatas">
           {lista.map((c) => (
-            <button key={c.id} className="mc-candidata" onClick={() => asociar(c)}>
+            <button
+              key={c.id}
+              className="mc-candidata"
+              onClick={() => asociar(c)}
+            >
               <span className="dot" style={{ background: c.spaceColor }} />
               <span className="mc-candidata-txt">
                 <span className="mc-tarea-espacio">
@@ -458,7 +526,9 @@ function BuscarTareas({
                 </span>
                 {c.title}
               </span>
-              <span className="mc-candidata-fecha">{c.dueDate ? fechaCorta(c.dueDate) : 'sin fecha'}</span>
+              <span className="mc-candidata-fecha">
+                {c.dueDate ? fechaCorta(c.dueDate) : "sin fecha"}
+              </span>
               <span className="mc-candidata-mas">+</span>
             </button>
           ))}
@@ -469,14 +539,20 @@ function BuscarTareas({
 }
 
 /** Últimos días del gesto diario, para ver el patrón de un vistazo. */
-function Diario({ item, onCambio }: { item: FocusDetalle; onCambio: () => void }) {
+function Diario({
+  item,
+  onCambio,
+}: {
+  item: FocusDetalle;
+  onCambio: () => void;
+}) {
   const puestas = new Map(item.dias.map((d) => [d.doneDate, d.mark]));
-  const dias: { iso: string; marca: 'hecho' | 'libre' | undefined }[] = [];
+  const dias: { iso: string; marca: "hecho" | "libre" | undefined }[] = [];
   const base = new Date(`${item.today}T12:00:00`);
   for (let i = 27; i >= 0; i--) {
     const d = new Date(base);
     d.setDate(d.getDate() - i);
-    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     dias.push({ iso, marca: puestas.get(iso) });
   }
 
@@ -487,11 +563,16 @@ function Diario({ item, onCambio }: { item: FocusDetalle; onCambio: () => void }
         {dias.map((d) => (
           <button
             key={d.iso}
-            className={`mc-dia${d.marca === 'hecho' ? ' hecho' : ''}${d.marca === 'libre' ? ' libre' : ''}${d.iso === item.today ? ' hoy' : ''}`}
-            title={`${d.iso}${d.marca ? ` · ${d.marca}` : ''}`}
+            className={`mc-dia${d.marca === "hecho" ? " hecho" : ""}${d.marca === "libre" ? " libre" : ""}${d.iso === item.today ? " hoy" : ""}`}
+            title={`${d.iso}${d.marca ? ` · ${d.marca}` : ""}`}
             onClick={async () => {
               // ciclo: nada → hecho → libre → nada
-              const siguiente = d.marca === undefined ? 'hecho' : d.marca === 'hecho' ? 'libre' : 'ninguno';
+              const siguiente =
+                d.marca === undefined
+                  ? "hecho"
+                  : d.marca === "hecho"
+                    ? "libre"
+                    : "ninguno";
               await focusApi.marcarDia(item.id, siguiente, d.iso);
               onCambio();
             }}
@@ -499,16 +580,23 @@ function Diario({ item, onCambio }: { item: FocusDetalle; onCambio: () => void }
         ))}
       </div>
       <p className="muted" style={{ fontSize: 12.5, marginTop: 8 }}>
-        Pulsa un día para marcarlo. Relleno = hecho, rayado = día libre a propósito (no rompe la racha).
+        Pulsa un día para marcarlo. Relleno = hecho, rayado = día libre a
+        propósito (no rompe la racha).
       </p>
     </section>
   );
 }
 
 /** Notas de la ficha, con autoguardado al dejar de escribir. */
-function Notas({ valor, onGuardar }: { valor: string; onGuardar: (v: string) => void }) {
+function Notas({
+  valor,
+  onGuardar,
+}: {
+  valor: string;
+  onGuardar: (v: string) => void;
+}) {
   const [txt, setTxt] = useState(valor);
-  const [estado, setEstado] = useState<'' | 'guardado'>('');
+  const [estado, setEstado] = useState<"" | "guardado">("");
   const timer = useRef<number | undefined>(undefined);
   const ultimo = useRef(valor);
 
@@ -525,8 +613,8 @@ function Notas({ valor, onGuardar }: { valor: string; onGuardar: (v: string) => 
       if (v === ultimo.current) return;
       ultimo.current = v;
       onGuardar(v);
-      setEstado('guardado');
-      window.setTimeout(() => setEstado(''), 1500);
+      setEstado("guardado");
+      window.setTimeout(() => setEstado(""), 1500);
     }, 700);
   }
 
@@ -547,7 +635,7 @@ function Notas({ valor, onGuardar }: { valor: string; onGuardar: (v: string) => 
         placeholder="Lo que vayas aprendiendo, enlaces, ideas, resúmenes…"
         /* A todo lo ancho y baja: la caja de diez líneas ocupaba media pantalla
            aunque hubiera dos frases. Se estira quien la necesite. */
-        style={{ width: '100%', lineHeight: 1.65, resize: 'vertical' }}
+        style={{ width: "100%", lineHeight: 1.65, resize: "vertical" }}
       />
     </section>
   );
@@ -571,23 +659,34 @@ function VincularProyecto({
 }) {
   const [proyectos, setProyectos] = useState<Project[] | null>(null);
   const [hubo, setHubo] = useState(false);
-  const [q, setQ] = useState('');
+  const [q, setQ] = useState("");
 
   useEffect(() => {
-    projectsApi.list({ status: 'active' }).then(setProyectos).catch(() => setProyectos([]));
+    projectsApi
+      .list({ status: "active" })
+      .then(setProyectos)
+      .catch(() => setProyectos([]));
   }, []);
 
   const puestos = new Set(yaPuestos);
   const visibles = (proyectos ?? []).filter(
-    (p) => !puestos.has(p.id) && (!q.trim() || p.name.toLowerCase().includes(q.trim().toLowerCase())),
+    (p) =>
+      !puestos.has(p.id) &&
+      (!q.trim() || p.name.toLowerCase().includes(q.trim().toLowerCase())),
   );
 
   return (
     <Modal title="Vincular un proyecto" onClose={() => onCerrar(hubo)}>
       <p className="muted" style={{ fontSize: 12.5, marginTop: -4 }}>
-        Vincularlo no trae sus tareas: dice de dónde salen las de este objetivo y dónde se crean las nuevas.
+        Vincularlo no trae sus tareas: dice de dónde salen las de este objetivo
+        y dónde se crean las nuevas.
       </p>
-      <input placeholder="Buscar un proyecto…" value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
+      <input
+        placeholder="Buscar un proyecto…"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        autoFocus
+      />
       <div className="mc-candidatas">
         {proyectos === null ? (
           <p className="muted">Cargando…</p>
@@ -601,7 +700,9 @@ function VincularProyecto({
               onClick={async () => {
                 await focusApi.asociarProyecto(itemId, p.id);
                 setHubo(true);
-                setProyectos((lista) => (lista ?? []).filter((x) => x.id !== p.id));
+                setProyectos((lista) =>
+                  (lista ?? []).filter((x) => x.id !== p.id),
+                );
               }}
             >
               <span className="dot" style={{ background: p.spaceColor }} />
@@ -633,10 +734,10 @@ function NuevaTareaDelObjetivo({
   onCerrar: () => void;
   onCreada: () => void;
 }) {
-  const [titulo, setTitulo] = useState('');
+  const [titulo, setTitulo] = useState("");
   const [proyecto, setProyecto] = useState(proyectos[0]?.id ?? 0);
-  const [vence, setVence] = useState('');
-  const [prioridad, setPrioridad] = useState<Priority>('medium');
+  const [vence, setVence] = useState("");
+  const [prioridad, setPrioridad] = useState<Priority>("medium");
   const [guardando, setGuardando] = useState(false);
 
   async function crear() {
@@ -661,7 +762,7 @@ function NuevaTareaDelObjetivo({
   return (
     <Modal title="Nueva tarea" onClose={onCerrar}>
       <form
-        style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
+        style={{ display: "flex", flexDirection: "column", gap: 14 }}
         onSubmit={(e) => {
           e.preventDefault();
           crear();
@@ -669,13 +770,21 @@ function NuevaTareaDelObjetivo({
       >
         <label>
           <span>Qué hay que hacer</span>
-          <input autoFocus value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Página de contacto" />
+          <input
+            autoFocus
+            value={titulo}
+            onChange={(e) => setTitulo(e.target.value)}
+            placeholder="Página de contacto"
+          />
         </label>
 
         {proyectos.length > 1 && (
           <label>
             <span>En qué proyecto</span>
-            <select value={proyecto} onChange={(e) => setProyecto(Number(e.target.value))}>
+            <select
+              value={proyecto}
+              onChange={(e) => setProyecto(Number(e.target.value))}
+            >
               {proyectos.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name} · {p.spaceName}
@@ -690,11 +799,18 @@ function NuevaTareaDelObjetivo({
         <div className="form-grid">
           <label>
             <span>Vence</span>
-            <input type="date" value={vence} onChange={(e) => setVence(e.target.value)} />
+            <input
+              type="date"
+              value={vence}
+              onChange={(e) => setVence(e.target.value)}
+            />
           </label>
           <label>
             <span>Prioridad</span>
-            <select value={prioridad} onChange={(e) => setPrioridad(e.target.value as Priority)}>
+            <select
+              value={prioridad}
+              onChange={(e) => setPrioridad(e.target.value as Priority)}
+            >
               <option value="low">Baja</option>
               <option value="medium">Media</option>
               <option value="high">Alta</option>
@@ -705,14 +821,18 @@ function NuevaTareaDelObjetivo({
         <p className="modal-nota">
           {proyectos.length === 1
             ? `Se creará en ${proyectos[0].name} y quedará colgada de este objetivo.`
-            : 'Quedará colgada de este objetivo, además de vivir en su proyecto.'}
+            : "Quedará colgada de este objetivo, además de vivir en su proyecto."}
         </p>
 
         <div className="modal-actions">
           <button type="button" className="btn ghost sm" onClick={onCerrar}>
             Cancelar
           </button>
-          <button type="submit" className="btn sm" disabled={!titulo.trim() || guardando}>
+          <button
+            type="submit"
+            className="btn sm"
+            disabled={!titulo.trim() || guardando}
+          >
             Crear
           </button>
         </div>

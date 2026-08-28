@@ -226,9 +226,36 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   .tt-barra { position: sticky; bottom: calc(72px + env(safe-area-inset-bottom)); z-index: 40; }
   .task-table .mc-tarea-x { color: var(--ink-muted); font-size: 16px; padding: 0 2px; }
   .task-table td[data-empty="true"] { display: none; }
-  .task-table .status-btn { padding: 2px 8px; font-size: 12px; gap: 5px; }
-  .task-table .badge { font-size: 11px; padding: 2px 7px; }
-  .task-table .date-btn { padding: 2px 4px; margin-left: 0; font-size: 12.5px; }
+  /* El marco es la TARJETA: dentro no hay más marcos. Estado, prioridad, fecha
+     y espacio dejaban cuatro pastillas con borde en tres renglones y la tarjeta
+     se leía como un formulario apretado. Ahora son una línea de datos apagada;
+     el color lo siguen poniendo los puntos, que es lo que se ve de un vistazo,
+     y se siguen pulsando igual. */
+  .task-table .status-btn,
+  .task-table .badge,
+  .task-table .date-btn,
+  .task-table .aplazada {
+    border-color: transparent; background: none; padding: 0;
+  }
+  .task-table .status-btn { font-size: 12.5px; gap: 5px; }
+  .task-table .badge { font-size: 12.5px; font-weight: 400; color: var(--ink-muted); }
+  .task-table .date-btn { margin-left: 0; font-size: 12.5px; }
+  /* El `.bola` de aplazada trae su propio borde ámbar y está MÁS ABAJO en el
+     fichero: una media query no añade especificidad, así que hay que nombrarlo
+     aquí o gana él. Se queda el color, que es la señal; se va la caja. */
+  .task-table .aplazada,
+  .task-table .aplazada.bola { border-color: transparent; background: none; padding: 0; }
+  .task-table .aplazada { margin-left: 7px; font-size: 11.5px; font-weight: 600; }
+  /* Un poco más de aire entre los datos ahora que no hay bordes que los separen */
+  .task-table tr.row { gap: 5px 14px; padding: 11px 12px; }
+  /* El proyecto, a su propio renglón y en versalitas: pegado al nombre lo
+     empujaba a una segunda línea y la tarjeta crecía sin decir nada más. */
+  .task-table .tt-proy {
+    display: block; font-size: 10.5px; font-weight: 600; letter-spacing: 0.07em;
+    margin-bottom: 2px;
+  }
+  .task-table .tt-proy::after { content: none; }
+  .task-table .tt-nombre { font-size: 14px; }
 
   /* Tablas de datos (Cuentas/Trimestrales): scroll horizontal con la
      primera columna fija, en vez de apilar las celdas */
@@ -1492,6 +1519,14 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .tt-barra button:disabled { opacity: .5; cursor: default; }
 /* Quitar la selección no es una acción más: no lleva marco */
 .tt-barra-x { border-color: transparent !important; opacity: .7; margin-left: auto; }
+
+/* El nombre de la tarea, con su proyecto de prefijo. En el ordenador van en la
+   misma línea separados por una barra; en el móvil el proyecto se sube a su
+   propio renglón —ver el bloque de móvil—, que es lo que evitaba que un nombre
+   largo partiera la tarjeta en dos. */
+.tt-nombre { font-weight: 500; }
+.tt-proy { text-transform: uppercase; font-size: 13px; color: var(--ink-muted); }
+.tt-proy::after { content: ' | '; }
 
 .task-table td.tt-sel, .task-table th:first-child { vertical-align: middle; }
 .task-table input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--ink); cursor: pointer; }

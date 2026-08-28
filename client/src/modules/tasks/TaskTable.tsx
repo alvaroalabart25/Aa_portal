@@ -165,12 +165,8 @@ export default function TaskTable({
             <td>
               <StatusSelect value={t.status} onChange={(s) => changeStatus(t, s)} />
             </td>
-            <td style={{ fontWeight: 500 }}>
-              {showProject && t.projectName && (
-                <span className="muted" style={{ textTransform: 'uppercase', fontSize: 13 }}>
-                  {t.projectName} |{' '}
-                </span>
-              )}
+            <td className="tt-nombre">
+              {showProject && t.projectName && <span className="tt-proy">{t.projectName}</span>}
               {t.title}
               <Aplazada veces={t.postponedCount} estado={t.status} />
             </td>

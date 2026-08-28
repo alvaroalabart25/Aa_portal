@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import {
+  avisaAplazada,
+  AVISO_APLAZADA_EN_MARCHA,
   PRIORITY_LABEL,
   PROJECT_STATUS_LABEL,
   TASK_STATUS_LABEL,
@@ -198,15 +200,18 @@ export function SpaceTag({ name, color }: { name?: string; color?: string }) {
  * se te está haciendo bola. De cuatro en adelante se marca, para que salte a la
  * vista sin tener que leer el número.
  */
-export function Aplazada({ veces }: { veces?: number }) {
-  if (!veces || veces < 2) return null;
+export function Aplazada({ veces, estado }: { veces?: number; estado: TaskStatus }) {
+  // Ver `avisaAplazada`: en backlog cuenta desde la primera vez; en marcha hace
+  // falta que sea exagerado, porque mover una tarea larga es lo normal.
+  if (!avisaAplazada(estado, veces)) return null;
+  const n = veces ?? 0;
   return (
     <span
-      className={`aplazada${veces >= 4 ? ' bola' : ''}`}
-      title={`Aplazada ${veces} veces`}
-      aria-label={`Aplazada ${veces} veces`}
+      className={`aplazada${n >= AVISO_APLAZADA_EN_MARCHA ? ' bola' : ''}`}
+      title={`Aplazada ${n} ${n === 1 ? 'vez' : 'veces'}`}
+      aria-label={`Aplazada ${n} ${n === 1 ? 'vez' : 'veces'}`}
     >
-      ↻{veces}
+      ↻{n}
     </span>
   );
 }

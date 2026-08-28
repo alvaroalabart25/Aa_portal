@@ -47,6 +47,28 @@ export interface Task {
   lastPostponedAt?: string | null;
 }
 
+/**
+ * ¿Hay que avisar de que esta tarea se ha aplazado?
+ *
+ * Aplazar no siempre es malo. Una tarea larga se mueve de fecha porque dura
+ * varios días, no porque la estés esquivando, y marcarla en ámbar por eso es
+ * ruido: enseña un problema donde solo hay trabajo en curso.
+ *
+ * Lo que sí dice algo es una tarea que sigue en BACKLOG y ya la has empujado:
+ * ni siquiera la has empezado. Ahí se avisa desde la primera vez. Si está en
+ * marcha, hace falta que sea EXAGERADO —cuatro veces— para que signifique algo.
+ *
+ * Cerrada no se avisa nunca: lo que costó llegar ya no cambia nada.
+ */
+export const AVISO_APLAZADA_EN_MARCHA = 4;
+
+export function avisaAplazada(status: TaskStatus, veces?: number | null): boolean {
+  const n = veces ?? 0;
+  if (n < 1) return false;
+  if (status === 'completed' || status === 'cancelled') return false;
+  return status === 'backlog' ? true : n >= AVISO_APLAZADA_EN_MARCHA;
+}
+
 export const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
   backlog: 'Backlog',
   in_progress: 'En progreso',

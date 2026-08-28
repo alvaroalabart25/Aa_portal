@@ -70,7 +70,7 @@ export default function TaskTable({
                 </span>
               )}
               {t.title}
-              <Aplazada veces={t.postponedCount} />
+              <Aplazada veces={t.postponedCount} estado={t.status} />
             </td>
             <td>
               <DueDateEdit

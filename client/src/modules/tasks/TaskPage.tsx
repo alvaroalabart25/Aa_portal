@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { tasksApi } from './api';
 import MelonesDeTarea from '../focus/MelonesDeTarea';
 import { EditableTitle, KebabMenu, NotesBox, StatusSelect } from './components';
-import { PRIORITY_LABEL, type Priority, type Task } from './types';
+import { avisaAplazada, AVISO_APLAZADA_EN_MARCHA, PRIORITY_LABEL, type Priority, type Task } from './types';
 
 function fechaCorta(iso: string): string {
   return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
@@ -117,10 +117,11 @@ export default function TaskPage() {
               value={task.dueDate ?? ''}
               onChange={(e) => update({ dueDate: e.target.value || null })}
             />
-            {/* El dato honesto de esta ficha: cuántas veces la he empujado. Solo
-                cuenta empujarla hacia adelante, no cada vez que toco la fecha. */}
-            {!!task.postponedCount && (
-              <p className={`tk-aplazos${task.postponedCount >= 4 ? ' bola' : ''}`}>
+            {/* Cuántas veces la he empujado hacia adelante. No sale siempre:
+                mover una tarea larga es normal, y avisar de eso sería ruido.
+                Ver `avisaAplazada`. */}
+            {avisaAplazada(task.status, task.postponedCount) && (
+              <p className={`tk-aplazos${(task.postponedCount ?? 0) >= AVISO_APLAZADA_EN_MARCHA ? ' bola' : ''}`}>
                 Aplazada {task.postponedCount} {task.postponedCount === 1 ? 'vez' : 'veces'}
                 {task.lastPostponedAt && ` · la última, el ${fechaCorta(task.lastPostponedAt)}`}
               </p>

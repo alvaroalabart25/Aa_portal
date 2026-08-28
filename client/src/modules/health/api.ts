@@ -35,6 +35,13 @@ export interface DailyCheck {
   emoji: string;
   kind: 'plain' | 'peso';
   done: boolean;
+  /** «N veces por semana» o null si es de todos los días. */
+  objetivoSemanal: number | null;
+  /** Cuántas van esta semana (de lunes a hoy). */
+  estaSemana: number;
+  /** Lo que hay que mirar para saber si pide algo: hoy en los diarios, el
+   *  objetivo de la semana en los semanales. */
+  cumplido: boolean;
   /** Días seguidos hasta hoy. Si hoy no está hecho, la que traes de ayer. */
   racha: number;
   /** Los últimos siete días, del más antiguo a hoy. */
@@ -44,7 +51,10 @@ export interface DailyCheck {
 
 export const checksApi = {
   list: (date?: string) => get<{ date: string; checks: DailyCheck[] }>(`/health-log/checks${date ? `?date=${date}` : ''}`),
-  create: (title: string, emoji: string) => post<DailyCheck>('/health-log/checks', { title, emoji }),
+  create: (title: string, emoji: string, vecesPorSemana?: number | null) =>
+    post<DailyCheck>('/health-log/checks', { title, emoji, vecesPorSemana: vecesPorSemana ?? null }),
+  frecuencia: (id: number, vecesPorSemana: number | null) =>
+    patch<{ id: number; vecesPorSemana: number | null }>(`/health-log/checks/${id}`, { vecesPorSemana }),
   remove: (id: number) => del<{ archived: boolean }>(`/health-log/checks/${id}`),
   toggle: (id: number, done: boolean, date?: string) =>
     post<{ id: number; done: boolean }>(`/health-log/checks/${id}/toggle`, { done, date }),

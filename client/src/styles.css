@@ -1615,6 +1615,12 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
   100% { background: var(--paper); transform: scale(1); }
 }
 
+/* Cumplido pero no marcado HOY: es un hábito semanal que ya llegó a su cuenta.
+   Ni pide nada ni está tachado —hoy no tocaba, y eso no es un fallo. */
+.hb.cumplido { border-color: var(--verde-linea); background: var(--verde-fondo); }
+.hb.cumplido .hb-marca { border-color: var(--verde); color: var(--verde); }
+.hb.cumplido .hb-marca svg path { stroke-dashoffset: 0; transition: stroke-dashoffset .28s; }
+
 /* El pesaje no se marca a mano: se cumple al pesarte. Que no parezca un botón
    que no hace nada. */
 .hb.solo { cursor: default; }
@@ -1627,6 +1633,12 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
   border: 1px solid transparent; background: none; cursor: pointer;
 }
 .hb-emoji-op.puesto { border-color: var(--ink); background: var(--paper-soft); }
+.hb-cada { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.hb-cada button {
+  font: inherit; font-size: 12px; padding: 4px 10px; cursor: pointer;
+  border: 1px solid var(--line); border-radius: var(--radius); background: none; color: var(--ink-muted);
+}
+.hb-cada button.puesto { border-color: var(--ink); color: var(--ink); font-weight: 600; }
 .hb-nuevo-fila { display: flex; gap: 8px; flex-wrap: wrap; }
 .hb-nuevo-fila input { flex: 1 1 200px; min-width: 0; }
 /* Quitar un hábito no es una acción del día a día: va al final y en pequeño */
@@ -1637,8 +1649,13 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 }
 .hb-quitar button:hover { color: var(--danger); border-color: #eed4d4; }
 
-/* Los hábitos en la portada del mes: pastillas, no lista. */
-.hh { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Los hábitos en la portada del mes: pastillas, no lista, y en la misma
+   tarjeta blanca que sus dos vecinas. */
+.hh {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px 14px;
+  background: var(--paper);
+}
 .hh-p {
   display: inline-flex; align-items: center; gap: 6px;
   font: inherit; font-size: 12.5px; cursor: pointer;
@@ -1651,6 +1668,7 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
    deja de pedir nada. */
 .hh-p.hecho { color: var(--ink-muted); border-color: var(--line-suave); text-decoration: line-through; }
 .hh-p.hecho span { filter: grayscale(1); opacity: .7; }
+.hh-p em { font-style: normal; font-size: 11px; color: var(--ink-muted); font-weight: 600; }
 .hh-mas { align-self: center; font-size: 12px; color: var(--ink-muted); }
 .hh.completo .hh-p { border-color: var(--verde-linea); }
 

@@ -370,6 +370,10 @@ export const dailyChecks = mysqlTable('daily_checks', {
   title: varchar('title', { length: 120 }).notNull(),
   emoji: varchar('emoji', { length: 16 }).notNull().default('✅'),
   kind: varchar('kind', { length: 12 }).notNull().default('plain'), // plain | peso
+  // Con valor: «N veces por semana, los días que sean». NULL: todos los días.
+  // Atar un hábito de dos veces por semana a unos días fijos sería mentira, y
+  // pedirlo a diario lo pintaría de rojo cinco días de siete por cumplirlo.
+  weeklyTarget: int('weekly_target'),
   sortOrder: int('sort_order').notNull().default(0),
   archivedAt: datetime('archived_at'),
   createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),

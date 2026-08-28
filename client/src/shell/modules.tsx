@@ -84,109 +84,10 @@ const iconoSub = (d: string) => (
  * cuando dejó de ser cuatro facturas y pasó a ser el dinero entero.
  * Lo que no esté aquí va detrás, en el orden en que esté declarado.
  */
-export const ORDEN_MOVIL = ['agenda', 'org', 'salud', 'autonomo', 'suenos'];
+export const ORDEN_MOVIL = ['agenda', 'org', 'salud', 'autonomo', 'persona'];
 
 export const MODULES: PortalModule[] = [
   { id: 'agenda', title: 'Agenda', path: '/agenda', icon: icons.agenda },
-  {
-    id: 'persona',
-    title: 'Persona',
-    path: '/persona',
-    // una silueta: es el módulo de uno mismo
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" {...stroke}>
-        <circle cx="12" cy="8" r="3.6" />
-        <path d="M4.5 20c.6-4 3.7-6 7.5-6s6.9 2 7.5 6" />
-      </svg>
-    ),
-  },
-  {
-    id: 'suenos',
-    title: 'Metas',
-    icon: iconoMetas,
-    children: [
-      {
-        id: 'macro',
-        title: 'Macrometas',
-        path: '/suenos',
-        search: '?tab=macro',
-        // montaña: lo grande y lejano
-        icon: iconoSub('M3 19l6-9 4 5.5 2.5-3.5L21 19z'),
-      },
-      {
-        id: 'micro',
-        title: 'Micrometas',
-        path: '/suenos',
-        search: '?tab=micro',
-        // diana: algo concreto y alcanzable
-        icon: (
-          <svg width="16" height="16" viewBox="0 0 24 24" {...stroke}>
-            <circle cx="12" cy="12" r="8" />
-            <circle cx="12" cy="12" r="3.2" />
-          </svg>
-        ),
-      },
-      {
-        id: 'deseos',
-        title: 'Lista de deseos',
-        path: '/suenos',
-        search: '?tab=deseos',
-        icon: iconoSub('M5 5h14l-1.2 13a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8zM9 5V3.8A2 2 0 0 1 11 2h2a2 2 0 0 1 2 1.8V5'),
-      },
-    ],
-  },
-  {
-    id: 'salud',
-    title: 'Salud',
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" {...stroke}>
-        <path d="M19.5 12.6 12 20l-7.5-7.4a5 5 0 1 1 7.5-6.6 5 5 0 1 1 7.5 6.6z" />
-      </svg>
-    ),
-    // El orden es el de uso que él pidió: primero a dónde va y cómo avanza
-    // (Objetivo & Analíticas), después donde se entrena (Gimnasio), y al final
-    // Rutina y Diario. El id y la ruta de Objetivos no cambian: solo lo visible.
-    children: [
-      {
-        id: 'objetivos-salud',
-        title: 'Objetivo & Analíticas',
-        path: '/salud/objetivos',
-        // diana: a dónde vas
-        icon: (
-          <svg width="16" height="16" viewBox="0 0 24 24" {...stroke}>
-            <circle cx="12" cy="12" r="8" />
-            <circle cx="12" cy="12" r="3.2" />
-          </svg>
-        ),
-      },
-      {
-        id: 'gimnasio',
-        title: 'Gimnasio',
-        path: '/gimnasio',
-        // mancuerna
-        icon: (
-          <svg width="16" height="16" viewBox="0 0 24 24" {...stroke}>
-            <path d="M4 9v6M7 7v10M17 7v10M20 9v6M7 12h10" />
-          </svg>
-        ),
-      },
-      {
-        // Era «Rutina» y era un plan con franjas horarias. Ahora son los
-        // microhábitos: lo pequeño que sostiene el día, sin horas.
-        id: 'rutina',
-        title: 'Hábitos',
-        path: '/rutina',
-        // el círculo que se cierra: algo que vuelve cada día
-        icon: (
-          <svg width="16" height="16" viewBox="0 0 24 24" {...stroke}>
-            <path d="M3 12a9 9 0 1 0 3-6.7" />
-            <path d="M3 3v5h5" />
-            <path d="m8.5 12.5 2.5 2.5 4.5-5" />
-          </svg>
-        ),
-      },
-    ],
-  },
   {
     id: 'org',
     title: 'Organización',
@@ -256,6 +157,81 @@ export const MODULES: PortalModule[] = [
           </svg>
         ),
       },
+    ],
+  },
+  {
+    id: 'salud',
+    title: 'Salud',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" {...stroke}>
+        <path d="M19.5 12.6 12 20l-7.5-7.4a5 5 0 1 1 7.5-6.6 5 5 0 1 1 7.5 6.6z" />
+      </svg>
+    ),
+    // El orden es el de uso que él pidió: primero a dónde va y cómo avanza
+    // (Objetivo & Analíticas), después donde se entrena (Gimnasio), y al final
+    // Rutina y Diario. El id y la ruta de Objetivos no cambian: solo lo visible.
+    children: [
+      {
+        id: 'objetivos-salud',
+        title: 'Objetivo & Analíticas',
+        path: '/salud/objetivos',
+        // diana: a dónde vas
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" {...stroke}>
+            <circle cx="12" cy="12" r="8" />
+            <circle cx="12" cy="12" r="3.2" />
+          </svg>
+        ),
+      },
+      {
+        id: 'gimnasio',
+        title: 'Gimnasio',
+        path: '/gimnasio',
+        // mancuerna
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" {...stroke}>
+            <path d="M4 9v6M7 7v10M17 7v10M20 9v6M7 12h10" />
+          </svg>
+        ),
+      },
+      {
+        // Era «Rutina» y era un plan con franjas horarias. Ahora son los
+        // microhábitos: lo pequeño que sostiene el día, sin horas.
+        id: 'rutina',
+        title: 'Hábitos',
+        path: '/rutina',
+        // el círculo que se cierra: algo que vuelve cada día
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" {...stroke}>
+            <path d="M3 12a9 9 0 1 0 3-6.7" />
+            <path d="M3 3v5h5" />
+            <path d="m8.5 12.5 2.5 2.5 4.5-5" />
+          </svg>
+        ),
+      },
+    ],
+  },
+  {
+    id: 'persona',
+    title: 'Persona',
+    // una silueta: es el módulo de uno mismo
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" {...stroke}>
+        <circle cx="12" cy="8" r="3.6" />
+        <path d="M4.5 20c.6-4 3.7-6 7.5-6s6.9 2 7.5 6" />
+      </svg>
+    ),
+    // Metas cuelga de aquí: qué quieres conseguir es parte de quién quieres
+    // ser, y suelto arriba competía con lo del día a día. Sus tres pestañas
+    // viven dentro de la propia pantalla.
+    children: [
+      {
+        id: 'persona-diario',
+        title: 'Diario',
+        path: '/persona',
+        icon: iconoSub('M5 4h11l3 3v13H5zM16 4v3h3'),
+      },
+      { id: 'suenos', title: 'Metas', path: '/suenos', icon: iconoMetas },
     ],
   },
   // (futuro) { id: 'wiki', title: 'Wiki', ... },

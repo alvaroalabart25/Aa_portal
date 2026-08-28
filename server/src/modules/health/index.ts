@@ -150,6 +150,13 @@ healthModule.get('/checks', ah(async (req: AuthedRequest, res) => {
     d.setDate(d.getDate() - n);
     return d.toISOString().slice(0, 10);
   };
+
+  /** Los días de la semana en curso hasta hoy, empezando en lunes. */
+  const desdeElLunes = (() => {
+    const d = new Date(`${date}T12:00:00`);
+    const atras = (d.getDay() + 6) % 7; // lunes = 0
+    return Array.from({ length: atras + 1 }, (_, i) => dia(atras - i));
+  })();
   /** Días seguidos hasta hoy. Si hoy no está hecho todavía, la racha es la que
    *  traes de ayer: aún estás a tiempo, no se ha roto nada. */
   function racha(hechos: Set<string>): number {
@@ -166,12 +173,18 @@ healthModule.get('/checks', ah(async (req: AuthedRequest, res) => {
     date,
     checks: checks.map((c) => {
       const hechos = porCheck.get(c.id) ?? new Set<string>();
+      // Un hábito semanal no se pregunta «¿hoy?» sino «¿cuántas van esta
+      // semana?». Cumplido = llegar al objetivo, y ahí deja de pedir nada.
+      const estaSemana = desdeElLunes.filter((d) => hechos.has(d)).length;
       return {
         id: c.id,
         title: c.title,
         emoji: c.emoji,
         kind: c.kind,
+        objetivoSemanal: c.weeklyTarget ?? null,
+        estaSemana,
         done: c.kind === 'peso' ? Boolean(pesoRow) : doneIds.has(c.id),
+        cumplido: c.weeklyTarget ? estaSemana >= c.weeklyTarget : doneIds.has(c.id),
         racha: c.kind === 'peso' ? 0 : racha(hechos),
         // de más antiguo a hoy, para pintarlos en ese orden
         semana: [6, 5, 4, 3, 2, 1, 0].map((n) => ({ dia: dia(n), hecho: hechos.has(dia(n)) })),
@@ -181,10 +194,16 @@ healthModule.get('/checks', ah(async (req: AuthedRequest, res) => {
   });
 }));
 
-// POST /checks { title, emoji } -> nuevo check al final de la lista
+// POST /checks { title, emoji, vecesPorSemana? } -> nuevo hábito al final
 healthModule.post('/checks', ah(async (req: AuthedRequest, res) => {
   const parsed = z
-    .object({ title: z.string().trim().min(1).max(120), emoji: z.string().trim().min(1).max(16).default('✅') })
+    .object({
+      title: z.string().trim().min(1).max(120),
+      emoji: z.string().trim().min(1).max(16).default('✅'),
+      // 1..6 veces por semana; a diario NO se guarda como 7, se guarda como
+      // nada: son dos cosas distintas y mezclarlas complica la cuenta.
+      vecesPorSemana: z.number().int().min(1).max(6).nullish(),
+    })
     .safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
   const [{ n }] = await db
@@ -195,10 +214,24 @@ healthModule.post('/checks', ah(async (req: AuthedRequest, res) => {
     userId: req.userId!,
     title: parsed.data.title,
     emoji: parsed.data.emoji,
+    weeklyTarget: parsed.data.vecesPorSemana ?? null,
     sortOrder: (n ?? 0) + 1,
   });
   const [row] = await db.select().from(dailyChecks).where(eq(dailyChecks.id, result.insertId));
   res.status(201).json(row);
+}));
+
+/** PATCH /checks/:id { vecesPorSemana } -> pasarlo de diario a semanal o al revés */
+healthModule.patch('/checks/:id', ah(async (req: AuthedRequest, res) => {
+  const id = Number(req.params.id);
+  const parsed = z.object({ vecesPorSemana: z.number().int().min(1).max(6).nullable() }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Frecuencia no válida' });
+  const [r] = await db
+    .update(dailyChecks)
+    .set({ weeklyTarget: parsed.data.vecesPorSemana })
+    .where(and(eq(dailyChecks.id, id), eq(dailyChecks.userId, req.userId!)));
+  if (r.affectedRows === 0) return res.status(404).json({ error: 'Hábito no encontrado' });
+  res.json({ id, vecesPorSemana: parsed.data.vecesPorSemana });
 }));
 
 // DELETE /checks/:id -> lo saca de la lista (el historial de días queda)

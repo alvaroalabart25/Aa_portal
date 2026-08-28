@@ -30,6 +30,8 @@ export default function HabitosTab() {
   const [creando, setCreando] = useState(false);
   const [titulo, setTitulo] = useState('');
   const [emoji, setEmoji] = useState(EMOJIS[0]);
+  // null = todos los días; un número = veces por semana
+  const [veces, setVeces] = useState<number | null>(null);
   // El que se acaba de marcar: le dura la animación un momento
   const [celebrando, setCelebrando] = useState<number | null>(null);
   const [dia, setDia] = useState<'nada' | 'completo'>('nada');
@@ -44,7 +46,9 @@ export default function HabitosTab() {
     void cargar();
   }, [cargar]);
 
-  const hechos = checks.filter((c) => c.done).length;
+  // Cuenta lo CUMPLIDO: un hábito de dos veces por semana con las dos hechas
+  // no pide nada hoy, aunque hoy no lo hayas tocado.
+  const hechos = checks.filter((c) => c.cumplido).length;
   const total = checks.length;
 
   async function marcar(c: DailyCheck) {
@@ -59,6 +63,10 @@ export default function HabitosTab() {
               ...x,
               done,
               racha: Math.max(0, x.racha + (done ? 1 : -1)),
+              estaSemana: Math.max(0, x.estaSemana + (done ? 1 : -1)),
+              cumplido: x.objetivoSemanal
+                ? Math.max(0, x.estaSemana + (done ? 1 : -1)) >= x.objetivoSemanal
+                : done,
               // el punto de hoy es el último: se pinta al momento, sin esperar
               // a que el servidor vuelva a contar
               semana: x.semana.map((d, i) => (i === x.semana.length - 1 ? { ...d, hecho: done } : d)),
@@ -82,8 +90,9 @@ export default function HabitosTab() {
   async function crear() {
     const t = titulo.trim();
     if (!t) return;
-    await checksApi.create(t, emoji);
+    await checksApi.create(t, emoji, veces);
     setTitulo('');
+    setVeces(null);
     setCreando(false);
     await cargar();
   }
@@ -115,9 +124,9 @@ export default function HabitosTab() {
         {checks.map((c) => (
           <button
             key={c.id}
-            className={`hb${c.done ? ' hecho' : ''}${celebrando === c.id ? ' celebra' : ''}${
-              c.kind === 'peso' ? ' solo' : ''
-            }`}
+            className={`hb${c.done ? ' hecho' : ''}${c.cumplido && !c.done ? ' cumplido' : ''}${
+              celebrando === c.id ? ' celebra' : ''
+            }${c.kind === 'peso' ? ' solo' : ''}`}
             onClick={() => marcar(c)}
           >
             <span className="hb-marca" aria-hidden="true">
@@ -133,9 +142,11 @@ export default function HabitosTab() {
               <span className="hb-sub">
                 {c.kind === 'peso'
                   ? 'se marca solo al pesarte'
-                  : c.racha > 0
-                    ? `🔥 ${c.racha === 1 ? '1 día' : `${c.racha} días seguidos`}`
-                    : 'sin racha todavía'}
+                  : c.objetivoSemanal
+                    ? `${c.estaSemana} de ${c.objetivoSemanal} esta semana`
+                    : c.racha > 0
+                      ? `🔥 ${c.racha === 1 ? '1 día' : `${c.racha} días seguidos`}`
+                      : 'sin racha todavía'}
               </span>
             </span>
             <span className="hb-semana" aria-hidden="true">
@@ -153,6 +164,18 @@ export default function HabitosTab() {
             {EMOJIS.map((e) => (
               <button key={e} className={`hb-emoji-op${e === emoji ? ' puesto' : ''}`} onClick={() => setEmoji(e)}>
                 {e}
+              </button>
+            ))}
+          </div>
+          {/* Cada cuánto. No es un horario: es cuántas veces por semana, los
+              días que sean. */}
+          <div className="hb-cada">
+            <button className={veces === null ? 'puesto' : ''} onClick={() => setVeces(null)}>
+              Todos los días
+            </button>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button key={n} className={veces === n ? 'puesto' : ''} onClick={() => setVeces(n)}>
+                {n}/semana
               </button>
             ))}
           </div>

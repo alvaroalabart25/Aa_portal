@@ -36,21 +36,29 @@ export default function HabitosDeHoy() {
 
   if (!listo || checks.length === 0) return null;
 
-  const hechos = checks.filter((c) => c.done).length;
+  // Cumplido, no marcado hoy: un hábito de dos veces por semana con las dos
+  // hechas no pide nada aunque hoy no lo hayas tocado.
+  const hechos = checks.filter((c) => c.cumplido).length;
   const total = checks.length;
   const completo = hechos === total;
 
   async function marcar(c: DailyCheck) {
     if (c.kind === 'peso') return;
     const done = !c.done;
-    setChecks((l) => l.map((x) => (x.id === c.id ? { ...x, done } : x)));
+    setChecks((l) =>
+      l.map((x) => {
+        if (x.id !== c.id) return x;
+        const semana = Math.max(0, x.estaSemana + (done ? 1 : -1));
+        return { ...x, done, estaSemana: semana, cumplido: x.objetivoSemanal ? semana >= x.objetivoSemanal : done };
+      }),
+    );
     if (done) vibrar(18);
     await checksApi.toggle(c.id, done).catch(() => cargar());
   }
 
   // Delante lo que falta: lo hecho ya no pide nada, pero se queda a la vista
   // porque ver lo hecho es media gracia de esto.
-  const orden = [...checks].sort((a, b) => Number(a.done) - Number(b.done));
+  const orden = [...checks].sort((a, b) => Number(a.cumplido) - Number(b.cumplido));
   const visibles = orden.slice(0, TOPE);
   const resto = orden.length - visibles.length;
 
@@ -63,11 +71,20 @@ export default function HabitosDeHoy() {
         </Link>
       </div>
 
-      <div className={`hh${completo ? ' completo' : ''}`}>
+      {/* En tarjeta blanca, como la formación y el gimnasio: dentro de
+          Constancia las tres cosas se leen igual o no se leen como lo mismo. */}
+      <div className={`hh claro${completo ? ' completo' : ''}`}>
         {visibles.map((c) => (
-          <button key={c.id} className={`hh-p${c.done ? ' hecho' : ''}`} onClick={() => marcar(c)}>
+          <button key={c.id} className={`hh-p${c.cumplido ? ' hecho' : ''}`} onClick={() => marcar(c)}>
             <span aria-hidden="true">{c.emoji}</span>
             {c.title}
+            {/* En los semanales, la cuenta va dentro: «1/2» dice más que el
+                nombre solo, y sin ella no se sabe si falta o no. */}
+            {c.objetivoSemanal && (
+              <em>
+                {c.estaSemana}/{c.objetivoSemanal}
+              </em>
+            )}
           </button>
         ))}
         {resto > 0 && (

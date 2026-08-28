@@ -350,8 +350,6 @@ function BloqueConstancia({
       </div>
 
       <div className="mc-cols">
-        {/* Los hábitos, delante: son lo que se toca todos los días */}
-        <HabitosDeHoy />
         <ColumnaDiaria kind="formacion" items={formaciones} onCrear={onCrear} onCambio={onCambio} />
         {hayLibros && <ColumnaDiaria kind="libro" items={libros} onCrear={onCrear} onCambio={onCambio} />}
 
@@ -364,6 +362,10 @@ function BloqueConstancia({
           </div>
           <BloqueGimnasio desnudo />
         </div>
+
+        {/* Los hábitos, a la derecha del todo: es lo último que se mira y lo
+            que se toca al pasar. */}
+        <HabitosDeHoy />
       </div>
     </section>
   );

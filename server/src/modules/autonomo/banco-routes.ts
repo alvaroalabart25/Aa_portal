@@ -481,6 +481,9 @@ bancoRouter.post('/sincronizar/:id(\\d+)', ah(async (req: AuthedRequest, res) =>
       }
 
       const movimientos = await movimientosDe(cuenta.accountUid, desdeIso);
+      // Lo que el banco dice que existe AHORA en esta cuenta. Se usa al final
+      // para barrer los pendientes que ya no están (ver más abajo).
+      const vistas: string[] = [];
       for (const m of movimientos) {
         // Sin referencia del banco no hay forma de saber si ya lo tenemos: se
         // compone una con lo que sí es estable. Mejor eso que duplicar.
@@ -488,6 +491,7 @@ bancoRouter.post('/sincronizar/:id(\\d+)', ah(async (req: AuthedRequest, res) =>
         const referencia = m.entry_reference ?? sintetica;
         const importe = m.transaction_amount?.amount;
         if (!importe) continue;
+        vistas.push(referencia.slice(0, 140));
 
         // Un movimiento PENDIENTE llega sin referencia del banco, así que se
         // guardó con la sintética; cuando se contabiliza, el banco ya le pone
@@ -539,6 +543,31 @@ bancoRouter.post('/sincronizar/:id(\\d+)', ah(async (req: AuthedRequest, res) =>
           });
         // MySQL: 1 = insertado, 2 = ya estaba y se actualizó, 0 = ya estaba igual
         if (r.affectedRows === 1) nuevos += 1;
+      }
+
+      // Un pendiente es EFÍMERO: el banco devuelve los que siguen pendientes, y
+      // el día que se contabiliza vuelve con otra referencia, otra fecha o
+      // hasta otro concepto —«COMPRA TARJETA» pasa a ser el nombre del
+      // comercio—. Adoptar la fila vieja solo funciona si nada de eso cambia,
+      // así que hace falta la red de abajo: lo que teníamos como pendiente y ya
+      // no viene en esta respuesta, o se contabilizó (y el bueno acaba de
+      // entrar) o se anuló. En los dos casos nuestra copia sobra, y si se queda
+      // infla los ingresos del ciclo y hunde la reconstrucción del patrimonio.
+      //
+      // Solo dentro de la ventana que se ha pedido, y solo si el banco ha
+      // devuelto algo: con una respuesta vacía —un fallo, un cupo agotado— no
+      // se borra nada.
+      if (vistas.length) {
+        await db
+          .delete(bankTransactions)
+          .where(
+            and(
+              eq(bankTransactions.accountId, cuenta.id),
+              eq(bankTransactions.status, 'PDNG'),
+              sql`(${bankTransactions.bookingDate} is null or ${bankTransactions.bookingDate} >= ${desdeIso})`,
+              sql`${bankTransactions.entryReference} not in (${sql.join(vistas.map((v) => sql`${v}`), sql`, `)})`,
+            ),
+          );
       }
     }
 

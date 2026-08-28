@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import Modal from '../../components/Modal';
 import { autonomoApi } from './api';
+import { EscaneosPendientes, type Escaneo } from './FotosDeFactura';
 import { fmtEur } from './types';
 
 function today(): string {
@@ -16,6 +17,9 @@ export default function NuevoGastoModal({ onClose, onCreated }: { onClose: () =>
   const [base, setBase] = useState('');
   const [vatPct, setVatPct] = useState('21');
   const [irpfPct, setIrpfPct] = useState('0');
+  // El escaneo se elige AQUÍ, con el papel en la mano, aunque la factura
+  // todavía no exista: se guarda reducido y se sube en cuanto está creada.
+  const [escaneos, setEscaneos] = useState<Escaneo[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -32,7 +36,7 @@ export default function NuevoGastoModal({ onClose, onCreated }: { onClose: () =>
     setSaving(true);
     setError('');
     try {
-      await autonomoApi.createInvoice({
+      const gasto = await autonomoApi.createInvoice({
         kind: 'expense',
         origin: origin.trim(),
         number: number.trim(),
@@ -42,6 +46,9 @@ export default function NuevoGastoModal({ onClose, onCreated }: { onClose: () =>
         vatPct: Number(vatPct),
         irpfPct: Number(irpfPct),
       });
+      // Una a una y a propósito: si una foto falla, el gasto ya está guardado y
+      // el error lo dice, en vez de perderse el alta entera por una imagen.
+      for (const foto of escaneos) await autonomoApi.subirFoto(gasto.id, foto);
       onCreated();
       onClose();
     } catch (err) {
@@ -85,6 +92,11 @@ export default function NuevoGastoModal({ onClose, onCreated }: { onClose: () =>
             <label htmlFor="g-irpf">IRPF %</label>
             <input id="g-irpf" type="number" step="0.01" min="0" max="99" value={irpfPct} onChange={(e) => setIrpfPct(e.target.value)} style={{ width: 90 }} />
           </div>
+        </div>
+
+        <div className="field">
+          <label>Escaneo (opcional)</label>
+          <EscaneosPendientes escaneos={escaneos} onCambio={setEscaneos} />
         </div>
 
         {Number(base) > 0 && (

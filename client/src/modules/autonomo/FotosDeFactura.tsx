@@ -78,3 +78,67 @@ export function FotosDeFactura({
     </span>
   );
 }
+
+/** Una foto ya reducida, esperando a que exista la factura a la que va. */
+export type Escaneo = { mime: string; thumb: string; full: string };
+
+/**
+ * El mismo escaneo, pero ANTES de que la factura exista.
+ *
+ * Al dar de alta un gasto todavía no hay id al que colgar la foto, así que se
+ * elige y se reduce aquí y se guarda en memoria; la ventana la sube en cuanto
+ * el gasto está creado. Es lo que evita el «guarda, búscalo en la lista y ahora
+ * sí, añade la foto», que con el papel en la mano es justo el momento en que se
+ * pierde.
+ */
+export function EscaneosPendientes({
+  escaneos,
+  onCambio,
+}: {
+  escaneos: Escaneo[];
+  onCambio: (e: Escaneo[]) => void;
+}) {
+  const campo = useRef<HTMLInputElement>(null);
+  const [preparando, setPreparando] = useState(false);
+  const [error, setError] = useState('');
+
+  async function elegida(archivos: FileList | null) {
+    if (!archivos?.length) return;
+    setPreparando(true);
+    setError('');
+    try {
+      const nuevas: Escaneo[] = [];
+      for (const archivo of Array.from(archivos)) nuevas.push(await reducirImagen(archivo));
+      onCambio([...escaneos, ...nuevas]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo preparar la imagen');
+    } finally {
+      setPreparando(false);
+      if (campo.current) campo.current.value = '';
+    }
+  }
+
+  return (
+    <span className="fx-fotos">
+      {escaneos.map((f, i) => (
+        <span key={i} className="fx-foto">
+          <img src={`data:${f.mime};base64,${f.thumb}`} alt="Escaneo de la factura" />
+          <button
+            type="button"
+            aria-label="Quitar el escaneo"
+            title="Quitar el escaneo"
+            onClick={() => onCambio(escaneos.filter((_, j) => j !== i))}
+          >
+            ✕
+          </button>
+        </span>
+      ))}
+
+      <button type="button" className="fx-anadir" disabled={preparando} onClick={() => campo.current?.click()}>
+        {preparando ? 'Preparando…' : escaneos.length ? '+' : '+ Foto'}
+      </button>
+      <input ref={campo} type="file" accept="image/*" multiple hidden onChange={(e) => elegida(e.target.files)} />
+      {error && <em className="fx-error">{error}</em>}
+    </span>
+  );
+}

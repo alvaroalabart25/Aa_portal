@@ -271,6 +271,46 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
    lo que sobra y parte el texto si hace falta —en el móvil son dos renglones
    al lado del campo— antes que caerse debajo, que es donde no se lee como lo
    que es: una advertencia sobre ESA fecha. */
+/* ---------- La ficha: la cabecera de un detalle ----------
+   Estado, prioridad, fechas… dejaban de estar sueltos flotando bajo el título
+   —cada uno con su marco, su alto y su hueco— y pasan a ser UNA tira con
+   casillas. En el ordenador las casillas van en fila, separadas por una raya
+   fina; en el móvil (al final del fichero) la misma tira se pone en columna.
+   Dentro no hay más marcos: el marco es la tira, y cada control se lee como el
+   valor de su casilla, no como un campo que rellenar. */
+.ficha-fila { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+.ficha {
+  display: inline-flex; flex-wrap: wrap; align-items: stretch; max-width: 100%;
+  border: 1px solid var(--line); border-radius: var(--r-md); background: var(--paper);
+  margin-top: 16px;
+}
+.ficha-fila > .ficha { margin-top: 0; }
+.ficha > div {
+  display: flex; flex-direction: column; justify-content: center; gap: 2px;
+  padding: 9px 16px; min-width: 0;
+  border-right: 1px solid var(--line-suave);
+}
+.ficha > div:last-child { border-right: none; }
+.ficha label {
+  margin: 0; font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--ink-muted);
+}
+/* El valor: sin marco y sin fondo. La flecha del desplegable se dibuja a mano
+   porque al quitarle la apariencia nativa se va con ella. */
+.ficha select, .ficha input[type='date'] {
+  border: none; background: none; padding: 0; min-height: 0; width: auto;
+  font-size: 14.5px; font-weight: 500; color: var(--ink);
+}
+.ficha select {
+  -webkit-appearance: none; appearance: none; cursor: pointer; padding-right: 15px;
+  background: no-repeat right center / 9px 6px
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 6'%3E%3Cpath d='M.5.5 4.5 4.5 8.5.5' fill='none' stroke='%238a8a8a' stroke-width='1.2'/%3E%3C/svg%3E");
+}
+.ficha select:focus, .ficha input[type='date']:focus { outline: none; }
+.ficha .status-btn { border: none; background: none; padding: 0; min-height: 0; font-size: 14.5px; }
+/* La nota de debajo: qué consecuencia tiene lo que pone la tira */
+.ficha-nota { margin: 8px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--ink-muted); }
+
 .tk-vence { display: flex; align-items: center; gap: 12px; }
 .tk-vence input { flex: 0 0 auto; width: auto; }
 .tk-aplazos { flex: 1 1 130px; min-width: 0; margin: 0; font-size: 12.5px; line-height: 1.4; color: var(--ink-muted); }
@@ -1202,10 +1242,6 @@ label:not([class]) > span + textarea { display: block; width: 100%; }
 }
 
 /* Las fechas en la ficha del objetivo: lo preciso va aquí, el gesto en la plani */
-.mc-fechas { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; margin: 4px 0 18px; }
-.mc-fechas label { display: flex; flex-direction: column; gap: 4px; }
-.mc-fechas label span { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-muted); }
-.mc-fechas-nota { font-size: 12px; color: var(--ink-muted); flex: 1 1 220px; padding-bottom: 6px; }
 
 /* Los objetivos ya conseguidos: al final y en una línea, con su check verde.
    Siguen estando porque da gusto verlos, pero dejan de ocupar el sitio de lo
@@ -1294,7 +1330,6 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .mk-libre:hover { color: var(--ink); }
 
 /* Ficha */
-.mc-ficha-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 14px 0 4px; }
 .mc-tareas { display: flex; flex-direction: column; gap: 2px; margin-top: 12px; }
 .mc-tarea-fila {
   display: flex; align-items: center; gap: 10px;
@@ -3161,60 +3196,29 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
   padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-muted);
 }
 
-/* La cabecera de una tarea en el MÓVIL: estado, prioridad y vencimiento.
-   Dejan de ser tres cajas sueltas de alturas distintas y pasan a ser una sola
-   ficha —etiqueta a la izquierda, valor a la derecha, un renglón cada uno—.
-   La clave: DENTRO de la ficha ya no hay más cajas. El marco es la ficha; los
-   controles pierden borde y fondo y se leen como el valor de su línea, igual
-   que en los ajustes del teléfono. Tres marcos anidados era el «suelto».
-   Lleva clase propia (`tk-ficha`) porque `.form-grid` lo usan también todos
-   los formularios de ventana, y ahí un campo sin marco no se ve.
-   Va al FINAL del fichero a propósito: las reglas base de `.form-grid` y
+/* La MISMA tira, en el móvil, puesta en columna: una casilla por renglón, el
+   nombre en versalitas a la izquierda y el valor a la derecha, como en los
+   ajustes del teléfono. Cambia la dirección y de qué lado va la raya; no
+   cambia la idea.
+   Va al FINAL del fichero a propósito: las reglas base de `.ficha` y
    `.tk-vence` están más abajo que el bloque de móvil y lo pisaban —una media
    query no añade especificidad, solo cuenta el orden—. */
 @media (max-width: 720px) {
-  .form-grid.tk-ficha {
-    display: flex; flex-direction: column; gap: 0; align-items: stretch;
-    border: 1px solid var(--line); border-radius: var(--r-md);
-    padding: 0 14px; margin-top: 16px; background: var(--paper);
+  .ficha { display: flex; flex-direction: column; width: 100%; }
+  .ficha > div {
+    flex-direction: row; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; min-height: 46px; padding: 8px 14px;
+    border-right: none; border-bottom: 1px solid var(--line-suave);
   }
-  .tk-ficha > div {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 12px; flex-wrap: wrap; min-height: 46px; padding: 8px 0;
-    border-bottom: 1px solid var(--line-suave);
-  }
-  .tk-ficha > div:last-child { border-bottom: none; }
-  /* La etiqueta, en versalitas: pesa menos que el valor y ordena la columna
-     de la izquierda sin necesidad de una línea que las separe. */
-  .tk-ficha label {
-    margin: 0; flex: 0 0 auto;
-    font-size: 10.5px; font-weight: 600; letter-spacing: 0.07em;
-    text-transform: uppercase; color: var(--ink-muted);
-  }
-  /* El valor: sin marco y sin fondo. La flecha del desplegable se dibuja a
-     mano porque al quitarle la apariencia nativa se va con ella. */
-  .tk-ficha select, .tk-ficha input[type='date'] {
-    border: none; background: none; padding: 0; min-height: 0;
-    font-size: 14.5px; font-weight: 500; color: var(--ink);
-  }
-  .tk-ficha select {
-    -webkit-appearance: none; appearance: none; cursor: pointer;
-    padding-right: 15px;
-    background: no-repeat right center / 9px 6px
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 6'%3E%3Cpath d='M.5.5 4.5 4.5 8.5.5' fill='none' stroke='%238a8a8a' stroke-width='1.2'/%3E%3C/svg%3E");
-  }
-  .tk-ficha select:focus, .tk-ficha input[type='date']:focus { outline: none; }
-  .tk-ficha .status-btn {
-    border: none; background: none; padding: 0; min-height: 0;
-    font-size: 14.5px; font-weight: 500;
-  }
+  .ficha > div:last-child { border-bottom: none; }
+  .ficha label { font-size: 10.5px; flex: 0 0 auto; }
 
   /* El vencimiento son dos renglones: la fecha en la línea de su etiqueta y el
-     aviso debajo, a lo ancho de la ficha entera. `display: contents` disuelve
+     aviso debajo, a lo ancho de la casilla entera. `display: contents` disuelve
      la caja que los envuelve y los sube al mismo flex que la etiqueta; sin eso
      el aviso solo dispone del hueco del campo y parte «agosto» a una tercera
      línea huérfana. */
-  .tk-ficha .tk-vence { display: contents; }
-  .tk-ficha .tk-vence input { margin-left: auto; }
-  .tk-ficha .tk-aplazos { flex: 1 0 100%; text-align: right; margin-top: 4px; font-size: 12px; }
+  .ficha .tk-vence { display: contents; }
+  .ficha .tk-vence input { margin-left: auto; }
+  .ficha .tk-aplazos { flex: 1 0 100%; text-align: right; margin-top: 4px; font-size: 12px; }
 }

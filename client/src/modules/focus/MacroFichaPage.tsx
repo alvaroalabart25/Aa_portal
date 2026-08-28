@@ -107,12 +107,47 @@ export default function MacroFichaPage() {
         <Titulo valor={d.title} onGuardar={(title) => guardar({ title })} />
       </div>
 
-      <div className="mc-ficha-bar">
-        <select value={d.status} onChange={(e) => guardar({ status: e.target.value as FocusDetalle['status'] })}>
-          <option value="activo">En marcha</option>
-          <option value="hecho">Hecho</option>
-          <option value="aparcado">Aparcado</option>
-        </select>
+      {/* La ficha del objetivo: estado y fechas en la misma tira que la de una
+          tarea. Las fechas exactas se ponen aquí; en la plani se arrastran por
+          semanas. El gesto es rápido y basto, el formulario es preciso: cada
+          uno a lo suyo. */}
+      <div className="ficha-fila">
+        <div className="ficha">
+          <div>
+            <label htmlFor="o-estado">Estado</label>
+            <select
+              id="o-estado"
+              value={d.status}
+              onChange={(e) => guardar({ status: e.target.value as FocusDetalle['status'] })}
+            >
+              <option value="activo">En marcha</option>
+              <option value="hecho">Hecho</option>
+              <option value="aparcado">Aparcado</option>
+            </select>
+          </div>
+          {d.kind === 'melon' && (
+            <>
+              <div>
+                <label htmlFor="o-empieza">Empieza</label>
+                <input
+                  id="o-empieza"
+                  type="date"
+                  value={d.startsOn ?? ''}
+                  onChange={(e) => guardar({ startsOn: e.target.value || null })}
+                />
+              </div>
+              <div>
+                <label htmlFor="o-saca">Se saca</label>
+                <input
+                  id="o-saca"
+                  type="date"
+                  value={d.dueOn ?? ''}
+                  onChange={(e) => guardar({ dueOn: e.target.value || null })}
+                />
+              </div>
+            </>
+          )}
+        </div>
         {d.daily === 1 && (
           <span className="badge">
             🔥 {d.racha} {d.racha === 1 ? 'día seguido' : 'días seguidos'}
@@ -121,31 +156,14 @@ export default function MacroFichaPage() {
         {d.doneAt && <span className="badge">✓ Hecho el {fechaCorta(d.doneAt)}</span>}
       </div>
 
-      {/* Las fechas exactas se ponen aquí; en la plani se arrastran por semanas.
-          El gesto es rápido y basto, el formulario es preciso: cada uno a lo
-          suyo. */}
       {d.kind === 'melon' && (
-        <div className="mc-fechas">
-          <label>
-            <span>Empieza</span>
-            <input
-              type="date"
-              value={d.startsOn ?? ''}
-              onChange={(e) => guardar({ startsOn: e.target.value || null })}
-            />
-          </label>
-          <label>
-            <span>Se saca</span>
-            <input type="date" value={d.dueOn ?? ''} onChange={(e) => guardar({ dueOn: e.target.value || null })} />
-          </label>
-          <span className="mc-fechas-nota">
-            {d.dueOn
-              ? d.startsOn
-                ? 'Se dibuja como una barra en la plani.'
-                : 'Se dibuja como un hito en la plani. Pon la fecha de inicio si dura semanas.'
-              : 'Sin fecha de entrega no sale en la plani.'}
-          </span>
-        </div>
+        <p className="ficha-nota">
+          {d.dueOn
+            ? d.startsOn
+              ? 'Se dibuja como una barra en la plani.'
+              : 'Se dibuja como un hito en la plani. Pon la fecha de inicio si dura semanas.'
+            : 'Sin fecha de entrega no sale en la plani.'}
+        </p>
       )}
 
       {d.daily === 1 && <Diario item={d} onCambio={cargar} />}

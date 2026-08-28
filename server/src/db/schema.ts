@@ -1361,3 +1361,31 @@ export const notes = mysqlTable('notes', {
     .$onUpdateFn(() => new Date()),
 });
 export type Note = typeof notes.$inferSelect;
+
+/**
+ * Las notas de una tarea o de un proyecto, con fecha.
+ *
+ * Misma idea que el bloc y por el mismo motivo: una nota suelta dice qué pasa,
+ * una nota fechada dice cómo ha ido. Una fila por día y por ficha —volver a
+ * escribir el mismo día sigue el apunte de ese día—, y vaciarla la borra.
+ *
+ * `taskId` y `projectId` son excluyentes: una nota es de una tarea O de un
+ * proyecto. Cada caso tiene su clave única; con NULL en la otra columna MySQL
+ * permite repetidos, que es lo que deja convivir a las dos en la misma tabla.
+ */
+export const workNotes = mysqlTable('work_notes', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  taskId: bigint('task_id', { mode: 'number' }),
+  projectId: bigint('project_id', { mode: 'number' }),
+  noteDate: date('note_date', { mode: 'string' }).notNull(),
+  body: text('body').notNull(),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`)
+    .$onUpdateFn(() => new Date()),
+});
+export type WorkNote = typeof workNotes.$inferSelect;

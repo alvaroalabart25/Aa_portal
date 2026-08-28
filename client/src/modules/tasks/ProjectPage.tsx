@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { projectsApi, tasksApi } from './api';
-import { EditableTitle, KebabMenu, NotesBox, Progress, StatusBadge } from './components';
+import Bitacora from '../notas/Bitacora';
+import { EditableTitle, KebabMenu, Progress, StatusBadge } from './components';
 import { AddTaskModal } from './modals';
 import TaskTable from './TaskTable';
 import type { Project, Task } from './types';
@@ -85,12 +86,7 @@ export default function ProjectPage() {
         </div>
       </div>
 
-      <NotesBox
-        value={project.notes ?? null}
-        onSave={async (notes) => {
-          await projectsApi.update(projectId, { notes });
-        }}
-      />
+      <Bitacora tipo="proyecto" id={projectId} />
 
       <section className="section">
         <h2>Tareas</h2>

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { tasksApi } from './api';
 import MelonesDeTarea from '../focus/MelonesDeTarea';
-import { EditableTitle, KebabMenu, NotesBox, StatusSelect } from './components';
+import Bitacora from '../notas/Bitacora';
+import { EditableTitle, KebabMenu, StatusSelect } from './components';
 import { avisaAplazada, AVISO_APLAZADA_EN_MARCHA, PRIORITY_LABEL, type Priority, type Task } from './types';
 
 // «1 de julio». El aviso cuenta desde CUÁNDO existe la tarea, no cuándo fue el
@@ -132,12 +133,7 @@ export default function TaskPage() {
 
       <MelonesDeTarea taskId={task.id} />
 
-      <NotesBox
-        value={task.notes ?? null}
-        onSave={async (notes) => {
-          await tasksApi.update(taskId, { notes });
-        }}
-      />
+      <Bitacora tipo="tarea" id={task.id} />
     </div>
   );
 }

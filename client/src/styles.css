@@ -1464,6 +1464,31 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .nt-dia .notes-toolbar { margin: 0 0 8px; }
 .notes-estado { margin-left: auto; font-size: 11.5px; color: var(--ink-muted); align-self: center; }
 
+/* ---------- La bitácora: las notas fechadas de una tarea o un proyecto ----------
+   Mismo aspecto que el bloc, porque es el mismo gesto: cada día su renglón, sin
+   marcos por dentro —el único borde es la raya que separa un día del siguiente—
+   y el de hoy arriba, marcado. Lo que cambia es de quién son. */
+.bit-cab { display: flex; align-items: baseline; gap: 12px; }
+.bit-guardado { font-size: 12px; }
+.bit-dia { padding: 12px 0; border-bottom: 1px solid var(--line-suave); }
+.bit-dia:last-child { border-bottom: none; }
+.bit-fecha {
+  display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px;
+  font-family: var(--font-title); font-weight: 700; font-size: 14px;
+}
+.bit-fecha em {
+  font-style: normal; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--paper); background: var(--ink); border-radius: var(--radius); padding: 2px 8px;
+}
+.bit-dia .notes-editor {
+  border: none; background: none; padding: 0; min-height: 0;
+  font-size: 14.5px; line-height: 1.65;
+}
+.bit-dia .notes-editor:focus { outline: none; box-shadow: none; }
+.bit-dia .notes-toolbar { margin: 0 0 8px; }
+/* Un día viejo pesa menos que el de hoy: se lee, no se escribe. */
+.bit-dia + .bit-dia .bit-fecha { color: var(--ink-soft); }
+
 .nt-viejos { margin-top: 30px; padding-top: 6px; border-top: 1px solid var(--line); }
 .nt-mes { border-bottom: 1px solid var(--line-suave); }
 .nt-mes:last-child { border-bottom: none; }

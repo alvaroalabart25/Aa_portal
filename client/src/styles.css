@@ -311,11 +311,17 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
    vistazo— y el texto pasa a blanco. El `!important` es porque el color se lo
    pone el componente en línea, según el estado. */
 .oscuro .status-btn { color: var(--ink) !important; }
-/* Los desplegables nativos (prioridad, estado del objetivo) abren su lista con
-   el tema que diga `color-scheme`: en claro, para que salga blanca como la del
-   estado. El campo de fecha se queda en oscuro a propósito —es lo que mantiene
-   blanco el icono del calendario—. */
-.oscuro select { color-scheme: light; }
+/* Lo nativo que se despliega —la lista de un `select`, el calendario de una
+   fecha— abre con el tema que diga `color-scheme`: en claro, para que salga
+   blanco como el resto de desplegables. La pega es que el icono del calendario
+   se vuelve negro con él, y sobre la tira oscura desaparece; se le da la vuelta
+   con un `invert`, que es lo único que se puede tocar de ese icono. */
+.oscuro select,
+.oscuro input[type='date'] { color-scheme: light; }
+.oscuro input[type='date']::-webkit-calendar-picker-indicator {
+  filter: invert(1); opacity: 0.7;
+}
+.oscuro input[type='date']::-webkit-calendar-picker-indicator:hover { opacity: 1; }
 
 /* ---------- La tira de datos de la ficha ----------
    Estado, prioridad, fechas… dejaban de estar sueltos flotando bajo el título

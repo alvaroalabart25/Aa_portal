@@ -295,12 +295,25 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 /* Lo que se hace con la ficha (borrar, quitar) se va al extremo de la línea de
    volver: así no le roba sitio al título ni abre su menú fuera de pantalla. */
 .fh-acciones { margin-left: auto; flex: 0 0 auto; }
-/* Sobre negro, el ámbar apagado no se lee: sube de tono lo justo. */
-.fh .ficha-nota.aviso { color: #e0a458; }
+/* El aviso, sobre negro, en pastilla blanca: el ámbar sobre el negro se ensucia
+   —y subirle el tono lo convierte en un naranja que canta—. Sobre blanco es el
+   mismo ámbar de siempre y encima se lee como lo que es: una advertencia, no
+   una nota al pie. */
+.fh .ficha-nota.aviso {
+  display: inline-block; margin-top: 10px;
+  background: #ffffff; color: var(--ambar);
+  padding: 5px 11px; border-radius: var(--radius);
+  font-weight: 500;
+}
 /* Y el color del estado tampoco: el punto lo mantiene —es el que informa de un
    vistazo— y el texto pasa a blanco. El `!important` es porque el color se lo
    pone el componente en línea, según el estado. */
 .oscuro .status-btn { color: var(--ink) !important; }
+/* Los desplegables nativos (prioridad, estado del objetivo) abren su lista con
+   el tema que diga `color-scheme`: en claro, para que salga blanca como la del
+   estado. El campo de fecha se queda en oscuro a propósito —es lo que mantiene
+   blanco el icono del calendario—. */
+.oscuro select { color-scheme: light; }
 
 /* ---------- La tira de datos de la ficha ----------
    Estado, prioridad, fechas… dejaban de estar sueltos flotando bajo el título
@@ -3198,14 +3211,20 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 /* Isla clara dentro de un bloque oscuro: devuelve los tokens a sus valores de
    siempre, así que la tarjeta vuelve a ser blanca con texto y botones negros
    sin escribir una regla por cada cosa que lleva dentro. Es el complemento
-   exacto de `.oscuro`, y funciona igual en cualquier bloque futuro. */
-.oscuro .claro {
+   exacto de `.oscuro`, y funciona igual en cualquier bloque futuro.
+   Los desplegables van SIEMPRE en isla clara, estén donde estén: son los
+   estados y sus colores —azul, morado, ámbar, verde— y sobre negro se
+   ensucian todos. Sobre blanco se leen como en el resto del portal. */
+.oscuro .claro,
+.oscuro .status-menu {
+  color-scheme: light;
   --ink: #0a0a0a;
   --ink-soft: #3f3f3f;
   --ink-muted: #8a8a8a;
   --paper: #ffffff;
   --paper-soft: #f5f5f4;
   --line: #e5e5e3;
+  --line-suave: #f1f0ed;
   background: #ffffff;
   color: #0a0a0a;
 }

@@ -260,6 +260,23 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
      y la tarjeta deja de leerse como tres renglones pegados. */
   .task-table .tt-nombre { font-size: 14px; margin: 2px 0; }
 
+  /* Lo mismo en la tarjeta de un proyecto: las señales —vencidas, en marcha,
+     sin tocar— eran pastillas con borde dentro de la tarjeta. Pierden la caja
+     y se leen en una línea separada por puntos; el color sigue diciendo lo que
+     decía. Y el nombre con su cuenta se despega un pelín de esa línea. */
+  /* Los tres modificadores traen su propio borde y fondo, viven MÁS ABAJO en el
+     fichero y pesan lo mismo que esta regla: con la misma especificidad gana el
+     último, y una media query no añade ninguna. De ahí el `.main` delante, que
+     desempata sin recurrir a `!important`. */
+  .main .pr-senal,
+  .main .pr-senal.vencidas,
+  .main .pr-senal.marcha,
+  .main .pr-senal.parado { border: none; background: none; padding: 0; }
+  .pr-senal + .pr-senal::before { content: '·'; margin-right: 6px; color: var(--ink-muted); }
+  .pr-senales { gap: 6px; margin-top: 6px; }
+  .mk .mk-txt { gap: 4px; }
+  .mk-sub { margin-bottom: 2px; }
+
   /* Tablas de datos (Cuentas/Trimestrales): scroll horizontal con la
      primera columna fija, en vez de apilar las celdas */
   .scroll-table { display: table; width: max-content; min-width: 100%; }

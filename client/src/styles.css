@@ -116,10 +116,24 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .main { flex: 1; padding: 28px 36px 90px; max-width: none; min-width: 0; }
 
 .bottombar { display: none; }
+/* En el ordenador no hay barra de sistema que tapar */
+.tapa-arriba { display: none; }
 
 @media (max-width: 720px) {
   .sidebar { display: none; }
-  .main { padding: 18px 14px calc(124px + env(safe-area-inset-bottom)); }
+  /* Arriba, el hueco de la barra del sistema. En el navegador ese valor es
+     cero, así que esto solo separa donde hace falta: en la app instalada. */
+  .main {
+    padding: calc(16px + env(safe-area-inset-top)) 14px calc(124px + env(safe-area-inset-bottom));
+  }
+  /* El velo: blanco pegado arriba que se desvanece. Lo que sube al hacer scroll
+     se apaga antes de llegar al reloj en vez de chocar con él. */
+  .tapa-arriba {
+    display: block;
+    position: fixed; top: 0; left: 0; right: 0; z-index: 60; pointer-events: none;
+    height: calc(env(safe-area-inset-top) + 14px);
+    background: linear-gradient(to bottom, var(--paper) 62%, transparent);
+  }
   /* «+ Nueva tarea» se queda en «+ Nueva»: en el móvil el contexto lo pone el
      título de la página, y así el botón no empuja a las pestañas */
   .solo-ancho { display: none; }

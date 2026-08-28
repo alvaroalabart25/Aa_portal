@@ -291,6 +291,12 @@ export default function Layout() {
 
   return (
     <div className="shell">
+      {/* La tapa de arriba: en la app instalada, el contenido pasa por debajo
+          del reloj y la batería del iPhone y se cruzan. Un velo blanco que se
+          desvanece deja legible la barra del sistema sin cortar la pantalla con
+          una línea. Solo se ve en el móvil; en el ordenador mide cero. */}
+      <div className="tapa-arriba" aria-hidden="true" />
+
       <aside className="sidebar">
         <div className="brand">Aa</div>
         {MODULES.filter((m) => !perfil || perfil.modules.includes(m.id)).map((m) => (

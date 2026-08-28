@@ -419,7 +419,10 @@ function TarjetaDiaria({ item, onCambio }: { item: FocusItem; onCambio: () => vo
   }
 
   return (
-    <div className={`mk mk-diaria${hecho ? ' hecho' : ''}`}>
+    // `claro` porque vive dentro del bloque negro de Constancia: la tarjeta
+    // vuelve a ser blanca con sus puntos negros, sin escribir una regla por
+    // cada cosa que lleva dentro.
+    <div className={`mk mk-diaria claro${hecho ? ' hecho' : ''}`}>
       <Link to={`/macro/${item.id}`} className="mk-todo" aria-label={item.title} />
 
       <span className="mk-txt">

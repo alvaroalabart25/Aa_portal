@@ -42,8 +42,12 @@ export default function BloqueGimnasio({ desnudo = false }: { desnudo?: boolean 
   // menciona: sería ofrecer un extra a quien no ha llegado a lo básico.
   const cuartoAbierto = hechos >= datos.target;
 
+  // El mensaje ARRIBA y la semana debajo: así, dentro de Constancia, el texto
+  // cae a la altura del nombre de la formación y los puntos a la de sus días.
   const cuerpo = (
-    <>
+    <div className="gs-caja claro">
+      <p className="gs-msg">{recomendacion(datos, hechos, faltan, diasQueQuedan)}</p>
+
       <div className="gs-semana">
         {dias.map((d, i) => {
           const fue = idos.has(d);
@@ -62,8 +66,7 @@ export default function BloqueGimnasio({ desnudo = false }: { desnudo?: boolean 
         </span>
       </div>
 
-      <p className="gs-msg">{recomendacion(datos, hechos, faltan, diasQueQuedan)}</p>
-    </>
+    </div>
   );
 
   // `desnudo` es para la portada del mes, donde el gimnasio va como una columna

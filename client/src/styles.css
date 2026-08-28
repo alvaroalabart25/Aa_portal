@@ -2386,6 +2386,17 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .fiesta-saltar:hover { color: #fff; }
 
 /* ---------- El gimnasio en la portada del mes ---------- */
+/* La caja del gimnasio dentro de Constancia: mismo marco que la tarjeta de una
+   formación, para que las dos columnas se lean como lo mismo. */
+.gs-caja {
+  border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px 14px;
+  background: var(--paper);
+}
+/* Dos renglones reservados para el mensaje: es lo que ocupan el nombre y la
+   racha en la tarjeta de al lado, y así los puntos de las dos columnas caen a
+   la misma altura aunque el mensaje de hoy sea corto. */
+.gs-caja .gs-msg { margin: 0; min-height: 3.2em; }
+.gs-caja .gs-semana { margin-top: 12px; }
 .gs-semana { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
 .gs-dia {
   display: flex; flex-direction: column; align-items: center; gap: 4px;

@@ -1,15 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { EditorRico } from '../tasks/components';
-import { passkeysSoportadas } from '../../lib/passkeys';
-import {
-  abrirPersona,
-  cerrarPersona,
-  hayPase,
-  personaApi,
-  type EntradaPersona,
-  type MesDePersona,
-} from './api';
+import Cerrojo from '../../components/Cerrojo';
+import { cerrar } from '../../lib/pase';
+import { personaApi, type EntradaPersona, type MesDePersona } from './api';
 
 /**
  * Persona: conocerse escribiendo.
@@ -43,10 +36,19 @@ function mesLargo(ym: string): string {
 }
 
 export default function PersonaPage() {
-  const [abierto, setAbierto] = useState(hayPase());
-  const [abriendo, setAbriendo] = useState(false);
-  const [error, setError] = useState('');
-  const [sinLlave, setSinLlave] = useState(false);
+  return (
+    <Cerrojo
+      ambito="persona"
+      titulo="Persona"
+      explicacion="Lo que escribes aquí es solo tuyo. Se abre con Face ID cada vez, aunque ya hayas entrado en el portal."
+    >
+      <Diario />
+    </Cerrojo>
+  );
+}
+
+/** El diario en sí. Solo se monta con la puerta abierta. */
+function Diario() {
   const [datos, setDatos] = useState<MesDePersona | null>(null);
   const [meses, setMeses] = useState<{ mes: string; dias: number }[]>([]);
   const [viejos, setViejos] = useState<Record<string, EntradaPersona[]>>({});
@@ -60,82 +62,8 @@ export default function PersonaPage() {
   }, []);
 
   useEffect(() => {
-    if (abierto) void cargar().catch(() => cerrar());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [abierto]);
-
-  // Al salir de la pantalla se cierra: volver a entrar vuelve a pedir la cara.
-  useEffect(() => {
-    return () => cerrarPersona();
-  }, []);
-
-  function cerrar() {
-    cerrarPersona();
-    setDatos(null);
-    setAbierto(false);
-  }
-
-  async function abrir(otroDispositivo = false) {
-    setAbriendo(true);
-    setError('');
-    setSinLlave(false);
-    try {
-      await abrirPersona(otroDispositivo);
-      setAbierto(true);
-    } catch (e) {
-      const err = e as Error;
-      if (err.name === 'NotAllowedError') {
-        // Chrome y Safari dicen lo mismo para dos cosas distintas: que has
-        // cancelado, o que en ESTE aparato no hay ninguna llave del portal. Lo
-        // segundo es lo normal la primera vez que abres desde un ordenador, y
-        // tiene arreglo en un minuto: registrar una aquí.
-        setSinLlave(true);
-        setError('');
-      } else {
-        // El nombre del error delante: es lo que dice qué ha pasado de verdad.
-        setError(`${err.name ? `${err.name}: ` : ''}${err.message || 'No se pudo abrir'}`);
-      }
-    } finally {
-      setAbriendo(false);
-    }
-  }
-
-  if (!abierto) {
-    return (
-      <div className="pe-cerrado">
-        <span className="pe-candado" aria-hidden="true">
-          ⌘
-        </span>
-        <h1>Persona</h1>
-        <p className="muted">
-          Lo que escribes aquí es solo tuyo. Se abre con Face ID cada vez, aunque ya hayas entrado en el portal.
-        </p>
-        {passkeysSoportadas() ? (
-          <>
-            <button className="btn" disabled={abriendo} onClick={() => abrir()}>
-              {abriendo ? 'Abriendo…' : 'Abrir con Face ID'}
-            </button>
-            {/* Salida para el ordenador que no tiene la llave en su llavero:
-                el navegador saca el QR y se firma con el iPhone. */}
-            <button className="pe-otro" disabled={abriendo} onClick={() => abrir(true)}>
-              Usar otro dispositivo
-            </button>
-          </>
-        ) : (
-          <p className="muted">Este navegador no tiene Face ID. Entra desde el móvil o registra una llave en Configuración.</p>
-        )}
-        {sinLlave && (
-          <p className="pe-ayuda">
-            Este aparato no tiene ninguna llave de acceso del portal. Registra una aquí —te pedirá Touch ID y tarda diez
-            segundos— o firma con el iPhone desde «Usar otro dispositivo».
-            <br />
-            <Link to="/configuracion">Añadir una llave en este dispositivo →</Link>
-          </p>
-        )}
-        {error && <p className="error-msg">{error}</p>}
-      </div>
-    );
-  }
+    void cargar();
+  }, [cargar]);
 
   if (!datos) return <p className="muted">Abriendo…</p>;
 
@@ -156,7 +84,7 @@ export default function PersonaPage() {
     <div>
       <div className="page-head">
         <h1>Persona</h1>
-        <button className="btn ghost sm" onClick={cerrar}>
+        <button className="btn ghost sm" onClick={() => cerrar('persona')}>
           Cerrar
         </button>
       </div>

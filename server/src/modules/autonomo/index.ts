@@ -12,9 +12,44 @@ import { sendInvoiceEmail, smtpConfigured } from './mailer';
 import { bancoRouter } from './banco-routes';
 import { obligacionesRouter } from './obligaciones-routes';
 import { analiticaRouter } from './analitica-routes';
+import { opcionesDeLlave, verificarLlaveDe } from '../../core/auth/passkeys';
+import { firmarPase, MINUTOS_DE_PASE, requierePase } from '../../core/auth/pase';
 
 // Módulo "Autónomo": facturación, cuentas y trimestrales.
 export const autonomoModule = Router();
+
+/**
+ * Aquí está el dinero, así que tener la sesión abierta no basta: hace falta
+ * volver a firmar con Face ID. Es la misma puerta que Persona —el mismo pase,
+ * corto y en memoria— con su propio ámbito: el del diario no abre esto.
+ *
+ * Se pide en el SERVIDOR y en todas las rutas del módulo. Las dos excepciones
+ * están abajo y son de puerta, no de datos: pedir la firma y volver del banco.
+ */
+autonomoModule.post('/llave/opciones', ah(async (req: AuthedRequest, res) => {
+  const r = await opcionesDeLlave(req.userId!, req.body?.otro === true);
+  if (!r) return res.status(400).json({ error: 'Necesitas una llave de acceso registrada para abrir Finanzas' });
+  res.json(r);
+}));
+
+autonomoModule.post('/llave/abrir', ah(async (req: AuthedRequest, res) => {
+  const parsed = z.object({ flowId: z.string().min(1), response: z.any() }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Datos incompletos' });
+  const vale = await verificarLlaveDe(req.userId!, parsed.data.flowId, parsed.data.response);
+  if (!vale) return res.status(401).json({ error: 'No se pudo verificar' });
+  res.json({ pase: firmarPase(req.userId!, 'finanzas'), minutos: MINUTOS_DE_PASE });
+}));
+
+/**
+ * La vuelta del banco se queda FUERA del pase a propósito: el navegador acaba
+ * de volver de la web del banco con un código de un solo uso y la pestaña se ha
+ * recargado, así que el pase —que vive en memoria— ya no está. Pedir la cara
+ * justo ahí tiraría la autorización que acabas de dar. Sigue exigiendo sesión,
+ * y lo que hace es cerrar un permiso que tú mismo has concedido hace un segundo.
+ */
+autonomoModule.use((req, res, next) =>
+  req.method === 'POST' && req.path === '/banco/vuelta' ? next() : requierePase('finanzas')(req as AuthedRequest, res, next),
+);
 
 // La lectura del banco vive aparte (es otro mundo: PSD2, consentimientos,
 // sincronización) pero cuelga de aquí porque es la misma parcela del portal.

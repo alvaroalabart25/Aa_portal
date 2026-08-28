@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import jwt from 'jsonwebtoken';
 import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import { ah } from '../../lib/async';
 import { db } from '../../db';
 import { personaEntries } from '../../db/schema';
 import { opcionesDeLlave, verificarLlaveDe } from '../../core/auth/passkeys';
+import { firmarPase, MINUTOS_DE_PASE, requierePase } from '../../core/auth/pase';
 import type { AuthedRequest } from '../../core/auth/middleware';
 import { preguntaDe } from './preguntas';
 
@@ -27,7 +27,6 @@ import { preguntaDe } from './preguntas';
  */
 export const personaModule = Router();
 
-const MINUTOS_DE_PASE = 20;
 const ES_DIA = /^\d{4}-\d{2}-\d{2}$/;
 const ES_MES = /^\d{4}-\d{2}$/;
 
@@ -46,35 +45,7 @@ const sinEtiquetas = (html: string): string =>
 
 // ---------------------------------------------------------------- el pase
 
-/** El pase: corto, de este usuario y solo para Persona. */
-function firmarPase(userId: number): string {
-  return jwt.sign({ sub: String(userId), scope: 'persona' }, process.env.JWT_SECRET as string, {
-    algorithm: 'HS256',
-    expiresIn: `${MINUTOS_DE_PASE}m`,
-  });
-}
-
-/**
- * Exige el pase además de la sesión. Sin él no se lee ni se escribe nada de
- * aquí, aunque el token de siempre sea válido.
- */
-function requierePase(req: AuthedRequest, res: import('express').Response, next: import('express').NextFunction) {
-  const cabecera = req.headers['x-persona'];
-  const pase = typeof cabecera === 'string' ? cabecera : '';
-  if (!pase) return res.status(423).json({ error: 'Persona está cerrado' });
-  try {
-    const payload = jwt.verify(pase, process.env.JWT_SECRET as string, { algorithms: ['HS256'] }) as {
-      sub?: string;
-      scope?: string;
-    };
-    if (payload.scope !== 'persona' || Number(payload.sub) !== req.userId) {
-      return res.status(423).json({ error: 'Persona está cerrado' });
-    }
-  } catch {
-    return res.status(423).json({ error: 'El pase ha caducado' });
-  }
-  next();
-}
+const pase = requierePase('persona');
 
 /**
  * Las opciones para pedir Face ID. Necesita sesión, pero no pase.
@@ -97,13 +68,13 @@ personaModule.post('/llave/abrir', ah(async (req: AuthedRequest, res) => {
   const vale = await verificarLlaveDe(req.userId!, parsed.data.flowId, parsed.data.response);
   if (!vale) return res.status(401).json({ error: 'No se pudo verificar' });
 
-  res.json({ pase: firmarPase(req.userId!), minutos: MINUTOS_DE_PASE });
+  res.json({ pase: firmarPase(req.userId!, 'persona'), minutos: MINUTOS_DE_PASE });
 }));
 
 // ---------------------------------------------------------------- el diario
 
 /** GET /?mes=YYYY-MM — lo escrito ese mes, con la pregunta de hoy. */
-personaModule.get('/', requierePase, ah(async (req: AuthedRequest, res) => {
+personaModule.get('/', pase, ah(async (req: AuthedRequest, res) => {
   const hoy = hoyMadrid();
   const mes = typeof req.query.mes === 'string' && ES_MES.test(req.query.mes) ? req.query.mes : hoy.slice(0, 7);
 
@@ -123,7 +94,7 @@ personaModule.get('/', requierePase, ah(async (req: AuthedRequest, res) => {
 }));
 
 /** GET /meses — qué meses tienen algo escrito. El índice de lo anterior. */
-personaModule.get('/meses', requierePase, ah(async (req: AuthedRequest, res) => {
+personaModule.get('/meses', pase, ah(async (req: AuthedRequest, res) => {
   // La columna va escrita a mano: Drizzle la cualifica en el GROUP BY y no en
   // el SELECT, y TiDB rechaza la consulta entera por ONLY_FULL_GROUP_BY.
   const mes = sql<string>`date_format(persona_entries.entry_date, '%Y-%m')`;
@@ -138,7 +109,7 @@ personaModule.get('/meses', requierePase, ah(async (req: AuthedRequest, res) => 
 }));
 
 /** PUT /:fecha — guardar lo escrito ese día. Vaciarlo lo borra. */
-personaModule.put('/:fecha', requierePase, ah(async (req: AuthedRequest, res) => {
+personaModule.put('/:fecha', pase, ah(async (req: AuthedRequest, res) => {
   const fecha = String(req.params.fecha);
   if (!ES_DIA.test(fecha)) return res.status(400).json({ error: 'Fecha no válida' });
 

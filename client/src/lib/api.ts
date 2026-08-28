@@ -1,4 +1,5 @@
 import { clearToken, getToken } from './auth';
+import { paseDe } from './pase';
 
 // En dev queda vacío (el proxy de Vite manda /api al Express local).
 // En producción, VITE_API_URL apunta a la API en Render.
@@ -15,6 +16,11 @@ export async function api<T>(
   };
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
+  // Las partes cerradas con Face ID llevan además su pase. Se pone aquí y no en
+  // cada llamada: si hubiera que acordarse en cada sitio, el día que se olvide
+  // una la pantalla se rompe en vez de pedir la cara.
+  const pase = paseDe(path);
+  if (pase) headers['X-Pase'] = pase;
 
   const res = await fetch(`${API_BASE}/api${path}`, { ...options, headers });
 

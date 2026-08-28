@@ -27,9 +27,23 @@ import Invitacion from './pages/Invitacion';
 import { Privacidad, Terminos } from './pages/Legal';
 import { PerfilProvider, usePerfil } from './lib/perfil';
 import Arranque from './components/Arranque';
+import Cerrojo from './components/Cerrojo';
 
 function RequireAuth() {
   return isLoggedIn() ? <Outlet /> : <Navigate to="/login" replace />;
+}
+
+/** Las pantallas del dinero, detrás de Face ID. */
+function Dinero() {
+  return (
+    <Cerrojo
+      ambito="finanzas"
+      titulo="Finanzas"
+      explicacion="Tus cuentas, tus facturas y lo que debes. Se abre con Face ID cada vez, aunque ya hayas entrado en el portal."
+    >
+      <Outlet />
+    </Cerrojo>
+  );
 }
 
 /**
@@ -87,16 +101,21 @@ export default function App() {
             <Route path="/gimnasio/sesion/:id" element={<SesionPage />} />
             <Route path="/tareas/:id" element={<TaskPage />} />
             <Route path="/autonomo" element={<Navigate to="/autonomo/resumen" replace />} />
-            <Route path="/autonomo/resumen" element={<ResumenPage />} />
-            {/* Facturas y Cuentas eran dos pantallas del mismo papeleo. Ahora
-                es una con dos niveles; la dirección vieja sigue valiendo. */}
-            <Route path="/autonomo/facturas" element={<AutonomoPage />} />
-            <Route path="/autonomo/obligaciones" element={<ObligacionesPage />} />
-            <Route path="/autonomo/obligaciones/deuda/:id" element={<DeudaPage />} />
             <Route path="/autonomo/cuentas" element={<Navigate to="/autonomo/facturas?tab=cuentas" replace />} />
-            {/* la vuelta del banco aterriza en /autonomo/banco/vuelta?code&state */}
-            <Route path="/autonomo/banco" element={<BancoPage />} />
-            <Route path="/autonomo/banco/vuelta" element={<BancoPage />} />
+            {/* Aquí está el dinero: se abre con Face ID cada vez, aunque ya
+                hayas entrado en el portal. El cerrojo envuelve las pantallas
+                enteras, así que mientras esté cerrado no se pide ni un dato. */}
+            <Route element={<Dinero />}>
+              <Route path="/autonomo/resumen" element={<ResumenPage />} />
+              {/* Facturas y Cuentas eran dos pantallas del mismo papeleo. Ahora
+                  es una con dos niveles; la dirección vieja sigue valiendo. */}
+              <Route path="/autonomo/facturas" element={<AutonomoPage />} />
+              <Route path="/autonomo/obligaciones" element={<ObligacionesPage />} />
+              <Route path="/autonomo/obligaciones/deuda/:id" element={<DeudaPage />} />
+              {/* la vuelta del banco aterriza en /autonomo/banco/vuelta?code&state */}
+              <Route path="/autonomo/banco" element={<BancoPage />} />
+              <Route path="/autonomo/banco/vuelta" element={<BancoPage />} />
+            </Route>
             <Route path="/roadmap" element={<RoadmapPage />} />
             <Route path="/rutina" element={<RutinaPage />} />
             <Route path="/suenos" element={<SuenosPage />} />

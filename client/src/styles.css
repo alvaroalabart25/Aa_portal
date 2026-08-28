@@ -498,6 +498,23 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .notes-editor ul, .notes-editor ol { padding-left: 22px; margin: 6px 0; }
 .notes-editor h1, .notes-editor h2, .notes-editor h3 { margin: 12px 0 6px; }
 .notes-editor code { background: var(--paper-soft); padding: 1px 5px; border-radius: var(--r-xs); font-size: 13px; }
+/* Lista de tareas dentro de una nota: la casilla la pinta el CSS y lo marcado
+   se apunta en el propio `li`, que es lo que se guarda. El punto de la lista se
+   quita, que la casilla ya hace de viñeta. */
+.notes-editor ul[data-chk] { list-style: none; padding-left: 2px; }
+.notes-editor ul[data-chk] li { position: relative; padding-left: 27px; }
+.notes-editor ul[data-chk] li::before {
+  content: ''; position: absolute; left: 0; top: 0.28em;
+  width: 16px; height: 16px; border-radius: var(--r-xs);
+  border: 1.5px solid var(--ink-muted); cursor: pointer;
+}
+.notes-editor ul[data-chk] li[data-ok]::before { background: var(--ink); border-color: var(--ink); }
+.notes-editor ul[data-chk] li[data-ok]::after {
+  content: '✓'; position: absolute; left: 2.5px; top: 0.1em;
+  font-size: 12px; font-weight: 700; color: var(--paper); cursor: pointer;
+}
+/* Hecho es hecho: se queda, pero deja de pedir atención */
+.notes-editor ul[data-chk] li[data-ok] { color: var(--ink-muted); text-decoration: line-through; }
 
 /* ---------- Selector de estado (desplegable propio) ---------- */
 .status-select { position: relative; display: inline-block; }

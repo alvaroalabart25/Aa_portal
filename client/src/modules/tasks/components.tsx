@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import {
@@ -279,7 +279,11 @@ export function Progress({ done, total }: { done: number; total: number }) {
 // queda en texto inofensivo en lugar de ejecutarse con tu sesión delante.
 const NOTES_HTML = {
   ALLOWED_TAGS: ['b', 'strong', 'i', 'em', 'u', 's', 'br', 'p', 'div', 'span', 'ul', 'ol', 'li', 'a', 'code', 'pre', 'blockquote', 'h1', 'h2', 'h3'],
-  ALLOWED_ATTR: ['href', 'target', 'rel'],
+  // `data-chk` marca una lista como de tareas y `data-ok` una tarea hecha. Son
+  // atributos de datos: no ejecutan nada y no traen estilos de fuera, que es
+  // por lo que la casilla NO es un <input> de verdad —habría que dejar entrar
+  // etiquetas de formulario en un texto que se guarda tal cual—.
+  ALLOWED_ATTR: ['href', 'target', 'rel', 'data-chk', 'data-ok'],
   ALLOWED_URI_REGEXP: /^(?:https?|mailto):/i,
 };
 
@@ -373,6 +377,50 @@ export function EditorRico({
     onInput();
   }
 
+  /** La lista donde está el cursor, si la hay. */
+  function listaActual(): HTMLUListElement | null {
+    const nodo = window.getSelection()?.anchorNode ?? null;
+    const el = nodo instanceof Element ? nodo : nodo?.parentElement;
+    if (!el || !ref.current?.contains(el)) return null;
+    return el.closest('ul');
+  }
+
+  /**
+   * Lista de tareas: la misma lista de siempre, marcada como `data-chk`.
+   *
+   * No hay `<input type=checkbox>` de verdad a propósito: obligaría a dejar
+   * entrar etiquetas de formulario en un texto que se guarda tal cual, y el
+   * estado de un input marcado a mano no viaja en el HTML. La casilla la pinta
+   * el CSS y lo marcado se apunta en el propio `li`, que sí se guarda.
+   */
+  function checklist() {
+    const ya = listaActual();
+    if (ya) {
+      // ya estás en una lista: solo cambia de tipo, sin deshacerla
+      if (ya.hasAttribute('data-chk')) ya.removeAttribute('data-chk');
+      else ya.setAttribute('data-chk', '1');
+    } else {
+      document.execCommand('insertUnorderedList');
+      listaActual()?.setAttribute('data-chk', '1');
+    }
+    ref.current?.focus();
+    onInput();
+  }
+
+  /**
+   * Marcar y desmarcar: se pulsa LA CASILLA, no el renglón. Si bastara con
+   * tocar cualquier sitio del texto no se podría poner el cursor para escribir.
+   */
+  function alPulsar(e: ReactMouseEvent<HTMLDivElement>) {
+    const li = (e.target as HTMLElement)?.closest?.('li');
+    if (!li || !li.parentElement?.hasAttribute('data-chk')) return;
+    const x = e.clientX - li.getBoundingClientRect().left;
+    if (x > 24) return;
+    if (li.hasAttribute('data-ok')) li.removeAttribute('data-ok');
+    else li.setAttribute('data-ok', '1');
+    onInput();
+  }
+
   const verBarra = barra === 'siempre' || enfocado;
 
   return (
@@ -391,6 +439,9 @@ export function EditorRico({
           <button type="button" title="Lista" onMouseDown={(e) => { e.preventDefault(); cmd('insertUnorderedList'); }}>
             • Lista
           </button>
+          <button type="button" title="Lista de tareas" onMouseDown={(e) => { e.preventDefault(); checklist(); }}>
+            ☑ Tareas
+          </button>
           <button type="button" title="Tachado" onMouseDown={(e) => { e.preventDefault(); cmd('strikeThrough'); }}>
             <s>S</s>
           </button>
@@ -404,6 +455,7 @@ export function EditorRico({
         suppressContentEditableWarning
         data-placeholder={placeholder}
         onInput={onInput}
+        onClick={alPulsar}
         onFocus={() => setEnfocado(true)}
         onBlur={(e) => {
           // los botones de la barra no roban el foco (hacen preventDefault),

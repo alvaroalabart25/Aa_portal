@@ -89,6 +89,18 @@ export const ORDEN_MOVIL = ['agenda', 'org', 'salud', 'autonomo', 'suenos'];
 export const MODULES: PortalModule[] = [
   { id: 'agenda', title: 'Agenda', path: '/agenda', icon: icons.agenda },
   {
+    id: 'persona',
+    title: 'Persona',
+    path: '/persona',
+    // una silueta: es el módulo de uno mismo
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" {...stroke}>
+        <circle cx="12" cy="8" r="3.6" />
+        <path d="M4.5 20c.6-4 3.7-6 7.5-6s6.9 2 7.5 6" />
+      </svg>
+    ),
+  },
+  {
     id: 'suenos',
     title: 'Metas',
     icon: iconoMetas,

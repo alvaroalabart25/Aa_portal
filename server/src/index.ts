@@ -19,6 +19,7 @@ import { dreamImagesRouter, dreamsModule } from './modules/dreams';
 import { facturaFotosRouter } from './modules/autonomo';
 import { focusModule } from './modules/focus';
 import { notasModule } from './modules/notas';
+import { personaModule } from './modules/persona';
 import { gymModule } from './modules/gym';
 import { logSecurityEvent } from './lib/security';
 
@@ -156,6 +157,9 @@ app.use('/api/diary', requireAuth, diaryModule);
 app.use('/api/dreams', requireAuth, dreamsModule);
 app.use('/api/focus', requireAuth, focusModule);
 app.use('/api/notas', requireAuth, notasModule);
+// Persona pide sesión como todo lo demás y, ADEMÁS, un pase de Face ID en cada
+// llamada: el candado lo pone el propio módulo, no esta línea.
+app.use('/api/persona', requireAuth, personaModule);
 app.use('/api/gym', requireAuth, gymModule);
 app.use('/api/push', requireAuth, pushModule);
 // Administración del portal: altas y uso. NO da acceso a datos de nadie.

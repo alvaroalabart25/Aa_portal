@@ -7,7 +7,7 @@
  * existe guardado en la base deja una cuenta con un menú roto y sin forma
  * evidente de arreglarlo.
  */
-export const MODULOS = ['agenda', 'org', 'salud', 'suenos', 'autonomo', 'roadmap'] as const;
+export const MODULOS = ['agenda', 'persona', 'org', 'salud', 'suenos', 'autonomo', 'roadmap'] as const;
 export type Modulo = (typeof MODULOS)[number];
 
 /** Con lo que arranca una cuenta nueva si no se le dice otra cosa. */

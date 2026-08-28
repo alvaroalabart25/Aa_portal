@@ -15,6 +15,7 @@ import BancoPage from './modules/autonomo/BancoPage';
 import RoadmapPage from './modules/roadmap/RoadmapPage';
 import RutinaPage from './modules/routine/RutinaPage';
 import DiarioPage from './modules/health/DiarioPage';
+import PersonaPage from './modules/persona/PersonaPage';
 import SuenosPage from './modules/dreams/SuenosPage';
 import SuenoDetallePage from './modules/dreams/SuenoDetallePage';
 import MacroFichaPage from './modules/focus/MacroFichaPage';
@@ -107,6 +108,8 @@ export default function App() {
             <Route path="/notificaciones" element={<Navigate to="/configuracion?tab=notificaciones" replace />} />
             <Route path="/seguridad" element={<Navigate to="/configuracion" replace />} />
             <Route path="/diario" element={<DiarioPage />} />
+            {/* Persona se cierra sola: la página pide Face ID al entrar */}
+            <Route path="/persona" element={<PersonaPage />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

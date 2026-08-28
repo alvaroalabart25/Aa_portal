@@ -44,11 +44,13 @@ export async function openBlob(path: string) {
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
-export const get = <T>(path: string) => api<T>(path);
-export const post = <T>(path: string, data: unknown) =>
-  api<T>(path, { method: 'POST', body: JSON.stringify(data) });
-export const patch = <T>(path: string, data: unknown) =>
-  api<T>(path, { method: 'PATCH', body: JSON.stringify(data) });
-export const put = <T>(path: string, data: unknown) =>
-  api<T>(path, { method: 'PUT', body: JSON.stringify(data) });
+// `extra` es para cabeceras propias de un módulo —el pase de Persona— sin
+// tener que duplicar el cliente entero.
+export const get = <T>(path: string, extra: RequestInit = {}) => api<T>(path, extra);
+export const post = <T>(path: string, data: unknown, extra: RequestInit = {}) =>
+  api<T>(path, { ...extra, method: 'POST', body: JSON.stringify(data) });
+export const patch = <T>(path: string, data: unknown, extra: RequestInit = {}) =>
+  api<T>(path, { ...extra, method: 'PATCH', body: JSON.stringify(data) });
+export const put = <T>(path: string, data: unknown, extra: RequestInit = {}) =>
+  api<T>(path, { ...extra, method: 'PUT', body: JSON.stringify(data) });
 export const del = <T>(path: string) => api<T>(path, { method: 'DELETE' });

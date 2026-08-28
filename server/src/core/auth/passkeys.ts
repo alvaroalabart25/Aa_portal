@@ -180,11 +180,24 @@ type Transporte = NonNullable<
 >[number];
 
 passkeysRouter.post('/passkeys/unlock/options', requireAuth, ah(async (req: AuthedRequest, res) => {
+  const r = await opcionesDeLlave(req.userId!);
+  if (!r) return res.status(400).json({ error: 'No tienes ninguna llave registrada' });
+  res.json(r);
+}));
+
+/**
+ * Las opciones para pedir Face ID a un usuario que YA tiene sesión.
+ *
+ * Lo usa el desbloqueo de la app y también el módulo Persona, que pide la
+ * llave otra vez para abrirse. Está aquí y no duplicado allí porque esto es
+ * criptografía: una copia mal hecha es un agujero.
+ */
+export async function opcionesDeLlave(userId: number) {
   const llaves = await db
     .select({ credentialId: webauthnCredentials.credentialId, transports: webauthnCredentials.transports })
     .from(webauthnCredentials)
-    .where(eq(webauthnCredentials.userId, req.userId!));
-  if (!llaves.length) return res.status(400).json({ error: 'No tienes ninguna llave registrada' });
+    .where(eq(webauthnCredentials.userId, userId));
+  if (!llaves.length) return null;
 
   const options = await generateAuthenticationOptions({
     rpID: rpID(),
@@ -202,8 +215,53 @@ passkeysRouter.post('/passkeys/unlock/options', requireAuth, ah(async (req: Auth
       };
     }),
   });
-  res.json({ flowId: abrirFlujo(options.challenge), options });
-}));
+  return { flowId: abrirFlujo(options.challenge), options };
+}
+
+/**
+ * ¿Ha firmado ESTE usuario con una llave suya?
+ *
+ * Devuelve true solo si el reto era el que dimos, la firma es válida y la
+ * credencial pertenece al usuario que pregunta. Es lo que usa Persona para
+ * abrirse: comprobar la sesión no basta, ahí hace falta el dedo o la cara.
+ */
+export async function verificarLlaveDe(
+  userId: number,
+  flowId: string,
+  response: unknown,
+): Promise<boolean> {
+  const flujo = cerrarFlujo(flowId);
+  if (!flujo) return false;
+
+  const credentialId = String((response as { id?: string })?.id ?? '');
+  const [cred] = await db
+    .select()
+    .from(webauthnCredentials)
+    .where(and(eq(webauthnCredentials.credentialId, credentialId), eq(webauthnCredentials.userId, userId)));
+  if (!cred) return false;
+
+  const verificacion = await verifyAuthenticationResponse({
+    response: response as never,
+    expectedChallenge: flujo.challenge,
+    expectedOrigin: origenesValidos(),
+    expectedRPID: rpID(),
+    requireUserVerification: true,
+    credential: {
+      id: cred.credentialId,
+      publicKey: new Uint8Array(Buffer.from(cred.publicKey, 'base64')),
+      counter: cred.counter,
+      transports: (cred.transports?.split(',') as never) ?? undefined,
+    },
+  }).catch(() => null);
+
+  if (!verificacion?.verified) return false;
+
+  await db
+    .update(webauthnCredentials)
+    .set({ counter: verificacion.authenticationInfo.newCounter, lastUsedAt: new Date() })
+    .where(eq(webauthnCredentials.id, cred.id));
+  return true;
+}
 
 /**
  * Verifica la firma y devuelve la sesión. Sirve tanto para entrar como para

@@ -1389,3 +1389,30 @@ export const workNotes = mysqlTable('work_notes', {
     .$onUpdateFn(() => new Date()),
 });
 export type WorkNote = typeof workNotes.$inferSelect;
+
+/**
+ * El diario del módulo Persona: conocerse escribiendo.
+ *
+ * Una fila por día, como el bloc, y por lo mismo —un día sin escribir no
+ * existe—. Lo que cambia es quién puede leerlo: a Persona solo se entra
+ * volviendo a pasar Face ID, así que tiene tabla propia. Aislado por
+ * construcción: ninguna consulta del resto del portal la toca.
+ *
+ * `prompt` guarda la pregunta que había delante al escribir: dentro de un año,
+ * una respuesta sin su pregunta no se entiende.
+ */
+export const personaEntries = mysqlTable('persona_entries', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  userId: bigint('user_id', { mode: 'number' })
+    .notNull()
+    .references(() => users.id),
+  entryDate: date('entry_date', { mode: 'string' }).notNull(),
+  body: text('body').notNull(),
+  prompt: varchar('prompt', { length: 240 }),
+  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`)
+    .$onUpdateFn(() => new Date()),
+});
+export type PersonaEntry = typeof personaEntries.$inferSelect;

@@ -61,31 +61,20 @@ export default function MacroTab() {
 
   return (
     <div>
-      <p className="muted mc-mes">{nombreMesCap(mes.month)} · lo que tengo entre manos</p>
+      <PortadaDelMes mes={mes} />
 
       <BloqueMelones mes={mes} onCrear={() => setCreando('melon')} />
 
-      <BloqueDiario
-        titulo={NOMBRE_TIPO.formacion.plural}
-        emoji={NOMBRE_TIPO.formacion.emoji}
-        items={de('formacion')}
-        vacio="Ninguna formación este mes."
-        onCrear={() => setCreando('formacion')}
+      {/* Formación, libro y gimnasio son LA MISMA cosa: algo que se sostiene
+          día a día. Tres secciones separadas, cada una con su título y su
+          hueco vacío, competían con los objetivos y llenaban la pantalla de
+          listas. Aquí van juntas, en columnas, y ninguna pesa más que el mes. */}
+      <BloqueConstancia
+        formaciones={de('formacion')}
+        libros={de('libro')}
+        onCrear={setCreando}
         onCambio={cargar}
       />
-
-      <BloqueDiario
-        titulo={NOMBRE_TIPO.libro.plural}
-        emoji={NOMBRE_TIPO.libro.emoji}
-        items={de('libro')}
-        vacio="Ningún libro este mes."
-        onCrear={() => setCreando('libro')}
-        onCambio={cargar}
-      />
-
-      {/* Debajo de Libros: es otra cosa que se sostiene con constancia, no una
-          tarea del día */}
-      <BloqueGimnasio />
 
       {/* Las tareas, solo en el ordenador: en el móvil están en Agenda y aquí
           alargaban la pantalla sin aportar nada nuevo. */}
@@ -124,6 +113,67 @@ export default function MacroTab() {
   );
 }
 
+// ---------------------------------------------------------------- portada
+
+/**
+ * La portada del mes: en qué estoy y cuánto queda.
+ *
+ * Antes esta pantalla empezaba con una línea gris y se metía de cabeza en la
+ * primera lista, así que no había dónde mirar primero. Este bloque es el ancla:
+ * el mes, los días que le quedan y el avance REAL de lo que te propusiste, con
+ * la misma barra de estados que los aros de las tarjetas.
+ */
+function PortadaDelMes({ mes }: { mes: FocusMes }) {
+  const melones = mes.items.filter((i) => i.kind === 'melon' && i.status !== 'aparcado');
+  const suma = melones.reduce(
+    (a, m) => ({
+      hechas: a.hechas + m.tareas.hechas,
+      revision: a.revision + m.tareas.revision,
+      progreso: a.progreso + m.tareas.progreso,
+      bloqueadas: a.bloqueadas + m.tareas.bloqueadas,
+      total: a.total + m.tareas.total,
+    }),
+    { hechas: 0, revision: 0, progreso: 0, bloqueadas: 0, total: 0 },
+  );
+  const pct = suma.total > 0 ? Math.round((100 * suma.hechas) / suma.total) : 0;
+
+  // Los días que le quedan al mes, contando hoy. Es lo que convierte un «vas
+  // por el 30%» en una decisión.
+  const hoy = new Date(`${mes.today}T12:00:00`);
+  const finDeMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
+  const quedan = finDeMes - hoy.getDate() + 1;
+  const activos = melones.filter((m) => m.status === 'activo').length;
+
+  return (
+    <section className="mc-portada">
+      <div className="mc-portada-t">
+        {/* h2 y no h1: el h1 de la página es «Agenda» y aquí abajo no puede
+            haber otro. El peso se lo da el estilo, no la etiqueta. */}
+        <h2>{nombreMesCap(mes.month)}</h2>
+        <span className="mc-portada-q">
+          {quedan === 1 ? 'último día del mes' : `quedan ${quedan} días`}
+        </span>
+      </div>
+      <p className="mc-portada-d">
+        {activos === 0
+          ? 'Sin objetivos todavía: elige qué quieres mover este mes.'
+          : `${activos} ${activos === 1 ? 'objetivo' : 'objetivos'} entre manos · ${suma.hechas} de ${suma.total} ${suma.total === 1 ? 'tarea' : 'tareas'}`}
+      </p>
+      {suma.total > 0 && (
+        <>
+          <span className="mc-portada-b" aria-hidden="true">
+            <b style={{ width: `${(100 * suma.hechas) / suma.total}%`, background: 'var(--ink)' }} />
+            <b style={{ width: `${(100 * suma.revision) / suma.total}%`, background: 'var(--morado)' }} />
+            <b style={{ width: `${(100 * suma.progreso) / suma.total}%`, background: 'var(--azul)' }} />
+            <b style={{ width: `${(100 * suma.bloqueadas) / suma.total}%`, background: 'var(--ambar)' }} />
+          </span>
+          <span className="mc-portada-p">{pct}%</span>
+        </>
+      )}
+    </section>
+  );
+}
+
 // ---------------------------------------------------------------- objetivos
 
 function BloqueMelones({ mes, onCrear }: { mes: FocusMes; onCrear: () => void }) {
@@ -138,26 +188,27 @@ function BloqueMelones({ mes, onCrear }: { mes: FocusMes; onCrear: () => void })
 
   return (
     <section className="section mc-bloque">
+      {/* Los topes son CONTEXTO del título, no contenido: en su propia fila
+          parecían dos filtros y separaban el título de las tarjetas. */}
       <div className="mc-head">
         <h2>
           {NOMBRE_TIPO.melon.emoji} {NOMBRE_TIPO.melon.plural}
         </h2>
+        <span className="mc-topes">
+          {(['trabajo', 'personal'] as FocusScope[]).map((s) => {
+            const { usados, tope } = mes.limites[s];
+            const pasado = usados > tope;
+            return (
+              <span key={s} className={`mc-tope${pasado ? ' pasado' : ''}`}>
+                {s === 'trabajo' ? 'Trabajo' : 'Personal'} {usados}/{tope}
+                {pasado && ' · disperso'}
+              </span>
+            );
+          })}
+        </span>
         <button className="btn ghost sm" onClick={onCrear}>
           + Objetivo
         </button>
-      </div>
-
-      <div className="mc-topes">
-        {(['trabajo', 'personal'] as FocusScope[]).map((s) => {
-          const { usados, tope } = mes.limites[s];
-          const pasado = usados > tope;
-          return (
-            <span key={s} className={`mc-tope${pasado ? ' pasado' : ''}`}>
-              {s === 'trabajo' ? 'Trabajo' : 'Personal'} {usados}/{tope}
-              {pasado && ' · estás disperso'}
-            </span>
-          );
-        })}
       </div>
 
       {activos.length === 0 ? (
@@ -271,47 +322,91 @@ function aro(t: FocusItem['tareas']): string {
   return `conic-gradient(${partes.join(', ')})`;
 }
 
-// ---------------------------------------------------------------- diario
+// ---------------------------------------------------------------- constancia
 
-function BloqueDiario({
-  titulo,
-  emoji,
+/**
+ * Lo que se sostiene día a día: formación, libro y gimnasio.
+ *
+ * Son la misma clase de cosa —se marcan, hacen racha, no se «terminan» un
+ * martes— y tenían tres secciones para ellos solos, cada una con su título y
+ * su hueco vacío. Juntos en columnas ocupan un tercio y dejan de competir con
+ * los objetivos, que es de lo que va el mes.
+ */
+function BloqueConstancia({
+  formaciones,
+  libros,
+  onCrear,
+  onCambio,
+}: {
+  formaciones: FocusItem[];
+  libros: FocusItem[];
+  onCrear: (k: FocusKind) => void;
+  onCambio: () => void;
+}) {
+  return (
+    <section className="section mc-bloque">
+      <div className="mc-head">
+        <h2>Constancia</h2>
+      </div>
+
+      <div className="mc-cols">
+        <ColumnaDiaria
+          kind="formacion"
+          items={formaciones}
+          vacio="Ninguna este mes"
+          onCrear={onCrear}
+          onCambio={onCambio}
+        />
+        <ColumnaDiaria kind="libro" items={libros} vacio="Ninguno este mes" onCrear={onCrear} onCambio={onCambio} />
+
+        <div className="mc-col">
+          <div className="mc-col-t">
+            <span>🏋️ Gimnasio</span>
+            <Link to="/gimnasio" className="mc-col-mas">
+              Entrenar →
+            </Link>
+          </div>
+          <BloqueGimnasio desnudo />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/** Una columna de Constancia: su nombre, su «+» y sus tarjetas. */
+function ColumnaDiaria({
+  kind,
   items,
   vacio,
   onCrear,
   onCambio,
 }: {
-  titulo: string;
-  emoji: string;
+  kind: FocusKind;
   items: FocusItem[];
   vacio: string;
-  onCrear: () => void;
+  onCrear: (k: FocusKind) => void;
   onCambio: () => void;
 }) {
   const activos = items.filter((i) => i.status === 'activo');
   const hechos = items.filter((i) => i.status === 'hecho');
+  const t = NOMBRE_TIPO[kind];
 
   return (
-    <section className="section mc-bloque">
-      <div className="mc-head">
-        <h2>
-          {emoji} {titulo}
-        </h2>
-        <button className="btn ghost sm" onClick={onCrear}>
+    <div className="mc-col">
+      <div className="mc-col-t">
+        <span>
+          {t.emoji} {t.plural}
+        </span>
+        <button className="mc-col-mas" onClick={() => onCrear(kind)} aria-label={`Añadir ${t.singular}`}>
           + Añadir
         </button>
       </div>
-
       {activos.length === 0 && hechos.length === 0 ? (
-        <p className="muted mc-vacio">{vacio}</p>
+        <p className="muted mc-col-vacio">{vacio}</p>
       ) : (
-        <div className="mk-grid">
-          {[...activos, ...hechos].map((i) => (
-            <TarjetaDiaria key={i.id} item={i} onCambio={onCambio} />
-          ))}
-        </div>
+        [...activos, ...hechos].map((i) => <TarjetaDiaria key={i.id} item={i} onCambio={onCambio} />)
       )}
-    </section>
+    </div>
   );
 }
 

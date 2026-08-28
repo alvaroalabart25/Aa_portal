@@ -23,7 +23,7 @@ function diasDeLaSemana(lunes: string): string[] {
  * oráculo. Y es una regla escrita a mano, no un entrenador: cuenta días y
  * compara kilos, nada más.
  */
-export default function BloqueGimnasio() {
+export default function BloqueGimnasio({ desnudo = false }: { desnudo?: boolean } = {}) {
   const [datos, setDatos] = useState<SemanaGym | null>(null);
 
   useEffect(() => {
@@ -42,15 +42,8 @@ export default function BloqueGimnasio() {
   // menciona: sería ofrecer un extra a quien no ha llegado a lo básico.
   const cuartoAbierto = hechos >= datos.target;
 
-  return (
-    <section className="section mc-bloque">
-      <div className="mc-head">
-        <h2>🏋️ Gimnasio</h2>
-        <Link to="/gimnasio" className="btn ghost sm">
-          Entrenar
-        </Link>
-      </div>
-
+  const cuerpo = (
+    <>
       <div className="gs-semana">
         {dias.map((d, i) => {
           const fue = idos.has(d);
@@ -70,6 +63,23 @@ export default function BloqueGimnasio() {
       </div>
 
       <p className="gs-msg">{recomendacion(datos, hechos, faltan, diasQueQuedan)}</p>
+    </>
+  );
+
+  // `desnudo` es para la portada del mes, donde el gimnasio va como una columna
+  // más de Constancia y el título lo pone el bloque de fuera. Suelto —en el
+  // resto del portal— sigue trayendo su propia cabecera.
+  if (desnudo) return cuerpo;
+
+  return (
+    <section className="section mc-bloque">
+      <div className="mc-head">
+        <h2>🏋️ Gimnasio</h2>
+        <Link to="/gimnasio" className="btn ghost sm">
+          Entrenar
+        </Link>
+      </div>
+      {cuerpo}
     </section>
   );
 }

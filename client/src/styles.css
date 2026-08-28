@@ -1148,6 +1148,51 @@ label:not([class]) > span + textarea { display: block; width: 100%; }
 
 /* ---------- Macro: la vista de pájaro del mes ---------- */
 .mc-mes { font-size: 13px; margin: 6px 0 0; }
+
+/* ---------- La portada del mes ----------
+   Esta pantalla empezaba con una línea gris y se metía de cabeza en la primera
+   lista: no había dónde mirar primero. Este bloque es el ancla —el mes, lo que
+   le queda y el avance real de lo que te propusiste— y por eso es lo único de
+   aquí que no es una lista. */
+.mc-portada {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px;
+  margin: 18px 0 4px;
+}
+.mc-portada-t { display: flex; align-items: baseline; gap: 10px; flex: 1 1 auto; min-width: 0; }
+.mc-portada-t h2 { font-size: 30px; }
+.mc-portada-q { font-size: 12.5px; color: var(--ink-muted); white-space: nowrap; }
+.mc-portada-d { flex: 1 0 100%; margin: 0; font-size: 13.5px; color: var(--ink-soft); }
+/* La misma barra por estados que el aro de cada tarjeta, sumada: lo hecho en
+   negro, la revisión en morado, lo que está en marcha en azul y lo atascado en
+   ámbar. Si no coinciden los colores, no se lee como lo mismo. */
+.mc-portada-b {
+  flex: 1 1 200px; display: flex; height: 6px; border-radius: var(--r-bar);
+  background: var(--paper-soft); overflow: hidden;
+}
+.mc-portada-b b { display: block; height: 100%; }
+.mc-portada-p { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); flex: 0 0 auto; }
+
+/* ---------- Constancia: tres columnas de lo que se sostiene ---------- */
+.mc-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 12px; }
+.mc-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.mc-col-t {
+  display: flex; align-items: baseline; gap: 10px;
+  font-size: 12.5px; font-weight: 600; color: var(--ink-soft);
+}
+/* El «+» de cada columna no es un botón más: es un enlace discreto, porque
+   añadir un libro no compite con marcar el día. */
+.mc-col-mas {
+  margin-left: auto; flex: 0 0 auto; font: inherit; font-size: 12px; font-weight: 500;
+  border: none; background: none; padding: 0; color: var(--ink-muted); cursor: pointer;
+}
+.mc-col-mas:hover { color: var(--ink); }
+.mc-col-vacio { font-size: 12.5px; margin: 2px 0 0; }
+/* Dentro de una columna las tarjetas mandan poco: son un gesto, no una ficha */
+.mc-col .mk { padding: 12px 14px; }
+@media (max-width: 900px) {
+  .mc-cols { grid-template-columns: 1fr; gap: 20px; }
+  .mc-portada-t h2 { font-size: 25px; }
+}
 /* el primer bloque va pegado a la línea del mes: el aire es para SEPARAR
    bloques entre sí, no para dejar la cabecera flotando */
 .mc-bloque:first-of-type { margin-top: 22px; }
@@ -1157,7 +1202,7 @@ label:not([class]) > span + textarea { display: block; width: 100%; }
 .mc-sub { font-family: var(--font-title); font-size: 13px; font-weight: 600; color: var(--ink-muted); margin: 18px 0 6px; }
 
 /* Topes del mes: avisan, no bloquean */
-.mc-topes { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 2px; }
+.mc-topes { display: flex; gap: 8px; flex-wrap: wrap; margin: 0; }
 .mc-tope {
   font-size: 11.5px; color: var(--ink-muted);
   border: 1px solid var(--line); border-radius: var(--radius); padding: 3px 10px;
@@ -1369,9 +1414,11 @@ label:not([class]) > span + textarea { display: block; width: 100%; }
 }
 .mk-hecho:hover { border-color: var(--verde); }
 .mk-hecho-v { font-size: 12px; font-weight: 700; line-height: 1; flex: none; }
+/* El nombre entero, aunque sea de dos renglones: recortarlo con puntos deja
+   «PORTAL | Desarrollo módulo Fin…», que parece un fallo. */
 .mk-hecho-t {
   font-family: var(--font-title); font-weight: 600; font-size: 13.5px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  min-width: 0; overflow-wrap: anywhere;
 }
 .mk-hecho-s { font-size: 11px; opacity: 0.7; flex: none; }
 

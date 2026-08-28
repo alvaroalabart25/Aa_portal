@@ -271,7 +271,29 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
    lo que sobra y parte el texto si hace falta —en el móvil son dos renglones
    al lado del campo— antes que caerse debajo, que es donde no se lee como lo
    que es: una advertencia sobre ESA fecha. */
-/* ---------- La ficha: la cabecera de un detalle ----------
+/* ---------- La cabecera de un detalle ----------
+   De una pieza. Antes eran tres renglones grises flotando uno sobre otro —las
+   migas, el antetítulo y el título— y debajo, suelta, la tira de datos. Ahora
+   una línea de color a la izquierda los cose a los cuatro, y ese color es el
+   del ESPACIO: es la única fuente de color del portal y no llegaba hasta aquí,
+   que es donde más falta hacía para saber dónde estás. */
+.fh { display: flex; gap: 16px; }
+.fh::before {
+  content: ''; flex: 0 0 3px; border-radius: var(--r-bar);
+  background: var(--c, var(--ink));
+}
+.fh-cuerpo { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+/* La ruta: dónde vive esto. El punto trae el color del espacio, igual que en
+   las listas, y sustituye a las migas de arriba: una línea menos. */
+.fh-ruta { display: flex; align-items: center; gap: 7px; min-width: 0; font-size: 12.5px; color: var(--ink-muted); }
+.fh-ruta a:hover { color: var(--ink); text-decoration: underline; }
+.fh-ruta .dot { width: 7px; height: 7px; }
+.fh-ruta em { font-style: normal; text-transform: uppercase; letter-spacing: 0.06em; font-size: 11px; font-weight: 600; }
+/* Lo que se hace con la ficha (borrar, quitar) se va al extremo de la línea de
+   volver: así no le roba sitio al título ni abre su menú fuera de pantalla. */
+.fh-acciones { margin-left: auto; flex: 0 0 auto; }
+
+/* ---------- La tira de datos de la ficha ----------
    Estado, prioridad, fechas… dejaban de estar sueltos flotando bajo el título
    —cada uno con su marco, su alto y su hueco— y pasan a ser UNA tira con
    casillas. En el ordenador las casillas van en fila, separadas por una raya
@@ -281,8 +303,11 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .ficha-fila { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
 .ficha {
   display: inline-flex; flex-wrap: wrap; align-items: stretch; max-width: 100%;
-  border: 1px solid var(--line); border-radius: var(--r-md); background: var(--paper);
-  margin-top: 16px;
+  border: 1px solid var(--line); border-radius: var(--r-md);
+  /* Fondo propio: sobre el blanco de la página, la tira se lee como un objeto
+     con los datos dentro y no como un formulario que alguien dejó a medias. */
+  background: var(--paper-soft);
+  margin-top: 14px;
 }
 .ficha-fila > .ficha { margin-top: 0; }
 .ficha > div {
@@ -310,13 +335,9 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .ficha .status-btn { border: none; background: none; padding: 0; min-height: 0; font-size: 14.5px; }
 /* La nota de debajo: qué consecuencia tiene lo que pone la tira */
 .ficha-nota { margin: 8px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--ink-muted); }
-
-.tk-vence { display: flex; align-items: center; gap: 12px; }
-.tk-vence input { flex: 0 0 auto; width: auto; }
-.tk-aplazos { flex: 1 1 130px; min-width: 0; margin: 0; font-size: 12.5px; line-height: 1.4; color: var(--ink-muted); }
-
-
-.tk-aplazos.bola { color: #b0640b; }
+/* El mismo renglón cuando lo que cuenta es una advertencia: aplazar una tarea
+   cuatro veces ya no se dice en gris. */
+.ficha-nota.aviso { color: var(--ambar); }
 
 /* Día de la agenda: el título y su «+ Nueva», en la misma línea */
 /* El título del día y su «+ Nueva». Con `margin-bottom`, que sin él la primera
@@ -464,9 +485,9 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .date-btn:hover { background: var(--paper-soft); border-color: var(--line); }
 .date-inline { padding: 3px 6px; font-size: 13px; max-width: 150px; }
 
-/* ---------- Ficha de tarea: migas, antetítulo y título ---------- */
-/* Todo en una línea, y si el nombre del espacio es largo se recorta él, no la
-   línea entera. El proyecto va de antetítulo debajo, no aquí. */
+/* ---------- Ficha de un detalle: la línea de volver ----------
+   Solo el volver y lo que se puede hacer con la ficha, en los extremos. Lo de
+   dónde vive esto bajó a la ruta de la cabecera, con su color. */
 .tk-crumbs { display: flex; align-items: center; gap: 10px; min-width: 0; margin-bottom: 22px; }
 .tk-back { flex: 0 0 auto; }
 .tk-path {
@@ -476,16 +497,6 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .tk-path a { overflow: hidden; text-overflow: ellipsis; }
 .tk-path a:hover { color: var(--ink); text-decoration: underline; }
 .tk-sep { flex: 0 0 auto; }
-
-.tk-head { display: flex; flex-direction: column; gap: 4px; }
-/* El antetítulo y los tres puntos comparten línea: así el botón queda pegado al
-   borde derecho y su menú se abre hacia dentro en vez de salirse. */
-.tk-eyebrow-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
-.tk-eyebrow {
-  font-size: 11.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
-  color: var(--ink-muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.tk-eyebrow:hover { color: var(--ink); }
 
 /* ---------- Menú de tres puntos ---------- */
 .kebab-btn {
@@ -3200,10 +3211,13 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
    nombre en versalitas a la izquierda y el valor a la derecha, como en los
    ajustes del teléfono. Cambia la dirección y de qué lado va la raya; no
    cambia la idea.
-   Va al FINAL del fichero a propósito: las reglas base de `.ficha` y
-   `.tk-vence` están más abajo que el bloque de móvil y lo pisaban —una media
-   query no añade especificidad, solo cuenta el orden—. */
+   Va al FINAL del fichero a propósito: las reglas base de `.ficha` están más
+   abajo que el bloque de móvil y lo pisaban —una media query no añade
+   especificidad, solo cuenta el orden—. */
 @media (max-width: 720px) {
+  /* La fila (tira + insignias) ocupa el ancho entero: si no, la tira se queda
+     con el ancho que pidan sus casillas y flota a la izquierda. */
+  .ficha-fila { width: 100%; }
   .ficha { display: flex; flex-direction: column; width: 100%; }
   .ficha > div {
     flex-direction: row; align-items: center; justify-content: space-between;
@@ -3212,13 +3226,4 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
   }
   .ficha > div:last-child { border-bottom: none; }
   .ficha label { font-size: 10.5px; flex: 0 0 auto; }
-
-  /* El vencimiento son dos renglones: la fecha en la línea de su etiqueta y el
-     aviso debajo, a lo ancho de la casilla entera. `display: contents` disuelve
-     la caja que los envuelve y los sube al mismo flex que la etiqueta; sin eso
-     el aviso solo dispone del hueco del campo y parte «agosto» a una tercera
-     línea huérfana. */
-  .ficha .tk-vence { display: contents; }
-  .ficha .tk-vence input { margin-left: auto; }
-  .ficha .tk-aplazos { flex: 1 0 100%; text-align: right; margin-top: 4px; font-size: 12px; }
 }

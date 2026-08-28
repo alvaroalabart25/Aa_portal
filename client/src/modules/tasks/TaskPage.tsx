@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { tasksApi } from './api';
 import MelonesDeTarea from '../focus/MelonesDeTarea';
@@ -58,75 +58,77 @@ export default function TaskPage() {
 
   return (
     <div>
-      {/* Una sola línea: volver + dónde estás. El proyecto no va aquí, va de
-          antetítulo justo encima del nombre, y el nombre de la tarea no se
-          repite: ya es el título. */}
+      {/* Arriba solo el volver y lo que se puede hacer con la tarea. El volver
+          lleva a DONDE VENÍAS: si entraste desde un proyecto, al proyecto —
+          volver a la Agenda y rehacer el camino era lo farragoso. Sin origen
+          conocido, a la pestaña Agenda. */}
       <div className="tk-crumbs">
-        {/* El volver lleva a DONDE VENÍAS. Si entraste desde un proyecto, al
-            proyecto: volver a la Agenda y tener que rehacer el camino era lo
-            farragoso. Sin origen conocido, a la pestaña Agenda —no a Macro,
-            que es para mirar el mes y obligaba a un toque más. */}
         <Link to={vuelta.to} className="btn ghost sm tk-back">
           ‹ {vuelta.etiqueta}
         </Link>
-        <span className="tk-path">
-          <Link to="/proyectos">Proyectos</Link>
-          <span className="tk-sep">›</span>
-          {/* el espacio agrupa, pero ya no es una página: no se enlaza */}
-          <span>{task.spaceName}</span>
+        <span className="fh-acciones">
+          <KebabMenu items={[{ label: 'Eliminar tarea', danger: true, onClick: archive }]} />
         </span>
       </div>
 
-      <div className="tk-head">
-        <div className="tk-eyebrow-row">
-          <Link to={`/proyectos/${task.projectId}`} className="tk-eyebrow">
-            {task.projectName}
-          </Link>
-          <KebabMenu items={[{ label: 'Eliminar tarea', danger: true, onClick: archive }]} />
-        </div>
-        <EditableTitle value={task.title} onSave={async (title) => update({ title })} />
-      </div>
+      {/* Ruta, título y datos cosidos por la línea de color del espacio. La
+          ruta dice dónde vive la tarea —espacio › proyecto— y se lleva las
+          migas y el antetítulo, que decían lo mismo en dos renglones. */}
+      <div className="fh" style={{ '--c': task.spaceColor } as CSSProperties}>
+        <div className="fh-cuerpo">
+          <span className="fh-ruta">
+            <span className="dot" style={{ background: task.spaceColor }} />
+            <Link to="/proyectos">{task.spaceName}</Link>
+            <span className="tk-sep">›</span>
+            <Link to={`/proyectos/${task.projectId}`}>{task.projectName}</Link>
+          </span>
+          <EditableTitle value={task.title} onSave={async (title) => update({ title })} />
 
-      <div className="ficha">
-        <div>
-          <label>Estado</label>
-          <StatusSelect value={task.status} onChange={(status) => update({ status })} />
-        </div>
-        <div>
-          <label htmlFor="t-priority">Prioridad</label>
-          <select
-            id="t-priority"
-            value={task.priority}
-            onChange={(e) => update({ priority: e.target.value as Priority })}
-          >
-            {Object.entries(PRIORITY_LABEL).map(([v, l]) => (
-              <option key={v} value={v}>
-                {l}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="t-due">Vencimiento</label>
-          {/* La fecha y su historia en la misma línea: el aviso es sobre ESA
-              fecha, y debajo parecía una nota al pie de todo el formulario. */}
-          <div className="tk-vence">
-            <input
-              id="t-due"
-              type="date"
-              value={task.dueDate ?? ''}
-              onChange={(e) => update({ dueDate: e.target.value || null })}
-            />
-            {/* Cuántas veces la he empujado hacia adelante. No sale siempre:
-                mover una tarea larga es normal, y avisar de eso sería ruido.
-                Ver `avisaAplazada`. */}
-            {avisaAplazada(task.status, task.postponedCount) && (
-              <p className={`tk-aplazos${(task.postponedCount ?? 0) >= AVISO_APLAZADA_EN_MARCHA ? ' bola' : ''}`}>
-                Aplazada {task.postponedCount} {task.postponedCount === 1 ? 'vez' : 'veces'}
-                {task.lastPostponedAt && ` · la última, el ${fechaCorta(task.lastPostponedAt)}`}
-              </p>
-            )}
+          <div className="ficha">
+            <div>
+              <label>Estado</label>
+              <StatusSelect value={task.status} onChange={(status) => update({ status })} />
+            </div>
+            <div>
+              <label htmlFor="t-priority">Prioridad</label>
+              <select
+                id="t-priority"
+                value={task.priority}
+                onChange={(e) => update({ priority: e.target.value as Priority })}
+              >
+                {Object.entries(PRIORITY_LABEL).map(([v, l]) => (
+                  <option key={v} value={v}>
+                    {l}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="t-due">Vencimiento</label>
+              <input
+                id="t-due"
+                type="date"
+                value={task.dueDate ?? ''}
+                onChange={(e) => update({ dueDate: e.target.value || null })}
+              />
+            </div>
           </div>
+
+          {/* Cuántas veces la he empujado hacia adelante. Debajo de la tira, no
+              dentro: metido en la casilla de la fecha la estiraba tanto que la
+              tira se partía en dos filas. No sale siempre —mover una tarea
+              larga es normal, y avisar de eso sería ruido—; ver
+              `avisaAplazada`. */}
+          {avisaAplazada(task.status, task.postponedCount) && (
+            <p
+              className={`ficha-nota${
+                (task.postponedCount ?? 0) >= AVISO_APLAZADA_EN_MARCHA ? ' aviso' : ''
+              }`}
+            >
+              Aplazada {task.postponedCount} {task.postponedCount === 1 ? 'vez' : 'veces'}
+              {task.lastPostponedAt && ` · la última, el ${fechaCorta(task.lastPostponedAt)}`}
+            </p>
+          )}
         </div>
       </div>
 

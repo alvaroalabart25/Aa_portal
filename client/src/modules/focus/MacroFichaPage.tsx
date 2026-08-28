@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Modal from '../../components/Modal';
 import { projectsApi, spacesApi, tasksApi } from '../tasks/api';
@@ -77,22 +77,7 @@ export default function MacroFichaPage() {
         <Link to="/agenda?tab=macro" className="btn ghost sm tk-back">
           ‹ Macro
         </Link>
-        <span className="tk-path">
-          <span>
-            {t.emoji} {t.singular}
-          </span>
-          {d.startMonth && (
-            <>
-              <span className="tk-sep">›</span>
-              <span>desde {nombreMes(d.startMonth)}</span>
-            </>
-          )}
-        </span>
-      </div>
-
-      <div className="tk-head">
-        <div className="tk-eyebrow-row">
-          <span className="tk-eyebrow">{d.scope === 'trabajo' ? 'Trabajo' : 'Mis cosas'}</span>
+        <span className="fh-acciones">
           <button
             className="btn ghost sm"
             onClick={async () => {
@@ -103,68 +88,89 @@ export default function MacroFichaPage() {
           >
             Quitar
           </button>
-        </div>
-        <Titulo valor={d.title} onGuardar={(title) => guardar({ title })} />
+        </span>
       </div>
 
-      {/* La ficha del objetivo: estado y fechas en la misma tira que la de una
-          tarea. Las fechas exactas se ponen aquí; en la plani se arrastran por
-          semanas. El gesto es rápido y basto, el formulario es preciso: cada
-          uno a lo suyo. */}
-      <div className="ficha-fila">
-        <div className="ficha">
-          <div>
-            <label htmlFor="o-estado">Estado</label>
-            <select
-              id="o-estado"
-              value={d.status}
-              onChange={(e) => guardar({ status: e.target.value as FocusDetalle['status'] })}
-            >
-              <option value="activo">En marcha</option>
-              <option value="hecho">Hecho</option>
-              <option value="aparcado">Aparcado</option>
-            </select>
-          </div>
-          {d.kind === 'melon' && (
-            <>
-              <div>
-                <label htmlFor="o-empieza">Empieza</label>
-                <input
-                  id="o-empieza"
-                  type="date"
-                  value={d.startsOn ?? ''}
-                  onChange={(e) => guardar({ startsOn: e.target.value || null })}
-                />
-              </div>
-              <div>
-                <label htmlFor="o-saca">Se saca</label>
-                <input
-                  id="o-saca"
-                  type="date"
-                  value={d.dueOn ?? ''}
-                  onChange={(e) => guardar({ dueOn: e.target.value || null })}
-                />
-              </div>
-            </>
-          )}
-        </div>
-        {d.daily === 1 && (
-          <span className="badge">
-            🔥 {d.racha} {d.racha === 1 ? 'día seguido' : 'días seguidos'}
+      {/* La misma cabecera que una tarea: ruta, título y datos cosidos por una
+          línea de color. El objetivo no tiene espacio propio, así que toma el
+          del primer proyecto al que sirve; sin proyectos, negro. */}
+      <div className="fh" style={{ '--c': d.projects[0]?.spaceColor ?? 'var(--ink)' } as CSSProperties}>
+        <div className="fh-cuerpo">
+          <span className="fh-ruta">
+            <span>
+              {t.emoji} {t.singular}
+            </span>
+            <span className="tk-sep">›</span>
+            <em>{d.scope === 'trabajo' ? 'Trabajo' : 'Mis cosas'}</em>
+            {d.startMonth && (
+              <>
+                <span className="tk-sep">›</span>
+                <span>desde {nombreMes(d.startMonth)}</span>
+              </>
+            )}
           </span>
-        )}
-        {d.doneAt && <span className="badge">✓ Hecho el {fechaCorta(d.doneAt)}</span>}
-      </div>
+          <Titulo valor={d.title} onGuardar={(title) => guardar({ title })} />
 
-      {d.kind === 'melon' && (
-        <p className="ficha-nota">
-          {d.dueOn
-            ? d.startsOn
-              ? 'Se dibuja como una barra en la plani.'
-              : 'Se dibuja como un hito en la plani. Pon la fecha de inicio si dura semanas.'
-            : 'Sin fecha de entrega no sale en la plani.'}
-        </p>
-      )}
+        {/* La ficha del objetivo: estado y fechas en la misma tira que la de una
+            tarea. Las fechas exactas se ponen aquí; en la plani se arrastran por
+            semanas. El gesto es rápido y basto, el formulario es preciso: cada
+            uno a lo suyo. */}
+        <div className="ficha-fila">
+          <div className="ficha">
+            <div>
+              <label htmlFor="o-estado">Estado</label>
+              <select
+                id="o-estado"
+                value={d.status}
+                onChange={(e) => guardar({ status: e.target.value as FocusDetalle['status'] })}
+              >
+                <option value="activo">En marcha</option>
+                <option value="hecho">Hecho</option>
+                <option value="aparcado">Aparcado</option>
+              </select>
+            </div>
+            {d.kind === 'melon' && (
+              <>
+                <div>
+                  <label htmlFor="o-empieza">Empieza</label>
+                  <input
+                    id="o-empieza"
+                    type="date"
+                    value={d.startsOn ?? ''}
+                    onChange={(e) => guardar({ startsOn: e.target.value || null })}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="o-saca">Se saca</label>
+                  <input
+                    id="o-saca"
+                    type="date"
+                    value={d.dueOn ?? ''}
+                    onChange={(e) => guardar({ dueOn: e.target.value || null })}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+          {d.daily === 1 && (
+            <span className="badge">
+              🔥 {d.racha} {d.racha === 1 ? 'día seguido' : 'días seguidos'}
+            </span>
+          )}
+          {d.doneAt && <span className="badge">✓ Hecho el {fechaCorta(d.doneAt)}</span>}
+        </div>
+
+        {d.kind === 'melon' && (
+          <p className="ficha-nota">
+            {d.dueOn
+              ? d.startsOn
+                ? 'Se dibuja como una barra en la plani.'
+                : 'Se dibuja como un hito en la plani. Pon la fecha de inicio si dura semanas.'
+              : 'Sin fecha de entrega no sale en la plani.'}
+          </p>
+        )}
+        </div>
+      </div>
 
       {d.daily === 1 && <Diario item={d} onCambio={cargar} />}
 

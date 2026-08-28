@@ -484,11 +484,27 @@ bancoRouter.post('/sincronizar/:id(\\d+)', ah(async (req: AuthedRequest, res) =>
       for (const m of movimientos) {
         // Sin referencia del banco no hay forma de saber si ya lo tenemos: se
         // compone una con lo que sí es estable. Mejor eso que duplicar.
-        const referencia =
-          m.entry_reference ??
-          `${m.booking_date ?? ''}|${m.transaction_amount?.amount ?? ''}|${(m.remittance_information ?? []).join(' ').slice(0, 40)}`;
+        const sintetica = `${m.booking_date ?? ''}|${m.transaction_amount?.amount ?? ''}|${(m.remittance_information ?? []).join(' ').slice(0, 40)}`;
+        const referencia = m.entry_reference ?? sintetica;
         const importe = m.transaction_amount?.amount;
         if (!importe) continue;
+
+        // Un movimiento PENDIENTE llega sin referencia del banco, así que se
+        // guardó con la sintética; cuando se contabiliza, el banco ya le pone
+        // una de verdad y la clave única deja de reconocerlo: se duplicaría, y
+        // con él un cobro entero. Antes de insertar, si ahora hay referencia
+        // real, se le pone a la fila que ya existía con la sintética.
+        if (m.entry_reference && m.entry_reference !== sintetica) {
+          await db
+            .update(bankTransactions)
+            .set({ entryReference: m.entry_reference.slice(0, 140) })
+            .where(
+              and(
+                eq(bankTransactions.accountId, cuenta.id),
+                eq(bankTransactions.entryReference, sintetica.slice(0, 140)),
+              ),
+            );
+        }
 
         const concepto = (m.remittance_information ?? []).join(' ').slice(0, 500) || null;
         const codigoBanco = m.bank_transaction_code?.code?.slice(0, 40) ?? null;

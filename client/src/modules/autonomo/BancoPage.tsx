@@ -166,8 +166,12 @@ export default function BancoPage() {
                 <h2>{c.banco}</h2>
                 {enEspera(c) ? (
                   <span className="bk-espera">
-                    en espera hasta las{' '}
-                    {new Date(c.reintentarDesde!).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                    {/* El cupo del banco se repone por días, así que la espera
+                        casi siempre es «mañana»: decir una hora de madrugada
+                        sonaba a que se podía intentar esta noche. */}
+                    {new Date(c.reintentarDesde!).toDateString() === new Date().toDateString()
+                      ? `en espera hasta las ${new Date(c.reintentarDesde!).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`
+                      : 'cupo del día gastado · mañana vuelve'}
                   </span>
                 ) : (
                   <button className="btn ghost sm" disabled={busy === `sync-${c.id}`} onClick={() => sincronizar(c.id)}>

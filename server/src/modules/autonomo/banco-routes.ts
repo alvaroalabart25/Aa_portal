@@ -51,7 +51,20 @@ const DIAS_HISTORIAL = 90; // lo que se pide la primera vez
  * así que en vez de adivinar se espera un rato y se vuelve a probar. Si sigue
  * agotado, otro rato. Nunca se queda bloqueado para siempre.
  */
-const HORAS_DE_ESPERA = 3;
+/**
+ * El cupo de PSD2 se cuenta POR DÍA, no por horas.
+ *
+ * Estaba en tres horas y era mentira: gastado el cupo a mediodía, a las tres
+ * horas seguía gastado, y cada intento fallido volvía a sumar otras tres —así
+ * que insistir alejaba el momento de poder sincronizar—. Ahora se espera al día
+ * siguiente, que es cuando el banco lo repone de verdad.
+ */
+function manana(): Date {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  d.setHours(0, 5, 0, 0);
+  return d;
+}
 
 const esCupoAgotado = (mensaje: string) => /HUB046|\(429\)/.test(mensaje);
 
@@ -74,9 +87,8 @@ function fallo(e: unknown): { status: number; error: string } {
   if (/HUB046|\(429\)/.test(mensaje)) {
     return {
       status: 429,
-      // No decir «mañana»: la espera es de HORAS_DE_ESPERA horas y la pantalla
-      // enseña la hora exacta al lado. Decir mañana hacía que ni se intentara.
-      error: `El banco solo permite unas cuantas consultas al día y ahora mismo están gastadas. Se puede volver a intentar en unas ${HORAS_DE_ESPERA} horas.`,
+      error:
+        'El banco solo permite unas cuantas consultas al día y hoy ya están gastadas. Mañana vuelve a funcionar solo.',
     };
   }
   // El consentimiento caducado se arregla volviendo a autorizar, no esperando
@@ -579,7 +591,7 @@ bancoRouter.post('/sincronizar/:id(\\d+)', ah(async (req: AuthedRequest, res) =>
   } catch (e) {
     const f = fallo(e);
     const espera = esCupoAgotado((e as Error).message ?? '')
-      ? new Date(Date.now() + HORAS_DE_ESPERA * 3600_000)
+      ? manana()
       : null;
     await db
       .update(bankConnections)

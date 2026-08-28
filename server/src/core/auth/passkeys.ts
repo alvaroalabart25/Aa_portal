@@ -91,6 +91,12 @@ passkeysRouter.post('/passkeys/register/options', requireAuth, ah(async (req: Au
     // pista, mira su propio llavero y si no está, deja registrar una nueva.
     excludeCredentials: previas.map((c) => ({ id: c.credentialId, transports: ['internal' as Transporte] })),
     authenticatorSelection: {
+      // El botón dice «Registrar ESTE dispositivo», así que se pide el
+      // autenticador de este aparato: Face ID en el iPhone, Touch ID en el Mac.
+      // Sin decirlo, Chrome abre un menú con «este dispositivo» y «un teléfono»
+      // —y si su almacén local no está listo, solo ofrece el teléfono y el QR,
+      // que es justo lo que parecía que «no pedía nada».
+      authenticatorAttachment: 'platform',
       residentKey: 'required', // así se puede entrar sin escribir el usuario
       userVerification: 'required', // exige Face ID / huella, no solo presencia
     },

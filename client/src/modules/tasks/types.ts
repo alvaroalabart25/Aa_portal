@@ -45,6 +45,9 @@ export interface Task {
   // Veces que se ha empujado su fecha hacia adelante
   postponedCount?: number;
   lastPostponedAt?: string | null;
+  // Desde cuándo existe. Solo lo trae el detalle: es lo que pone en contexto
+  // los aplazos —cuatro veces en una semana no es lo mismo que en tres meses—.
+  createdAt?: string;
 }
 
 /**

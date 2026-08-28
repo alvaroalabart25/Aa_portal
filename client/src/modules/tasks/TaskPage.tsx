@@ -1,21 +1,15 @@
-import { useCallback, useEffect, useState } from "react";
-import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { tasksApi } from "./api";
-import MelonesDeTarea from "../focus/MelonesDeTarea";
-import { EditableTitle, KebabMenu, NotesBox, StatusSelect } from "./components";
-import {
-  avisaAplazada,
-  AVISO_APLAZADA_EN_MARCHA,
-  PRIORITY_LABEL,
-  type Priority,
-  type Task,
-} from "./types";
+import { useCallback, useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { tasksApi } from './api';
+import MelonesDeTarea from '../focus/MelonesDeTarea';
+import { EditableTitle, KebabMenu, NotesBox, StatusSelect } from './components';
+import { avisaAplazada, AVISO_APLAZADA_EN_MARCHA, PRIORITY_LABEL, type Priority, type Task } from './types';
 
+// «1 de julio». El aviso cuenta desde CUÁNDO existe la tarea, no cuándo fue el
+// último empujón: cuatro aplazos en una semana no dicen lo mismo que en tres
+// meses, y eso solo se ve con la fecha de nacimiento al lado del número.
 function fechaCorta(iso: string): string {
-  return new Date(iso).toLocaleDateString("es-ES", {
-    day: "numeric",
-    month: "long",
-  });
+  return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
 }
 
 export default function TaskPage() {
@@ -26,8 +20,7 @@ export default function TaskPage() {
   // directa, o recargar) se cae a la Agenda, que es de donde se viene casi
   // siempre.
   const location = useLocation();
-  const volverA =
-    (location.state as { volverA?: string } | null)?.volverA ?? null;
+  const volverA = (location.state as { volverA?: string } | null)?.volverA ?? null;
 
   const [task, setTask] = useState<Task | null>(null);
 
@@ -45,8 +38,7 @@ export default function TaskPage() {
   }
 
   async function archive() {
-    if (!confirm("¿Archivar esta tarea? Dejará de aparecer en las listas."))
-      return;
+    if (!confirm('¿Archivar esta tarea? Dejará de aparecer en las listas.')) return;
     await tasksApi.archive(taskId);
     navigate(-1);
   }
@@ -56,20 +48,20 @@ export default function TaskPage() {
   // El nombre del sitio se saca de la propia tarea cuando se puede: «‹ Web
   // Residencia» dice mucho más que «‹ Proyecto».
   const vuelta = !volverA
-    ? { to: "/agenda?tab=agenda", etiqueta: "Agenda" }
-    : volverA.startsWith("/proyectos/")
-      ? { to: volverA, etiqueta: task.projectName || "Proyecto" }
-      : volverA.startsWith("/proyectos")
-        ? { to: volverA, etiqueta: "Proyectos" }
-        : volverA.startsWith("/tareas")
-          ? { to: volverA, etiqueta: "Tareas" }
-          : volverA.startsWith("/macro")
-            ? { to: volverA, etiqueta: "Macro" }
-            : { to: volverA, etiqueta: "Agenda" };
+    ? { to: '/agenda?tab=agenda', etiqueta: 'Agenda' }
+    : volverA.startsWith('/proyectos/')
+      ? { to: volverA, etiqueta: task.projectName || 'Proyecto' }
+      : volverA.startsWith('/proyectos')
+        ? { to: volverA, etiqueta: 'Proyectos' }
+        : volverA.startsWith('/tareas')
+          ? { to: volverA, etiqueta: 'Tareas' }
+          : volverA.startsWith('/macro')
+            ? { to: volverA, etiqueta: 'Macro' }
+            : { to: volverA, etiqueta: 'Agenda' };
 
   return (
     <div>
-      {/* La cabecera: todo lo que ES la tarea, en negro. El volver lleva a
+      {/* La cabecera: en negro, todo lo que ES la tarea. El volver lleva a
           DONDE VENÍAS —si entraste desde un proyecto, al proyecto: volver a la
           Agenda y rehacer el camino era lo farragoso—; sin origen conocido, a
           la pestaña Agenda. */}
@@ -79,11 +71,7 @@ export default function TaskPage() {
             ‹ {vuelta.etiqueta}
           </Link>
           <span className="fh-acciones">
-            <KebabMenu
-              items={[
-                { label: "Eliminar tarea", danger: true, onClick: archive },
-              ]}
-            />
+            <KebabMenu items={[{ label: 'Eliminar tarea', danger: true, onClick: archive }]} />
           </span>
         </div>
 
@@ -93,18 +81,12 @@ export default function TaskPage() {
           <span className="tk-sep">›</span>
           <Link to={`/proyectos/${task.projectId}`}>{task.projectName}</Link>
         </span>
-        <EditableTitle
-          value={task.title}
-          onSave={async (title) => update({ title })}
-        />
+        <EditableTitle value={task.title} onSave={async (title) => update({ title })} />
 
         <div className="ficha">
           <div>
             <label>Estado</label>
-            <StatusSelect
-              value={task.status}
-              onChange={(status) => update({ status })}
-            />
+            <StatusSelect value={task.status} onChange={(status) => update({ status })} />
           </div>
           <div>
             <label htmlFor="t-priority">Prioridad</label>
@@ -125,7 +107,7 @@ export default function TaskPage() {
             <input
               id="t-due"
               type="date"
-              value={task.dueDate ?? ""}
+              value={task.dueDate ?? ''}
               onChange={(e) => update({ dueDate: e.target.value || null })}
             />
           </div>
@@ -139,15 +121,11 @@ export default function TaskPage() {
         {avisaAplazada(task.status, task.postponedCount) && (
           <p
             className={`ficha-nota${
-              (task.postponedCount ?? 0) >= AVISO_APLAZADA_EN_MARCHA
-                ? " aviso"
-                : ""
+              (task.postponedCount ?? 0) >= AVISO_APLAZADA_EN_MARCHA ? ' aviso' : ''
             }`}
           >
-            Aplazada {task.postponedCount}{" "}
-            {task.postponedCount === 1 ? "vez" : "veces"}
-            {task.lastPostponedAt &&
-              ` · la última, el ${fechaCorta(task.lastPostponedAt)}`}
+            Aplazada {task.postponedCount} {task.postponedCount === 1 ? 'vez' : 'veces'}
+            {task.createdAt && ` desde el ${fechaCorta(task.createdAt)}`}
           </p>
         )}
       </div>

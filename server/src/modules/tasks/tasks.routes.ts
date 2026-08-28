@@ -84,6 +84,9 @@ tasksRouter.get('/:id', ah(async (req: AuthedRequest, res) => {
       sortOrder: tasks.sortOrder,
       postponedCount: tasks.postponedCount,
       lastPostponedAt: tasks.lastPostponedAt,
+      // Desde cuándo lleva esto abierto: es lo que da sentido al número de
+      // aplazos —cuatro veces en una semana no es lo mismo que en tres meses—.
+      createdAt: tasks.createdAt,
       completedAt: tasks.completedAt,
       projectName: projects.name,
       spaceId: projects.spaceId,

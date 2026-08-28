@@ -288,22 +288,24 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 /* La ruta: dónde vive esto. El punto trae el color del espacio, igual que en
    las listas, y se lleva las migas y el antetítulo, que decían lo mismo en dos
    renglones. */
-.fh-ruta { display: flex; align-items: center; gap: 7px; min-width: 0; font-size: 12.5px; color: var(--ink-muted); }
+/* En pastilla blanca: sobre el negro, el gris de la ruta y el punto de color
+   del espacio se apagaban los dos. Es isla clara, como los desplegables. */
+.fh-ruta {
+  display: inline-flex; align-items: center; gap: 7px; min-width: 0;
+  font-size: 12.5px; color: var(--ink-muted);
+  padding: 4px 11px; border-radius: var(--radius); margin-bottom: 4px;
+}
 .fh-ruta a:hover { color: var(--ink); text-decoration: underline; }
 .fh-ruta .dot { width: 7px; height: 7px; }
 .fh-ruta em { font-style: normal; text-transform: uppercase; letter-spacing: 0.06em; font-size: 11px; font-weight: 600; }
 /* Lo que se hace con la ficha (borrar, quitar) se va al extremo de la línea de
    volver: así no le roba sitio al título ni abre su menú fuera de pantalla. */
 .fh-acciones { margin-left: auto; flex: 0 0 auto; }
-/* El aviso, sobre negro, en pastilla blanca: el ámbar sobre el negro se ensucia
-   —y subirle el tono lo convierte en un naranja que canta—. Sobre blanco es el
-   mismo ámbar de siempre y encima se lee como lo que es: una advertencia, no
-   una nota al pie. */
+/* El aviso, sobre negro, ni ámbar ni pastilla: blanco y en negrita. Cualquier
+   color sobre el negro se ensucia, y aquí lo que hace falta es que PESE, no
+   que sea de otro color. */
 .fh .ficha-nota.aviso {
-  display: inline-block; margin-top: 10px;
-  background: #ffffff; color: var(--ambar);
-  padding: 5px 11px; border-radius: var(--radius);
-  font-weight: 500;
+  color: #ffffff; font-weight: 700;
 }
 /* Y el color del estado tampoco: el punto lo mantiene —es el que informa de un
    vistazo— y el texto pasa a blanco. El `!important` es porque el color se lo
@@ -3216,7 +3218,8 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
    estados y sus colores —azul, morado, ámbar, verde— y sobre negro se
    ensucian todos. Sobre blanco se leen como en el resto del portal. */
 .oscuro .claro,
-.oscuro .status-menu {
+.oscuro .status-menu,
+.oscuro .fh-ruta {
   color-scheme: light;
   --ink: #0a0a0a;
   --ink-soft: #3f3f3f;

@@ -44,6 +44,26 @@ export default function TaskPage() {
     navigate(-1);
   }
 
+  /**
+   * Duplicar: la misma tarea otra vez, para empezar de cero con lo que ya
+   * estaba escrito.
+   *
+   * Se copia lo que DEFINE la tarea —dónde vive, qué es, qué urgencia tiene y
+   * para cuándo— y nada de lo que le ha pasado: la copia nace en backlog, sin
+   * aplazos y sin las notas del original, que son el diario de ESA tarea y no
+   * de la nueva. Y se abre la copia, que es donde vas a seguir escribiendo.
+   */
+  async function duplicar() {
+    if (!task) return;
+    const copia = await tasksApi.create({
+      projectId: task.projectId,
+      title: `${task.title} (copia)`,
+      priority: task.priority,
+      dueDate: task.dueDate,
+    });
+    navigate(`/tareas/${copia.id}`, { state: { volverA } });
+  }
+
   if (!task) return <p className="muted">Cargando…</p>;
 
   // El nombre del sitio se saca de la propia tarea cuando se puede: «‹ Web
@@ -72,7 +92,12 @@ export default function TaskPage() {
             ‹ {vuelta.etiqueta}
           </Link>
           <span className="fh-acciones">
-            <KebabMenu items={[{ label: 'Eliminar tarea', danger: true, onClick: archive }]} />
+            <KebabMenu
+              items={[
+                { label: 'Duplicar tarea', onClick: duplicar },
+                { label: 'Eliminar tarea', danger: true, onClick: archive },
+              ]}
+            />
           </span>
         </div>
 

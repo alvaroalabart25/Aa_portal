@@ -39,14 +39,16 @@
   --danger: #c92a2a;
   --font-title: 'Bricolage Grotesque', system-ui, sans-serif;
   --font-body: 'Satoshi', -apple-system, system-ui, sans-serif;
-  /* Un solo compás de redondeos. Todo lo que se toca —botones, campos,
-     pastillas, pestañas— comparte el redondeo del botón: nada puede salir más
-     redondo que él. Lo redondo del todo se guarda para lo que ES redondo (los
-     círculos) y para las barras de progreso, que ahí no compite con nadie. */
-  --r-xs: 4px;   /* marcas mínimas: casillas, cuadraditos, código */
+  /* Un solo compás de redondeos, y son TRES medidas contando cero. Todo lo que
+     se toca —botones, campos, pastillas, pestañas— comparte el redondeo del
+     botón: nada puede salir más redondo que él. Y todo lo que contiene —una
+     tarjeta, una caja, un menú, una ventana, la tarjeta negra— comparte el
+     suyo: una tarjeta no puede ser más redonda que otra por estar en otro
+     módulo. Lo redondo del todo se guarda para lo que ES redondo: los círculos
+     (`50%`, los botones de solo icono) y las barras de progreso. */
+  --r-xs: 4px;   /* lo que va DENTRO de un control: casillas, cuadraditos, código */
   --radius: 6px; /* controles: botones, campos, pastillas, pestañas */
-  --r-md: 10px;  /* cajas, menús, tarjetas */
-  --r-lg: 14px;  /* superficies grandes: modales, hojas, la caja negra */
+  --r-md: 12px;  /* contenedores: tarjetas, cajas, menús, modales */
   --r-bar: 99px; /* solo barras de progreso */
   --sidebar-w: 220px;
 }
@@ -1200,7 +1202,7 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 .mk-grid { display: grid; gap: 10px; margin-top: 12px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
 .mk {
   position: relative; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-  border: 1px solid var(--line); border-radius: var(--r-lg); padding: 14px 16px; background: var(--paper);
+  border: 1px solid var(--line); border-radius: var(--r-md); padding: 14px 16px; background: var(--paper);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .mk:hover { border-color: var(--ink-muted); box-shadow: 0 1px 10px rgba(10, 10, 10, 0.05); }
@@ -1209,7 +1211,7 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
 /* la tarjeta también vale como botón (proyectos): mismo aspecto, otro gesto */
 button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }
 /* el enlace cubre la tarjeta entera; los botones van por encima */
-.mk-todo { position: absolute; inset: 0; border-radius: var(--r-lg); }
+.mk-todo { position: absolute; inset: 0; border-radius: var(--r-md); }
 .mk-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .mk-t { font-family: var(--font-title); font-weight: 600; font-size: 15.5px; line-height: 1.3; }
 .mk-sub { font-size: 12.5px; color: var(--ink-muted); }
@@ -1715,7 +1717,7 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 /* Seguir un entrenamiento a medias: lo primero que se ve al entrar */
 .gy-continuar {
   display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left;
-  margin-top: 14px; padding: 14px 16px; border-radius: var(--r-lg);
+  margin-top: 14px; padding: 14px 16px; border-radius: var(--r-md);
   border: 1px solid var(--ink); background: var(--ink); color: var(--paper); cursor: pointer;
 }
 .gy-continuar-t { font-family: var(--font-title); font-weight: 600; font-size: 15px; }
@@ -1731,7 +1733,7 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 
 .gy-toca {
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 12px;
-  border: 1px solid var(--ink); border-radius: var(--r-lg); padding: 16px;
+  border: 1px solid var(--ink); border-radius: var(--r-md); padding: 16px;
 }
 .gy-toca-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .gy-toca-n { font-family: var(--font-title); font-weight: 600; font-size: 18px; line-height: 1.25; }
@@ -1854,7 +1856,7 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 /* La fase, arriba del objetivo */
 .gy-fase {
   display: flex; flex-direction: column; gap: 3px; width: 100%; text-align: left;
-  margin-top: 12px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r-lg);
+  margin-top: 12px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r-md);
   background: none; cursor: pointer;
 }
 .gy-fase:hover { border-color: var(--ink-muted); }
@@ -1865,7 +1867,7 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 /* ---------- Entrenar: la sesión ---------- */
 .gy-marcador { font-family: var(--font-title); font-weight: 600; font-size: 16px; }
 
-.gy-bloque { margin-top: 22px; border: 1px solid var(--line); border-radius: var(--r-lg); padding: 14px; }
+.gy-bloque { margin-top: 22px; border: 1px solid var(--line); border-radius: var(--r-md); padding: 14px; }
 .gy-bloque.hecho { opacity: 0.68; }
 .gy-bloque-head { display: flex; align-items: flex-start; gap: 10px; }
 .gy-bloque-n { font-size: 16px; line-height: 1.3; }
@@ -1986,7 +1988,7 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .foco-campos span { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #8f8f8f; }
 .foco-campos input {
   width: 120px; text-align: center; font-family: var(--font-title); font-weight: 600;
-  font-size: 34px; padding: 12px 6px; border-radius: var(--r-lg);
+  font-size: 34px; padding: 12px 6px; border-radius: var(--r-md);
   border: 1px solid #333; background: #141414; color: #fff;
 }
 .foco-campos input:focus { border-color: #fff; outline: none; }
@@ -2026,7 +2028,7 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 /* Ya entrenaste hoy: no se propone nada más, la rotación sigue mañana */
 .gy-hoy {
   display: flex; flex-direction: column; gap: 3px; margin-top: 12px;
-  border: 1px solid var(--line); border-radius: var(--r-lg); padding: 16px; background: var(--paper-soft);
+  border: 1px solid var(--line); border-radius: var(--r-md); padding: 16px; background: var(--paper-soft);
 }
 .gy-hoy-t { font-family: var(--font-title); font-weight: 600; font-size: 17px; }
 .gy-hoy-s { font-size: 13px; color: var(--ink-muted); }
@@ -2034,7 +2036,7 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 /* La sesión que te dejaste abierta al irte */
 .gy-olvidada {
   display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left;
-  margin-top: 14px; padding: 14px 16px; border-radius: var(--r-lg); cursor: pointer;
+  margin-top: 14px; padding: 14px 16px; border-radius: var(--r-md); cursor: pointer;
   border: 1px solid #f0c58a; background: #fdf4e7; color: #7a4708;
 }
 
@@ -2280,7 +2282,7 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 /* Añadir un ejercicio desde el modo foco (fondo negro) */
 .foco-nombre {
   width: 100%; max-width: 420px; text-align: center;
-  font-size: 19px; padding: 14px 12px; border-radius: var(--r-lg);
+  font-size: 19px; padding: 14px 12px; border-radius: var(--r-md);
   border: 1px solid #333; background: #141414; color: #fff;
 }
 .foco-nombre:focus { border-color: #fff; outline: none; }
@@ -2463,11 +2465,11 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 }
 .guia {
   background: var(--paper); width: 100%; max-width: 520px;
-  border-radius: var(--r-lg) var(--r-lg) 0 0; padding: 22px 20px calc(20px + env(safe-area-inset-bottom));
+  border-radius: var(--r-md) var(--r-md) 0 0; padding: 22px 20px calc(20px + env(safe-area-inset-bottom));
 }
 @media (min-width: 768px) {
   .guia-velo { align-items: center; }
-  .guia { border-radius: var(--r-lg); padding: 26px 26px 24px; }
+  .guia { border-radius: var(--r-md); padding: 26px 26px 24px; }
 }
 .guia-eti { font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-muted); margin: 0 0 6px; }
 .guia h3 { font-family: var(--font-title); font-size: 20px; margin: 0 0 6px; }
@@ -2715,7 +2717,7 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 
 /* El ojo que esconde los importes: discreción, no seguridad */
 .ojo {
-  background: none; border: 1px solid var(--line); border-radius: var(--radius); cursor: pointer;
+  background: none; border: 1px solid var(--line); border-radius: 50%; cursor: pointer;
   color: var(--ink-soft); width: 34px; height: 34px; display: inline-flex;
   align-items: center; justify-content: center; flex: none;
 }
@@ -3087,7 +3089,7 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
   --line: #2f2f2f;
   background: #0a0a0a;
   color: #ffffff;
-  border-radius: var(--r-lg);
+  border-radius: var(--r-md);
   padding: 20px 18px 22px;
 }
 /* Con fondo propio, el aire de arriba lo pone el contenedor: los títulos de

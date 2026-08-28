@@ -317,7 +317,7 @@ function SegundoFactor({
           <p style={{ fontSize: 13.5, margin: '0 0 12px' }}>
             1. Escanea este código con tu app autenticadora.
           </p>
-          <img src={qr} alt="Código QR para la app autenticadora" width={200} height={200} style={{ border: '1px solid var(--line)', borderRadius: 8 }} />
+          <img src={qr} alt="Código QR para la app autenticadora" width={200} height={200} style={{ border: '1px solid var(--line)', borderRadius: 'var(--r-md)' }} />
           <p className="muted" style={{ fontSize: 12.5, margin: '10px 0 0' }}>
             Si no puedes escanear, introduce esta clave a mano:
             <br />

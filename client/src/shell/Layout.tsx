@@ -296,6 +296,8 @@ export default function Layout() {
           desenfoque en escalera —cada una un poco más fuerte y recortada más
           arriba— para que el efecto se agote solo, sin línea y sin pintar nada
           encima. Solo se ve en el móvil; en el ordenador mide cero. */}
+      <Medidor />
+
       <div className="tapa-arriba" aria-hidden="true">
         <i />
         <i />
@@ -344,6 +346,54 @@ export default function Layout() {
       <Guia />
 
       <BottomBar />
+    </div>
+  );
+}
+
+/**
+ * El medidor: solo aparece con `?medir=1` en la dirección.
+ *
+ * Está para contestar a una pregunta que desde el ordenador no se puede
+ * contestar: cuánto vale de verdad `env(safe-area-inset-top)` en la app
+ * instalada de SU iPhone. De eso depende si el contenido pasa por debajo del
+ * reloj o si iOS recorta la ventana ahí. Se quita en cuanto se sepa.
+ */
+function Medidor() {
+  const [txt, setTxt] = useState('');
+  useEffect(() => {
+    if (!new URLSearchParams(window.location.search).has('medir')) return;
+    const sonda = document.createElement('div');
+    sonda.style.cssText =
+      'position:fixed;top:0;left:0;width:1px;height:env(safe-area-inset-top);visibility:hidden';
+    document.body.appendChild(sonda);
+    const arriba = Math.round(sonda.getBoundingClientRect().height);
+    sonda.style.height = 'env(safe-area-inset-bottom)';
+    const abajo = Math.round(sonda.getBoundingClientRect().height);
+    sonda.remove();
+    const instalada = (window.navigator as { standalone?: boolean }).standalone ? 'instalada' : 'en Safari';
+    const tapa = document.querySelector('.tapa-arriba');
+    const alto = tapa ? Math.round(tapa.getBoundingClientRect().height) : 0;
+    setTxt(`arriba ${arriba} · abajo ${abajo} · cristal ${alto} · ${instalada} · ventana ${window.innerHeight}`);
+  }, []);
+  if (!txt) return null;
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        left: 8,
+        right: 8,
+        bottom: 'calc(8px + env(safe-area-inset-bottom))',
+        zIndex: 90,
+        background: '#0a0a0a',
+        color: '#fff',
+        padding: '10px 12px',
+        borderRadius: 10,
+        fontSize: 14,
+        fontWeight: 600,
+        textAlign: 'center',
+      }}
+    >
+      {txt}
     </div>
   );
 }

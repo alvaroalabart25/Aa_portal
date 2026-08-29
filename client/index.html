@@ -4,12 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#0a0a0a" />
-    <!-- La barra de estado del iPhone en la PWA: sin esto iOS pinta una franja
-         blanca opaca FUERA de la página (ningún velo nuestro puede taparla y
-         al abrir un popup quedaba un corte raro arriba). En negro de marca es
-         coherente siempre. OJO: se aplica al (re)instalar la PWA. -->
+    <!-- La barra de estado del iPhone en la PWA. De los tres valores posibles,
+         SOLO `black-translucent` deja que la página ocupe también esa franja:
+         con `default` o `black`, iOS recorta la ventana por debajo del reloj y
+         pinta esa tira él —fuera de la web, intocable desde CSS— y ahí no pasa
+         nunca contenido por debajo. Esa era la franja blanca con corte que no
+         había manera de quitar por mucho desenfoque que se le echara: no era
+         nuestra.
+         Con esto, `env(safe-area-inset-top)` deja de valer 0 y el cristal de
+         arriba (.tapa-arriba) tiene por fin algo que desenfocar.
+         OJO: esto se aplica al INSTALAR. Hay que borrar la app de la pantalla
+         de inicio y volver a añadirla; recargar no basta. -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="icon" href="/icons/icon-192.png" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <title>Aa Portal</title>

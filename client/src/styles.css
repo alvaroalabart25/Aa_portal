@@ -124,7 +124,7 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   /* Arriba, el hueco de la barra del sistema. En el navegador ese valor es
      cero, así que esto solo separa donde hace falta: en la app instalada. */
   .main {
-    padding: calc(16px + env(safe-area-inset-top)) 14px calc(124px + env(safe-area-inset-bottom));
+    padding: calc(30px + env(safe-area-inset-top)) 14px calc(124px + env(safe-area-inset-bottom));
   }
   /* Cristal esmerilado, no una tapa: detrás SE INTUYE que hay algo pero no se
      lee. El truco son las tres capas juntas —blanco a media opacidad, un
@@ -139,28 +139,47 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
        simular en el navegador, donde `env()` vale cero y no habría nada que
        mirar hasta instalarla en el iPhone. */
     --tapa-sis: env(safe-area-inset-top);
-    height: calc(var(--tapa-sis) + 78px);
-    /* Desenfoque APILADO, no un velo pintado.
-       Un velo blanco no puede acabar sin que se note: donde deja de haber
-       blanco hay un escalón, y donde no hay nada detrás se ve papel. Esto son
-       tres capas de desenfoque de radio creciente, cada una tapada un poco más
-       arriba que la anterior: abajo solo queda el desenfoque flojo, así que el
-       efecto no termina, se agota. Es la receta de las barras de iOS.
-       Capa 1, la de fuera: la más floja y la que llega más abajo. */
-    -webkit-backdrop-filter: blur(4px);
-    backdrop-filter: blur(4px);
-    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 60%, rgba(0, 0, 0, 0.5) 82%, transparent 100%);
-    mask-image: linear-gradient(to bottom, #000 0, #000 60%, rgba(0, 0, 0, 0.5) 82%, transparent 100%);
+    /* Justo la franja del reloj y nada más. El contenido empieza en
+       `sis + 16px` (el padding de .main), así que en reposo esto NO toca ni el
+       título ni las pestañas: encima solo hay papel, y cristal sobre papel
+       blanco no se ve. El corte que se veía era eso, un velo pisando cosas.
+       Lo que se desenfoca es lo que SUBE al hacer scroll. */
+    height: calc(var(--tapa-sis) + 30px);
+    /* Desenfoque APILADO, no un velo pintado: tres capas de radio creciente,
+       cada una recortada un poco más arriba que la anterior. Abajo solo queda
+       la floja, así que el efecto no acaba en una línea, se agota.
+       Capa 1, la de fuera: la más suave y la que llega más abajo. */
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--tapa-sis) + 4px), rgba(0, 0, 0, 0.5) calc(var(--tapa-sis) + 18px), transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--tapa-sis) + 4px), rgba(0, 0, 0, 0.5) calc(var(--tapa-sis) + 18px), transparent 100%);
   }
   .tapa-arriba::before,
   .tapa-arriba::after { content: ''; position: absolute; inset: 0; }
   /* Capa 2: desenfoque medio, se agota antes */
   .tapa-arriba::before {
-    -webkit-backdrop-filter: blur(11px) saturate(160%);
-    backdrop-filter: blur(11px) saturate(160%);
-    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 36%, rgba(0, 0, 0, 0.5) 58%, transparent 78%);
-    mask-image: linear-gradient(to bottom, #000 0, #000 36%, rgba(0, 0, 0, 0.5) 58%, transparent 78%);
+    -webkit-backdrop-filter: blur(9px) saturate(160%);
+    backdrop-filter: blur(9px) saturate(160%);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 var(--tapa-sis), rgba(0, 0, 0, 0.45) calc(var(--tapa-sis) + 12px), transparent calc(var(--tapa-sis) + 24px));
+    mask-image: linear-gradient(to bottom, #000 0, #000 var(--tapa-sis), rgba(0, 0, 0, 0.45) calc(var(--tapa-sis) + 12px), transparent calc(var(--tapa-sis) + 24px));
   }
+  /* Capa 3: el desenfoque fuerte, solo detrás del reloj. Lleva el único blanco
+     que queda, y flojo: es para que los números negros del iPhone se lean
+     cuando por debajo pasa una tarjeta oscura, no para tapar nada. */
+  .tapa-arriba::after {
+    -webkit-backdrop-filter: blur(20px) saturate(175%);
+    backdrop-filter: blur(20px) saturate(175%);
+    background: linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.36) 0,
+      rgba(255, 255, 255, 0.32) calc(var(--tapa-sis) - 6px),
+      rgba(255, 255, 255, 0.12) calc(var(--tapa-sis) + 6px),
+      rgba(255, 255, 255, 0) calc(var(--tapa-sis) + 18px)
+    );
+    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--tapa-sis) - 8px), rgba(0, 0, 0, 0.5) calc(var(--tapa-sis) + 6px), transparent calc(var(--tapa-sis) + 18px));
+    mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--tapa-sis) - 8px), rgba(0, 0, 0, 0.5) calc(var(--tapa-sis) + 6px), transparent calc(var(--tapa-sis) + 18px));
+  }
+
   /* Capa 3: el desenfoque fuerte, solo donde está el reloj. Lleva el único
      blanco que hay, y flojo: es para que los números negros del iPhone se lean
      cuando por debajo pasa algo oscuro, no para tapar. */

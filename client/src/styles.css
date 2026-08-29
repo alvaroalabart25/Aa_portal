@@ -139,30 +139,54 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
        simular en el navegador, donde `env()` vale cero y no habría nada que
        mirar hasta instalarla en el iPhone. */
     --tapa-sis: env(safe-area-inset-top);
-    /* Justo la franja del reloj y nada más. El contenido empieza en
-       `sis + 16px` (el padding de .main), así que en reposo esto NO toca ni el
-       título ni las pestañas: encima solo hay papel, y cristal sobre papel
-       blanco no se ve. El corte que se veía era eso, un velo pisando cosas.
-       Lo que se desenfoca es lo que SUBE al hacer scroll. */
+    /* Hasta donde empieza el contenido (el aire de arriba de .main) y ni un
+       píxel más: en reposo esto no toca el título ni las pestañas. */
     height: calc(var(--tapa-sis) + 30px);
-    /* Desenfoque APILADO, no un velo pintado: tres capas de radio creciente,
-       cada una recortada un poco más arriba que la anterior. Abajo solo queda
-       la floja, así que el efecto no acaba en una línea, se agota.
-       Capa 1, la de fuera: la más suave y la que llega más abajo. */
-    -webkit-backdrop-filter: blur(3px);
-    backdrop-filter: blur(3px);
-    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--tapa-sis) + 4px), rgba(0, 0, 0, 0.5) calc(var(--tapa-sis) + 18px), transparent 100%);
-    mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--tapa-sis) + 4px), rgba(0, 0, 0, 0.5) calc(var(--tapa-sis) + 18px), transparent 100%);
   }
-  .tapa-arriba::before,
-  .tapa-arriba::after { content: ''; position: absolute; inset: 0; }
-  /* Capa 2: desenfoque medio, se agota antes */
-  .tapa-arriba::before {
-    -webkit-backdrop-filter: blur(9px) saturate(160%);
-    backdrop-filter: blur(9px) saturate(160%);
-    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 var(--tapa-sis), rgba(0, 0, 0, 0.45) calc(var(--tapa-sis) + 12px), transparent calc(var(--tapa-sis) + 24px));
-    mask-image: linear-gradient(to bottom, #000 0, #000 var(--tapa-sis), rgba(0, 0, 0, 0.45) calc(var(--tapa-sis) + 12px), transparent calc(var(--tapa-sis) + 24px));
+  /* Desenfoque en ESCALERA. Seis capas, cada una un poco más fuerte y
+     recortada un poco más arriba que la anterior.
+     Por qué así y no una capa con máscara: desvanecer la opacidad de un
+     desenfoque grande no lo suaviza, deja un fantasma encima de lo nítido, y
+     donde ese fantasma se acaba se ve una línea. Eso era el corte. En escalera
+     no hay nada que apagar: arriba se suman las seis, abajo queda una de medio
+     píxel, y el efecto se agota solo.
+     Y no hay ni una gota de pintura: nada opaco, se ve lo que pasa por
+     debajo. */
+  .tapa-arriba i {
+    position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+    display: block;
   }
+  .tapa-arriba i:nth-child(1) {
+    -webkit-backdrop-filter: blur(0.5px); backdrop-filter: blur(0.5px);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 88%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 0, #000 88%, transparent 100%);
+  }
+  .tapa-arriba i:nth-child(2) {
+    -webkit-backdrop-filter: blur(1px); backdrop-filter: blur(1px);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 72%, transparent 90%);
+    mask-image: linear-gradient(to bottom, #000 0, #000 72%, transparent 90%);
+  }
+  .tapa-arriba i:nth-child(3) {
+    -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 56%, transparent 76%);
+    mask-image: linear-gradient(to bottom, #000 0, #000 56%, transparent 76%);
+  }
+  .tapa-arriba i:nth-child(4) {
+    -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 40%, transparent 60%);
+    mask-image: linear-gradient(to bottom, #000 0, #000 40%, transparent 60%);
+  }
+  .tapa-arriba i:nth-child(5) {
+    -webkit-backdrop-filter: blur(4px) saturate(150%); backdrop-filter: blur(4px) saturate(150%);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 24%, transparent 44%);
+    mask-image: linear-gradient(to bottom, #000 0, #000 24%, transparent 44%);
+  }
+  .tapa-arriba i:nth-child(6) {
+    -webkit-backdrop-filter: blur(6px) saturate(160%); backdrop-filter: blur(6px) saturate(160%);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 10%, transparent 28%);
+    mask-image: linear-gradient(to bottom, #000 0, #000 10%, transparent 28%);
+  }
+
   /* Capa 3: el desenfoque fuerte, solo detrás del reloj. Lleva el único blanco
      que queda, y flojo: es para que los números negros del iPhone se lean
      cuando por debajo pasa una tarjeta oscura, no para tapar nada. */

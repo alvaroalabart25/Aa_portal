@@ -126,35 +126,30 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   .main {
     padding: calc(16px + env(safe-area-inset-top)) 14px calc(124px + env(safe-area-inset-bottom));
   }
-  /* El velo: blanco pegado arriba que se DISUELVE. Tres cosas lo hacen suave en
-     vez de un corte:
-     1. No termina en `transparent`, que es negro transparente y ensucia el
-        degradado de gris por el camino; termina en blanco con alfa 0.
-     2. Los pasos no son lineales: se apagan despacio al principio y rápido al
-        final, que es como se apaga la luz de verdad.
-     3. Y lo que pasa por debajo se DESENFOCA de forma progresiva —la máscara
-        difumina el propio desenfoque—, así que el texto no cruza nítido por
-        detrás del reloj: se deshace antes de llegar.
-     Alto generoso a propósito: un velo corto vuelve a ser una banda. */
+  /* Cristal esmerilado, no una tapa: detrás SE INTUYE que hay algo pero no se
+     lee. El truco son las tres capas juntas —blanco a media opacidad, un
+     desenfoque grande y un punto de saturación para que el color de debajo no
+     se vuelva gris—, que es la receta de las barras del propio iPhone.
+     La máscara difumina también el cristal, así que abajo no hay borde: el
+     efecto se deshace en el aire en vez de terminar en una línea. */
   .tapa-arriba {
     display: block;
     position: fixed; top: 0; left: 0; right: 0; z-index: 60; pointer-events: none;
-    height: calc(env(safe-area-inset-top) + 30px);
+    height: calc(env(safe-area-inset-top) + 34px);
     background: linear-gradient(
       to bottom,
-      rgb(255, 255, 255) 0%,
-      rgba(255, 255, 255, 0.99) 40%,
-      rgba(255, 255, 255, 0.94) 55%,
-      rgba(255, 255, 255, 0.82) 66%,
-      rgba(255, 255, 255, 0.6) 76%,
-      rgba(255, 255, 255, 0.36) 85%,
-      rgba(255, 255, 255, 0.16) 93%,
+      rgba(255, 255, 255, 0.74) 0%,
+      rgba(255, 255, 255, 0.7) 42%,
+      rgba(255, 255, 255, 0.58) 60%,
+      rgba(255, 255, 255, 0.4) 74%,
+      rgba(255, 255, 255, 0.22) 86%,
+      rgba(255, 255, 255, 0.08) 94%,
       rgba(255, 255, 255, 0) 100%
     );
-    -webkit-backdrop-filter: blur(7px);
-    backdrop-filter: blur(7px);
-    -webkit-mask-image: linear-gradient(to bottom, #000 58%, rgba(0, 0, 0, 0.55) 78%, transparent 100%);
-    mask-image: linear-gradient(to bottom, #000 58%, rgba(0, 0, 0, 0.55) 78%, transparent 100%);
+    -webkit-backdrop-filter: blur(18px) saturate(165%);
+    backdrop-filter: blur(18px) saturate(165%);
+    -webkit-mask-image: linear-gradient(to bottom, #000 60%, rgba(0, 0, 0, 0.5) 82%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 60%, rgba(0, 0, 0, 0.5) 82%, transparent 100%);
   }
   /* «+ Nueva tarea» se queda en «+ Nueva»: en el móvil el contexto lo pone el
      título de la página, y así el botón no empuja a las pestañas */

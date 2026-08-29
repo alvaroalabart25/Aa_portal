@@ -1730,6 +1730,9 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
   background: var(--paper-soft); border-radius: var(--r-md); padding: 12px 14px; max-width: 40ch;
 }
 .pe-ayuda a { font-weight: 600; text-decoration: underline; }
+/* Lo que ha dicho el navegador, tal cual. Letra de pie de página: no es para
+   leerlo, es para poder contarlo cuando algo no abre. */
+.pe-motivo { font-size: 11.5px; color: var(--ink-muted); margin: 2px 0 0; font-family: var(--font-mono, monospace); }
 .page-sub { font-size: 13.5px; line-height: 1.6; margin: 6px 0 0; max-width: 60ch; }
 
 /* La pregunta del día: una excusa para arrancar, no un enunciado que haya que

@@ -28,6 +28,10 @@ export default function Cerrojo({
   const [abriendo, setAbriendo] = useState(false);
   const [error, setError] = useState('');
   const [sinLlave, setSinLlave] = useState(false);
+  // El nombre exacto que ha dado el navegador. Se enseña en pequeño porque
+  // «NotAllowedError» y «SecurityError» quieren decir cosas muy distintas, y
+  // sin ese dato lo único que se puede hacer es adivinar.
+  const [motivo, setMotivo] = useState('');
 
   useEffect(() => alCambiar(() => setAbierto(hayPase(ambito))), [ambito]);
   useEffect(() => () => cerrar(ambito), [ambito]);
@@ -36,11 +40,13 @@ export default function Cerrojo({
     setAbriendo(true);
     setError('');
     setSinLlave(false);
+    setMotivo('');
     try {
       await abrir(ambito, otroDispositivo);
       setAbierto(true);
     } catch (e) {
       const err = e as Error;
+      setMotivo(`${err.name || 'Error'}${err.message ? `: ${err.message}` : ''}`);
       // Los navegadores dicen lo mismo para dos cosas distintas: que has
       // cancelado, o que en ESTE aparato no hay ninguna llave del portal.
       if (err.name === 'NotAllowedError') setSinLlave(true);
@@ -77,13 +83,15 @@ export default function Cerrojo({
 
       {sinLlave && (
         <p className="pe-ayuda">
-          Este aparato no tiene ninguna llave de acceso del portal. Registra una aquí —te pedirá Touch ID y tarda diez
-          segundos— o firma con el iPhone desde «Usar otro dispositivo».
+          O lo has cancelado, o este aparato no tiene ninguna llave del portal —la del iPhone solo llega al Mac si
+          tienes el llavero de iCloud activado—. Firma con el móvil desde «Usar otro dispositivo», que saca un código
+          QR, o registra una llave aquí: son diez segundos y un Touch ID.
           <br />
           <Link to="/configuracion">Añadir una llave en este dispositivo →</Link>
         </p>
       )}
       {error && <p className="error-msg">{error}</p>}
+      {motivo && <p className="pe-motivo">{motivo}</p>}
     </div>
   );
 }

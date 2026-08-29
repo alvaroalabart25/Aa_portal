@@ -76,20 +76,19 @@ passkeysRouter.post('/passkeys/register/options', requireAuth, ah(async (req: Au
   const [user] = await db.select().from(users).where(eq(users.id, req.userId!));
   if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
 
-  const previas = await db.select().from(webauthnCredentials).where(eq(webauthnCredentials.userId, user.id));
-
   const options = await generateRegistrationOptions({
     rpName: 'Aa Portal',
     rpID: rpID(),
     userName: user.username,
     userDisplayName: user.username,
     attestationType: 'none',
-    // No registrar dos veces la misma llave EN ESTE DISPOSITIVO. El matiz de
-    // `internal` importa: sin él, el navegador puede ponerse a buscar la llave
-    // por el móvil para comprobar si ya la tienes, y en el Mac eso se queda
-    // colgado —«no carga»— cuando la llave vive solo en el iPhone. Con la
-    // pista, mira su propio llavero y si no está, deja registrar una nueva.
-    excludeCredentials: previas.map((c) => ({ id: c.credentialId, transports: ['internal' as Transporte] })),
+    // Sin lista de exclusión a propósito.
+    //
+    // Excluir las llaves ya registradas suena a higiene, pero deja tirado justo
+    // al aparato que necesita una: las llaves del iPhone viajan por el llavero
+    // de iCloud, así que el Mac ya «tiene» esa credencial y el navegador corta
+    // con InvalidStateError —«no me permite»— sin dejar crear la suya. Una
+    // llave de más no molesta a nadie; quedarse fuera del portal, sí.
     authenticatorSelection: {
       // El botón dice «Registrar ESTE dispositivo», así que se pide el
       // autenticador de este aparato: Face ID en el iPhone, Touch ID en el Mac.
@@ -214,15 +213,19 @@ export async function opcionesDeLlave(userId: number, otroDispositivo = false) {
     userVerification: 'required',
     allowCredentials: llaves.map((k) => {
       const transportes = k.transports?.split(',').filter(Boolean) ?? [];
-      // Por defecto, si la llave vive en el dispositivo se ofrece SOLO esa vía:
-      // dejar también 'hybrid' hace que el iPhone pregunte «¿esta o otro
-      // dispositivo?» en vez de ir derecho a Face ID.
+      // Los transportes son una PISTA, pero el navegador se la toma como una
+      // reja: solo ofrece las vías que le decimos. Por defecto, si la llave
+      // vive en el aparato se ofrece solo esa —dejar 'hybrid' hace que el
+      // iPhone pregunte «¿esta o otro dispositivo?» en vez de ir derecho a
+      // Face ID—.
       //
-      // Pero eso deja tirado al ordenador que NO tiene la llave en su llavero:
-      // el navegador dice «no tienes llaves de acceso» y no hay salida. Para
-      // eso está `otroDispositivo`: se ofrecen todas las vías y aparece el
-      // código QR para firmar con el iPhone.
-      const vias = otroDispositivo || !transportes.includes('internal') ? transportes : ['internal'];
+      // Con `otroDispositivo` se quita la reja del todo: sin transportes, el
+      // navegador saca TODO lo que sabe hacer —el código QR para firmar con el
+      // móvil, el Bluetooth, la llave física—. Antes aquí se mandaban los
+      // transportes guardados, y en el Mac eso volvía a acabar en la misma
+      // pared: la llave dice que es «interna» y el Mac no la tiene dentro.
+      if (otroDispositivo) return { id: k.credentialId };
+      const vias = transportes.includes('internal') ? ['internal'] : transportes;
       return {
         id: k.credentialId,
         transports: (vias.length ? vias : undefined) as Transporte[] | undefined,

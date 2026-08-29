@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import NotificacionesPage from '../modules/push/NotificacionesPage';
 import SeguridadPage from '../modules/security/SeguridadPage';
@@ -64,8 +65,64 @@ export default function Configuracion() {
       ) : tab === 'usuarios' ? (
         <UsuariosTab />
       ) : (
-        <SeguridadPage />
+        <>
+          <SeguridadPage />
+          <Medidor />
+        </>
       )}
     </div>
+  );
+}
+
+/**
+ * Los números del hueco del sistema.
+ *
+ * Está aquí, y no detrás de un `?medir=1`, porque en la app instalada no hay
+ * barra de direcciones donde escribir eso. Contesta a la única pregunta que
+ * desde el ordenador no se puede contestar: cuánto mide de verdad la franja
+ * del reloj para la web en SU iPhone. De eso depende si el contenido pasa por
+ * debajo del reloj o si iOS nos recorta la ventana ahí. Se quita en cuanto se
+ * sepa.
+ */
+function Medidor() {
+  const [txt, setTxt] = useState('');
+
+  useEffect(() => {
+    const sonda = document.createElement('div');
+    sonda.style.cssText =
+      'position:fixed;top:0;left:0;width:1px;height:env(safe-area-inset-top);visibility:hidden';
+    document.body.appendChild(sonda);
+    const arriba = Math.round(sonda.getBoundingClientRect().height);
+    sonda.style.height = 'env(safe-area-inset-bottom)';
+    const abajo = Math.round(sonda.getBoundingClientRect().height);
+    sonda.remove();
+
+    const instalada = (window.navigator as { standalone?: boolean }).standalone ? 'instalada' : 'en Safari';
+    const tapa = document.querySelector('.tapa-arriba');
+    const cristal = tapa ? Math.round(tapa.getBoundingClientRect().height) : 0;
+    setTxt(`arriba ${arriba} · abajo ${abajo} · cristal ${cristal} · ${instalada} · ventana ${window.innerHeight}`);
+  }, []);
+
+  return (
+    <section className="section">
+      <h2 style={{ fontSize: 16 }}>Medidas de la pantalla</h2>
+      <p className="muted" style={{ fontSize: 13 }}>
+        Temporal, para cuadrar el cristal de arriba. Manda esta línea:
+      </p>
+      <p
+        style={{
+          background: '#0a0a0a',
+          color: '#fff',
+          padding: '10px 12px',
+          borderRadius: 10,
+          fontSize: 14,
+          fontWeight: 600,
+          textAlign: 'center',
+          margin: 0,
+        }}
+      >
+        {txt || 'midiendo…'}
+      </p>
+    </section>
   );
 }

@@ -292,11 +292,17 @@ export default function Layout() {
   return (
     <div className="shell">
       {/* La tapa de arriba: en la app instalada, el contenido pasa por debajo
-          del reloj y la batería del iPhone y se cruzan. Las seis capas son un
+          del reloj y la batería del iPhone y se cruzan. Las doce capas son un
           desenfoque en escalera —cada una un poco más fuerte y recortada más
           arriba— para que el efecto se agote solo, sin línea y sin pintar nada
           encima. Solo se ve en el móvil; en el ordenador mide cero. */}
       <div className="tapa-arriba" aria-hidden="true">
+        <i />
+        <i />
+        <i />
+        <i />
+        <i />
+        <i />
         <i />
         <i />
         <i />

@@ -143,49 +143,82 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
        píxel más: en reposo esto no toca el título ni las pestañas. */
     height: calc(var(--tapa-sis) + 30px);
   }
-  /* Desenfoque en ESCALERA. Seis capas, cada una un poco más fuerte y
+  /* Desenfoque en ESCALERA. Doce capas, cada una un poco más fuerte y
      recortada un poco más arriba que la anterior.
      Por qué así y no una capa con máscara: desvanecer la opacidad de un
      desenfoque grande no lo suaviza, deja un fantasma encima de lo nítido, y
-     donde ese fantasma se acaba se ve una línea. Eso era el corte. En escalera
-     no hay nada que apagar: arriba se suman las seis, abajo queda una de medio
-     píxel, y el efecto se agota solo.
-     Y no hay ni una gota de pintura: nada opaco, se ve lo que pasa por
-     debajo. */
+     donde ese fantasma se acaba se ve una línea. Eso era el corte.
+     Y por qué los peldaños van en PÍXELES y tan cortos: cada uno avanza 2,5 px
+     pero tarda 6 px en apagarse, así que en todo momento hay dos o tres capas
+     solapadas y el salto de una a la siguiente no llega a verse. Con
+     porcentajes los peldaños medían 9 px y sí se veían.
+     No hay ni una gota de pintura: nada opaco, se ve lo que pasa por debajo. */
   .tapa-arriba i {
     position: absolute; left: 0; right: 0; top: 0; bottom: 0;
     display: block;
   }
   .tapa-arriba i:nth-child(1) {
-    -webkit-backdrop-filter: blur(0.5px); backdrop-filter: blur(0.5px);
-    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 88%, transparent 100%);
-    mask-image: linear-gradient(to bottom, #000 0, #000 88%, transparent 100%);
+    -webkit-backdrop-filter: blur(0.3px); backdrop-filter: blur(0.3px);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--tapa-sis) + 24.0px), transparent calc(var(--tapa-sis) + 30.0px));
+    mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--tapa-sis) + 24.0px), transparent calc(var(--tapa-sis) + 30.0px));
   }
   .tapa-arriba i:nth-child(2) {
-    -webkit-backdrop-filter: blur(1px); backdrop-filter: blur(1px);
-    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 72%, transparent 90%);
-    mask-image: linear-gradient(to bottom, #000 0, #000 72%, transparent 90%);
+    -webkit-backdrop-filter: blur(0.4px); backdrop-filter: blur(0.4px);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--tapa-sis) + 21.5px), transparent calc(var(--tapa-sis) + 27.5px));
+    mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--tapa-sis) + 21.5px), transparent calc(var(--tapa-sis) + 27.5px));
   }
   .tapa-arriba i:nth-child(3) {
-    -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
-    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 56%, transparent 76%);
-    mask-image: linear-gradient(to bottom, #000 0, #000 56%, transparent 76%);
+    -webkit-backdrop-filter: blur(0.55px); backdrop-filter: blur(0.55px);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--tapa-sis) + 19.0px), transparent calc(var(--tapa-sis) + 25.0px));
+    mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--tapa-sis) + 19.0px), transparent calc(var(--tapa-sis) + 25.0px));
   }
   .tapa-arriba i:nth-child(4) {
-    -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
-    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 40%, transparent 60%);
-    mask-image: linear-gradient(to bottom, #000 0, #000 40%, transparent 60%);
+    -webkit-backdrop-filter: blur(0.75px); backdrop-filter: blur(0.75px);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--tapa-sis) + 16.5px), transparent calc(var(--tapa-sis) + 22.5px));
+    mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--tapa-sis) + 16.5px), transparent calc(var(--tapa-sis) + 22.5px));
   }
   .tapa-arriba i:nth-child(5) {
-    -webkit-backdrop-filter: blur(4px) saturate(150%); backdrop-filter: blur(4px) saturate(150%);
-    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 24%, transparent 44%);
-    mask-image: linear-gradient(to bottom, #000 0, #000 24%, transparent 44%);
+    -webkit-backdrop-filter: blur(1.0px); backdrop-filter: blur(1.0px);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--tapa-sis) + 14.0px), transparent calc(var(--tapa-sis) + 20.0px));
+    mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--tapa-sis) + 14.0px), transparent calc(var(--tapa-sis) + 20.0px));
   }
   .tapa-arriba i:nth-child(6) {
-    -webkit-backdrop-filter: blur(6px) saturate(160%); backdrop-filter: blur(6px) saturate(160%);
-    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 10%, transparent 28%);
-    mask-image: linear-gradient(to bottom, #000 0, #000 10%, transparent 28%);
+    -webkit-backdrop-filter: blur(1.3px); backdrop-filter: blur(1.3px);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--tapa-sis) + 11.5px), transparent calc(var(--tapa-sis) + 17.5px));
+    mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--tapa-sis) + 11.5px), transparent calc(var(--tapa-sis) + 17.5px));
   }
+  .tapa-arriba i:nth-child(7) {
+    -webkit-backdrop-filter: blur(1.7px); backdrop-filter: blur(1.7px);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--tapa-sis) + 9.0px), transparent calc(var(--tapa-sis) + 15.0px));
+    mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--tapa-sis) + 9.0px), transparent calc(var(--tapa-sis) + 15.0px));
+  }
+  .tapa-arriba i:nth-child(8) {
+    -webkit-backdrop-filter: blur(2.2px); backdrop-filter: blur(2.2px);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--tapa-sis) + 6.5px), transparent calc(var(--tapa-sis) + 12.5px));
+    mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--tapa-sis) + 6.5px), transparent calc(var(--tapa-sis) + 12.5px));
+  }
+  .tapa-arriba i:nth-child(9) {
+    -webkit-backdrop-filter: blur(2.9px); backdrop-filter: blur(2.9px);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--tapa-sis) + 4.0px), transparent calc(var(--tapa-sis) + 10.0px));
+    mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--tapa-sis) + 4.0px), transparent calc(var(--tapa-sis) + 10.0px));
+  }
+  .tapa-arriba i:nth-child(10) {
+    -webkit-backdrop-filter: blur(3.8px) saturate(150%); backdrop-filter: blur(3.8px) saturate(150%);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--tapa-sis) + 1.5px), transparent calc(var(--tapa-sis) + 7.5px));
+    mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--tapa-sis) + 1.5px), transparent calc(var(--tapa-sis) + 7.5px));
+  }
+  .tapa-arriba i:nth-child(11) {
+    -webkit-backdrop-filter: blur(5.0px) saturate(150%); backdrop-filter: blur(5.0px) saturate(150%);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--tapa-sis) - 1.0px), transparent calc(var(--tapa-sis) + 5.0px));
+    mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--tapa-sis) - 1.0px), transparent calc(var(--tapa-sis) + 5.0px));
+  }
+  .tapa-arriba i:nth-child(12) {
+    -webkit-backdrop-filter: blur(6.5px) saturate(150%); backdrop-filter: blur(6.5px) saturate(150%);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--tapa-sis) - 3.5px), transparent calc(var(--tapa-sis) + 2.5px));
+    mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--tapa-sis) - 3.5px), transparent calc(var(--tapa-sis) + 2.5px));
+  }
+
+
 
   /* Capa 3: el desenfoque fuerte, solo detrás del reloj. Lleva el único blanco
      que queda, y flojo: es para que los números negros del iPhone se lean

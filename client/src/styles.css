@@ -135,22 +135,45 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   .tapa-arriba {
     display: block;
     position: fixed; top: 0; left: 0; right: 0; z-index: 60; pointer-events: none;
-    height: calc(env(safe-area-inset-top) + 34px);
+    /* El hueco de la barra del sistema, con nombre propio: así se puede
+       simular en el navegador, donde `env()` vale cero y no habría nada que
+       mirar hasta instalarla en el iPhone. */
+    --tapa-sis: env(safe-area-inset-top);
+    /* La franja del sistema, entera, y una cola por debajo para deshacerse */
+    height: calc(var(--tapa-sis) + 42px);
     background: linear-gradient(
       to bottom,
-      rgba(255, 255, 255, 0.74) 0%,
-      rgba(255, 255, 255, 0.7) 42%,
-      rgba(255, 255, 255, 0.58) 60%,
-      rgba(255, 255, 255, 0.4) 74%,
-      rgba(255, 255, 255, 0.22) 86%,
-      rgba(255, 255, 255, 0.08) 94%,
+      rgba(255, 255, 255, 0.72) 0,
+      rgba(255, 255, 255, 0.72) calc(var(--tapa-sis) + 6px),
+      rgba(255, 255, 255, 0.52) calc(var(--tapa-sis) + 20px),
+      rgba(255, 255, 255, 0.26) calc(var(--tapa-sis) + 31px),
       rgba(255, 255, 255, 0) 100%
     );
     -webkit-backdrop-filter: blur(18px) saturate(165%);
     backdrop-filter: blur(18px) saturate(165%);
-    -webkit-mask-image: linear-gradient(to bottom, #000 60%, rgba(0, 0, 0, 0.5) 82%, transparent 100%);
-    mask-image: linear-gradient(to bottom, #000 60%, rgba(0, 0, 0, 0.5) 82%, transparent 100%);
+    /* Las paradas van en píxeles CONTADOS DESDE la barra del sistema, no en
+       porcentajes: con porcentajes, el 60% caía a media barra y el cristal se
+       empezaba a deshacer encima del propio reloj —el corte que se veía—. Así
+       la franja del sistema va de cristal entera y la disolución ocurre toda
+       por debajo, ya sobre el contenido. */
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      #000 0,
+      #000 calc(var(--tapa-sis) + 8px),
+      rgba(0, 0, 0, 0.62) calc(var(--tapa-sis) + 22px),
+      rgba(0, 0, 0, 0.24) calc(var(--tapa-sis) + 33px),
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      #000 0,
+      #000 calc(var(--tapa-sis) + 8px),
+      rgba(0, 0, 0, 0.62) calc(var(--tapa-sis) + 22px),
+      rgba(0, 0, 0, 0.24) calc(var(--tapa-sis) + 33px),
+      transparent 100%
+    );
   }
+
   /* «+ Nueva tarea» se queda en «+ Nueva»: en el móvil el contexto lo pone el
      título de la página, y así el botón no empuja a las pestañas */
   .solo-ancho { display: none; }

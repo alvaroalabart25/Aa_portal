@@ -9,4 +9,4 @@ deploy/
 tsconfig.tsbuildinfo
 
 # Scripts de usar y tirar (los que empiezan por _): no son del proyecto
-server/scripts/_*.mjs
+server/scripts/_*

@@ -41,9 +41,20 @@ export async function api<T>(
 // Descarga un binario autenticado (ej. PDF) y lo abre en una pestaña nueva.
 export async function openBlob(path: string) {
   const token = getToken();
-  const res = await fetch(`${API_BASE}/api${path}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
+  const headers: Record<string, string> = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+  // El pase, igual que en `api()`. Se olvidó al cerrar Finanzas con Face ID y
+  // el PDF de las facturas empezó a contestar 423: la sesión estaba bien, lo
+  // que faltaba era la cara.
+  const pase = paseDe(path);
+  if (pase) headers['X-Pase'] = pase;
+
+  const res = await fetch(`${API_BASE}/api${path}`, { headers });
+  // 423 no es «se ha roto»: es que esta parte está cerrada y hay que volver a
+  // pasar Face ID. Decirlo con el número no ayuda a nadie.
+  if (res.status === 423) {
+    throw new Error('Esta parte se ha cerrado. Vuelve a entrar con Face ID y lo abres.');
+  }
   if (!res.ok) throw new Error(`Error ${res.status} generando el documento`);
   const url = URL.createObjectURL(await res.blob());
   window.open(url, '_blank');

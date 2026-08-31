@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import Modal from '../../components/Modal';
 import { projectsApi, spacesApi, tasksApi } from './api';
-import { PRIORITY_LABEL, type Priority, type Project, type Space } from './types';
+import { PRIORITY_LABEL, textoRepeticion, type Priority, type Project, type Space } from './types';
+import { DiasDeRepeticion } from './components';
 import { focusApi, type MelonBreve } from '../focus/api';
 
 const PALETTE = ['#0a0a0a', '#1971c2', '#2f9e44', '#e8590c', '#9c36b5', '#c2255c', '#e8b70c'];
@@ -135,6 +136,7 @@ export function AddTaskModal({
   const [dueDate, setDueDate] = useState(fechaPorDefecto ?? '');
   const [melones, setMelones] = useState<MelonBreve[]>([]);
   const [melonId, setMelonId] = useState<number | ''>('');
+  const [repeatDays, setRepeatDays] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -153,6 +155,7 @@ export function AddTaskModal({
         title: title.trim(),
         priority,
         dueDate: dueDate || null,
+        repeatDays,
       });
       // el vínculo con el objetivo se hace después: la tarea vive en su
       // proyecto, el objetivo solo la señala
@@ -198,6 +201,16 @@ export function AddTaskModal({
             <input id="m-task-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
           </div>
         </div>
+        {/* Las que vuelven. Va aquí y no escondido en la ficha porque «esto lo
+            hago todos los martes» se sabe al escribir la tarea, no después. */}
+        <div className="field">
+          <label>Se repite</label>
+          <DiasDeRepeticion value={repeatDays} onChange={setRepeatDays} compacto />
+          <span className="rep-texto">
+            {repeatDays ? `${textoRepeticion(repeatDays)} · al marcarla hecha vuelve el siguiente` : 'Elige los días, o ninguno si es de una sola vez'}
+          </span>
+        </div>
+
         {/* solo si hay objetivos activos: un selector vacío no aporta nada */}
         {melones.length > 0 && (
           <div className="field">

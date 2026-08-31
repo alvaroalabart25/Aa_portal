@@ -11,8 +11,33 @@ export const tasksRouter = Router();
 // Una tarea en revisión sigue viva: cuenta como abierta en agenda y contadores
 const OPEN_STATUSES = ['backlog', 'in_progress', 'in_review', 'blocked'] as const;
 
+// El día de HOY en Madrid, que es donde vive quien usa esto. Con UTC, entre
+// medianoche y las dos de la mañana «hoy» era ayer.
 function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid', dateStyle: 'short' }).format(new Date());
+}
+
+/**
+ * El próximo día que le toca a una tarea que se repite.
+ *
+ * `desde` no cuenta: al marcar hecha la del lunes, la siguiente es la del
+ * martes, no otra vez la de hoy. Con `incluirHoy` sí cuenta, que es lo que
+ * hace falta al configurar la repetición por primera vez.
+ */
+function proximaFecha(repeatDays: string, desde: string, incluirHoy = false): string | null {
+  const dias = new Set(repeatDays.split(',').filter(Boolean).map(Number));
+  if (dias.size === 0) return null;
+  // mediodía a propósito: así ningún cambio de hora mueve el día
+  const d = new Date(`${desde}T12:00:00`);
+  const iso = (x: Date) => new Intl.DateTimeFormat('en-CA', { dateStyle: 'short' }).format(x);
+  // 1 = lunes … 7 = domingo (getDay da 0 para domingo)
+  const numeroDeDia = (x: Date) => ((x.getDay() + 6) % 7) + 1;
+  if (incluirHoy && dias.has(numeroDeDia(d))) return iso(d);
+  for (let i = 0; i < 7; i++) {
+    d.setDate(d.getDate() + 1);
+    if (dias.has(numeroDeDia(d))) return iso(d);
+  }
+  return null;
 }
 
 // GET /api/tasks?projectId=&spaceId=&status=&view=today|upcoming|overdue
@@ -53,6 +78,8 @@ tasksRouter.get('/', ah(async (req: AuthedRequest, res) => {
       priority: tasks.priority,
       dueDate: tasks.dueDate,
       sortOrder: tasks.sortOrder,
+      repeatDays: tasks.repeatDays,
+      lastDoneAt: tasks.lastDoneAt,
       postponedCount: tasks.postponedCount,
       lastPostponedAt: tasks.lastPostponedAt,
       completedAt: tasks.completedAt,
@@ -82,6 +109,8 @@ tasksRouter.get('/:id', ah(async (req: AuthedRequest, res) => {
       notes: tasks.notes,
       dueDate: tasks.dueDate,
       sortOrder: tasks.sortOrder,
+      repeatDays: tasks.repeatDays,
+      lastDoneAt: tasks.lastDoneAt,
       postponedCount: tasks.postponedCount,
       lastPostponedAt: tasks.lastPostponedAt,
       // Desde cuándo lleva esto abierto: es lo que da sentido al número de
@@ -110,7 +139,13 @@ tasksRouter.post('/', ah(async (req: AuthedRequest, res) => {
     .from(projects)
     .where(and(eq(projects.id, parsed.data.projectId), eq(projects.userId, req.userId!)));
   if (!project) return res.status(400).json({ error: 'El proyecto indicado no existe' });
-  const [result] = await db.insert(tasks).values({ ...parsed.data, userId: req.userId! });
+  const valores = { ...parsed.data };
+  // Nace repitiéndose y sin fecha: se le pone la próxima que toque, hoy
+  // incluido. Si no, no saldría en ninguna lista.
+  if (valores.repeatDays && !valores.dueDate) {
+    valores.dueDate = proximaFecha(valores.repeatDays, today(), true);
+  }
+  const [result] = await db.insert(tasks).values({ ...valores, userId: req.userId! });
   const [row] = await db.select().from(tasks).where(eq(tasks.id, result.insertId));
   res.status(201).json(row);
 }));
@@ -121,19 +156,51 @@ tasksRouter.patch('/:id', ah(async (req: AuthedRequest, res) => {
   const parsed = taskUpdate.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
 
+  const [antes] = await db
+    .select({ dueDate: tasks.dueDate, repeatDays: tasks.repeatDays })
+    .from(tasks)
+    .where(and(eq(tasks.id, id), eq(tasks.userId, req.userId!)));
+  if (!antes) return res.status(404).json({ error: 'Tarea no encontrada' });
+
   const data: Record<string, unknown> = { ...parsed.data };
   if (parsed.data.status === 'completed') data.completedAt = new Date();
   else if (parsed.data.status) data.completedAt = null;
 
+  // Los días de repetición que valen tras este cambio: los que vengan en la
+  // petición, y si no, los que ya tenía.
+  const repite = parsed.data.repeatDays ?? antes.repeatDays;
+
+  /**
+   * Una tarea que se repite no se completa: se marca hecha por hoy y se va a
+   * su próximo día.
+   *
+   * Completarla de verdad la mataría, y lo que él pidió es justo lo contrario:
+   * «al darle completada me desaparezca y al día siguiente me aparezca». Vive
+   * en el servidor y no en la pantalla porque se marca hecha desde cuatro
+   * sitios distintos (la lista, la ficha, Macro, la agenda) y una copia mal
+   * hecha en uno de ellos dejaría la tarea muerta.
+   */
+  let vuelveEl: string | null = null;
+  if (parsed.data.status === 'completed' && repite) {
+    const hoy = today();
+    vuelveEl = proximaFecha(repite, hoy);
+    data.status = 'backlog';
+    data.completedAt = null;
+    data.lastDoneAt = hoy;
+    data.dueDate = vuelveEl;
+  } else if (parsed.data.repeatDays && !parsed.data.dueDate && !antes.dueDate) {
+    // Al ponerle días por primera vez y no tener fecha, se le da la próxima
+    // que toque (hoy incluido): una tarea que se repite sin fecha no aparece
+    // en ninguna lista, y parecería que no se ha guardado.
+    data.dueDate = proximaFecha(parsed.data.repeatDays, today(), true);
+  }
+
   // Aplazar = empujar la fecha hacia adelante. Solo eso cuenta: adelantarla,
   // ponerla por primera vez o quitarla no son aplazamientos, y contarlos
   // convertiría el número en ruido en vez de en una señal de que algo se atasca.
-  if (parsed.data.dueDate) {
-    const [antes] = await db
-      .select({ dueDate: tasks.dueDate })
-      .from(tasks)
-      .where(and(eq(tasks.id, id), eq(tasks.userId, req.userId!)));
-    if (antes?.dueDate && parsed.data.dueDate > antes.dueDate) {
+  // Marcar hecha una tarea que se repite tampoco: su fecha se mueve sola.
+  if (parsed.data.dueDate && !vuelveEl) {
+    if (antes.dueDate && parsed.data.dueDate > antes.dueDate) {
       data.postponedCount = sql`${tasks.postponedCount} + 1`;
       data.lastPostponedAt = new Date();
     }
@@ -145,7 +212,9 @@ tasksRouter.patch('/:id', ah(async (req: AuthedRequest, res) => {
     .where(and(eq(tasks.id, id), eq(tasks.userId, req.userId!)));
   if (result.affectedRows === 0) return res.status(404).json({ error: 'Tarea no encontrada' });
   const [row] = await db.select().from(tasks).where(eq(tasks.id, id));
-  res.json(row);
+  // `vuelveEl` viaja aparte para que la pantalla pueda decir cuándo toca otra
+  // vez sin tener que deducirlo de la fecha.
+  res.json(vuelveEl ? { ...row, vuelveEl } : row);
 }));
 
 // DELETE /api/tasks/:id — archiva, no borra

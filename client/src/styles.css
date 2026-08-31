@@ -479,6 +479,42 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
    lo que sobra y parte el texto si hace falta —en el móvil son dos renglones
    al lado del campo— antes que caerse debajo, que es donde no se lee como lo
    que es: una advertencia sobre ESA fecha. */
+/* ---------- Días en los que una tarea vuelve ----------
+   Siete botones redondos, como los días del gimnasio, para que la semana se
+   lea de un vistazo. El apagado es una opción, no un error: sin ninguno
+   marcado la tarea simplemente no se repite. */
+.rep-dias { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.rep-dias button {
+  width: 30px; height: 30px; padding: 0; border-radius: 50%;
+  border: 1px solid var(--line); background: var(--paper);
+  color: var(--ink-muted); font-size: 12.5px; font-weight: 600;
+  font-family: inherit; cursor: pointer;
+}
+.rep-dias button:hover { border-color: var(--ink-muted); color: var(--ink); }
+.rep-dias button.on { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.rep-dias .rep-quitar { border-style: dashed; font-weight: 400; margin-left: 2px; }
+.rep-dias.compacto button { width: 27px; height: 27px; font-size: 12px; }
+/* Dentro de la cabecera negra hay que invertirlo todo: el marcado va en blanco
+   y el resto en un gris que se lea sobre negro. */
+.fh .rep-dias button {
+  background: transparent; border-color: rgba(255, 255, 255, 0.28); color: rgba(255, 255, 255, 0.66);
+}
+.fh .rep-dias button:hover { border-color: rgba(255, 255, 255, 0.6); color: #fff; }
+.fh .rep-dias button.on {
+  /* Negro literal, no `var(--ink)`: dentro de `.oscuro` ese token ES blanco,
+     así que el día marcado salía blanco sobre blanco y desaparecía la letra. */
+  background: #fff; border-color: #fff; color: #0a0a0a;
+}
+/* La línea que cuenta lo que está puesto: «Vuelve los lunes y jueves» */
+.rep-linea { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 10px 0 0; }
+.rep-linea .rep-texto { font-size: 12.5px; color: var(--ink-muted); }
+.fh .rep-linea .rep-texto { color: rgba(255, 255, 255, 0.66); }
+/* El chivato de la lista: esta tarea es de las que vuelven */
+.rep-marca {
+  display: inline-block; margin-left: 6px; vertical-align: 1px;
+  font-size: 11.5px; color: var(--ink-muted);
+}
+
 /* ---------- La cabecera de un detalle ----------
    Una banda negra a lo ancho de la página, con todo lo que ES la ficha
    dentro: el volver, dónde vive, el nombre y sus datos. Lo que se

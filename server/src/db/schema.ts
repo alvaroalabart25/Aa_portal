@@ -124,6 +124,19 @@ export const tasks = mysqlTable('tasks', {
   notes: text('notes'), // markdown
   dueDate: date('due_date', { mode: 'string' }),
   sortOrder: int('sort_order').notNull().default(0),
+  /**
+   * Los días de la semana en los que esta tarea vuelve: '1,2,3,4,5' es de
+   * lunes a viernes (1 = lunes … 7 = domingo). Vacío: no se repite.
+   *
+   * Es lo contrario que un hábito a propósito. Un hábito se pide N veces por
+   * semana y los días los pone la vida —atarlo a días fijos sería mentira—,
+   * pero un recado como «entrar al correo de Admin» sí tiene sus días, y
+   * pedirlo el resto solo enseñaría a ignorar la lista.
+   */
+  repeatDays: varchar('repeat_days', { length: 20 }).notNull().default(''),
+  /** El día que se marcó hecha por última vez: la fecha de vencimiento ya
+   *  apunta a la próxima, así que sin esto no se puede decir «hecha hoy». */
+  lastDoneAt: date('last_done_at', { mode: 'string' }),
   // Cuántas veces se ha empujado la fecha hacia adelante. Adelantarla no cuenta:
   // lo que interesa es ver qué se atasca, no cada vez que se toca la tarea.
   postponedCount: int('postponed_count').notNull().default(0),

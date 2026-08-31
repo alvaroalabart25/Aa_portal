@@ -3,8 +3,15 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { tasksApi } from './api';
 import MelonesDeTarea from '../focus/MelonesDeTarea';
 import Bitacora from '../notas/Bitacora';
-import { EditableTitle, KebabMenu, StatusSelect } from './components';
-import { avisaAplazada, AVISO_APLAZADA_EN_MARCHA, PRIORITY_LABEL, type Priority, type Task } from './types';
+import { DiasDeRepeticion, EditableTitle, KebabMenu, StatusSelect } from './components';
+import {
+  avisaAplazada,
+  AVISO_APLAZADA_EN_MARCHA,
+  PRIORITY_LABEL,
+  textoRepeticion,
+  type Priority,
+  type Task,
+} from './types';
 
 // «1 de julio». El aviso cuenta desde CUÁNDO existe la tarea, no cuándo fue el
 // último empujón: cuatro aplazos en una semana no dicen lo mismo que en tres
@@ -12,6 +19,19 @@ import { avisaAplazada, AVISO_APLAZADA_EN_MARCHA, PRIORITY_LABEL, type Priority,
 function fechaCorta(iso: string): string {
   return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
 }
+
+// «el martes 2 de septiembre»: el día de la semana importa tanto como la fecha
+// cuando lo que se cuenta es una repetición.
+function fechaConDia(iso: string): string {
+  return new Date(`${iso}T12:00:00`).toLocaleDateString('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+}
+
+const hoyMadrid = () =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid', dateStyle: 'short' }).format(new Date());
 
 export default function TaskPage() {
   const { id } = useParams();
@@ -137,6 +157,20 @@ export default function TaskPage() {
               onChange={(e) => update({ dueDate: e.target.value || null })}
             />
           </div>
+        </div>
+
+        {/* Los días en los que vuelve. Debajo de la tira porque no es un dato
+            de la tarea como el estado, es una regla sobre su vida: cuándo
+            deja de estar hecha. */}
+        <div className="rep-linea">
+          <DiasDeRepeticion value={task.repeatDays} onChange={(repeatDays) => update({ repeatDays })} />
+          <span className="rep-texto">
+            {task.repeatDays
+              ? task.lastDoneAt === hoyMadrid()
+                ? `Hecha hoy · vuelve el ${task.dueDate ? fechaConDia(task.dueDate) : 'próximo día'}`
+                : textoRepeticion(task.repeatDays)
+              : 'Se repite: elige los días'}
+          </span>
         </div>
 
         {/* Cuántas veces la he empujado hacia adelante. Debajo de la tira, no

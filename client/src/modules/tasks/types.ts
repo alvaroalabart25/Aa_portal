@@ -42,6 +42,12 @@ export interface Task {
   spaceId?: number;
   spaceName?: string;
   spaceColor?: string;
+  /** Días de la semana en los que vuelve: '1,2,3,4,5' (1 = lunes … 7 = domingo) */
+  repeatDays?: string;
+  /** El día que se marcó hecha por última vez (las que se repiten) */
+  lastDoneAt?: string | null;
+  /** Solo en la respuesta de marcar hecha una que se repite: cuándo vuelve */
+  vuelveEl?: string | null;
   // Veces que se ha empujado su fecha hacia adelante
   postponedCount?: number;
   lastPostponedAt?: string | null;
@@ -92,3 +98,32 @@ export const PRIORITY_LABEL: Record<Priority, string> = {
   medium: 'Media',
   low: 'Baja',
 };
+
+
+// ---------------------------------------------------------------- repetición
+
+/** Los siete días, en el orden en que se lee una semana. */
+export const DIAS_SEMANA: [number, string, string][] = [
+  [1, 'L', 'lunes'],
+  [2, 'M', 'martes'],
+  [3, 'X', 'miércoles'],
+  [4, 'J', 'jueves'],
+  [5, 'V', 'viernes'],
+  [6, 'S', 'sábado'],
+  [7, 'D', 'domingo'],
+];
+
+export const listaDias = (v?: string): number[] =>
+  (v ?? '').split(',').filter(Boolean).map(Number);
+
+/** Cómo se cuenta una repetición: «todos los días», «L a V», «M y J». */
+export function textoRepeticion(v?: string): string {
+  const dias = listaDias(v);
+  if (dias.length === 0) return 'No se repite';
+  if (dias.length === 7) return 'Todos los días';
+  const laborables = [1, 2, 3, 4, 5];
+  if (dias.length === 5 && laborables.every((d) => dias.includes(d))) return 'De lunes a viernes';
+  const nombres = dias.map((d) => DIAS_SEMANA.find(([n]) => n === d)?.[2] ?? '');
+  if (nombres.length === 1) return `Los ${nombres[0]}`;
+  return `Los ${nombres.slice(0, -1).join(', ')} y ${nombres[nombres.length - 1]}`;
+}

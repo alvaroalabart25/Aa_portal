@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { tasksApi } from './api';
 import { Aplazada, DueDateEdit, PrioritySelect, SpaceTag, StatusSelect } from './components';
-import type { Priority, Task, TaskStatus } from './types';
+import { textoRepeticion, type Priority, type Task, type TaskStatus } from './types';
 
 // Tabla de tareas reutilizable (Agenda, detalle de proyecto...).
 // En PC: tabla con columnas. En móvil: cada fila se convierte en caja (CSS).
@@ -191,6 +191,11 @@ export default function TaskTable({
             <td className="tt-nombre">
               {showProject && t.projectName && <span className="tt-proy">{t.projectName}</span>}
               {t.title}
+              {t.repeatDays && (
+                <span className="rep-marca" title={textoRepeticion(t.repeatDays)} aria-label={textoRepeticion(t.repeatDays)}>
+                  ⟳
+                </span>
+              )}
               <Aplazada veces={t.postponedCount} estado={t.status} />
             </td>
             <td>

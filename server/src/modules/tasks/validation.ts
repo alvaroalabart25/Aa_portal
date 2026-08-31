@@ -19,9 +19,17 @@ export const projectInput = z.object({
   sortOrder: z.number().int().optional(),
 });
 
+// «1,2,3,4,5» → de lunes a viernes. Vacío → no se repite. Se valida la forma
+// aquí para que a la base de datos no llegue nunca un día 9 ni un texto libre.
+const diasSemana = z
+  .string()
+  .regex(/^([1-7](,[1-7])*)?$/, 'Días de repetición inválidos')
+  .max(20);
+
 export const taskInput = z.object({
   projectId: z.number().int().positive(),
   title: z.string().trim().min(1).max(255),
+  repeatDays: diasSemana.optional(),
   status: z.enum(['backlog', 'in_progress', 'in_review', 'blocked', 'completed', 'cancelled']).optional(),
   priority: z.enum(['low', 'medium', 'high']).optional(),
   notes: z.string().max(65000).nullish(),

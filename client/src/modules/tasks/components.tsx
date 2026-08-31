@@ -4,6 +4,8 @@ import DOMPurify from 'dompurify';
 import {
   avisaAplazada,
   AVISO_APLAZADA_EN_MARCHA,
+  DIAS_SEMANA,
+  listaDias,
   PRIORITY_LABEL,
   PROJECT_STATUS_LABEL,
   TASK_STATUS_LABEL,
@@ -213,6 +215,54 @@ export function Aplazada({ veces, estado }: { veces?: number; estado: TaskStatus
     >
       ↻{n}
     </span>
+  );
+}
+
+/**
+ * Los días en los que una tarea vuelve.
+ *
+ * Siete botones y nada más: elegir días es una pregunta de siete respuestas y
+ * cualquier desplegable la haría más larga de contestar que de pensar. Sin
+ * ninguno marcado, la tarea no se repite —el estado apagado ES una opción, no
+ * un error—, así que no hace falta un interruptor aparte para quitarla.
+ */
+export function DiasDeRepeticion({
+  value,
+  onChange,
+  compacto = false,
+}: {
+  value?: string;
+  onChange: (dias: string) => void | Promise<void>;
+  compacto?: boolean;
+}) {
+  const puestos = listaDias(value);
+
+  function alternar(dia: number) {
+    const siguiente = puestos.includes(dia) ? puestos.filter((d) => d !== dia) : [...puestos, dia];
+    onChange(siguiente.sort((a, b) => a - b).join(','));
+  }
+
+  return (
+    <div className={`rep-dias${compacto ? ' compacto' : ''}`} role="group" aria-label="Días en los que se repite">
+      {DIAS_SEMANA.map(([n, corta, larga]) => (
+        <button
+          key={n}
+          type="button"
+          className={puestos.includes(n) ? 'on' : ''}
+          aria-pressed={puestos.includes(n)}
+          aria-label={larga}
+          title={larga}
+          onClick={() => alternar(n)}
+        >
+          {corta}
+        </button>
+      ))}
+      {puestos.length > 0 && (
+        <button type="button" className="rep-quitar" onClick={() => onChange('')} title="Que no se repita">
+          ✕
+        </button>
+      )}
+    </div>
   );
 }
 

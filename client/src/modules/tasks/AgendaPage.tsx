@@ -60,6 +60,7 @@ function AgendaSection({
   events = [],
   eventNote,
   onCrear,
+  recurrentesArriba = false,
 }: {
   title: string;
   tasks: Task[];
@@ -69,9 +70,18 @@ function AgendaSection({
   eventNote?: (ev: ImportantEvent) => string;
   /** crear una tarea para ESTE día; sin esto, la sección no lleva botón */
   onCrear?: () => void;
+  /** Solo el día en curso: las que vuelven van primero, en su propio bloque */
+  recurrentesArriba?: boolean;
 }) {
-  const high = tasks.filter((t) => t.priority === 'high');
-  const rest = tasks.filter((t) => t.priority !== 'high');
+  // Las que vuelven, arriba del todo y solo hoy: son el arranque del día
+  // —abrir el correo de Admin— y verlas mezcladas por prioridad con lo demás
+  // las escondía justo el día que tocan. En los días siguientes no se separan:
+  // ahí lo que importa es qué cae ese día, no de qué tipo es.
+  const recurrentes = recurrentesArriba ? tasks.filter((t) => t.repeatDays) : [];
+  const sueltas = recurrentes.length > 0 ? tasks.filter((t) => !t.repeatDays) : tasks;
+
+  const high = sueltas.filter((t) => t.priority === 'high');
+  const rest = sueltas.filter((t) => t.priority !== 'high');
   const split = high.length > 0 && rest.length > 0;
 
   return (
@@ -90,6 +100,12 @@ function AgendaSection({
       {events.map((ev) => (
         <EventBand key={ev.id} ev={ev} note={eventNote?.(ev)} />
       ))}
+      {recurrentes.length > 0 && (
+        <>
+          <h3 className="prio-sub recurrente">⟳ Recurrentes · {recurrentes.length}</h3>
+          <TaskTable tasks={recurrentes} onChanged={onChanged} seleccionable />
+        </>
+      )}
       {split ? (
         <>
           <h3 className="prio-sub high">↑ Prioridad alta · {high.length}</h3>
@@ -98,7 +114,7 @@ function AgendaSection({
           <TaskTable tasks={rest} onChanged={onChanged} seleccionable />
         </>
       ) : (
-        <TaskTable tasks={tasks} onChanged={onChanged} seleccionable />
+        sueltas.length > 0 && <TaskTable tasks={sueltas} onChanged={onChanged} seleccionable />
       )}
     </section>
   );
@@ -205,12 +221,13 @@ export default function AgendaPage() {
             <AgendaSection title="Vencidas" titleClass="overdue" tasks={groups.overdue} onChanged={load} />
           )}
 
-          {groups.days.map((day) => (
+          {groups.days.map((day, i) => (
             <AgendaSection
               key={day.iso}
               title={day.label}
               tasks={day.tasks}
               onChanged={load}
+              recurrentesArriba={i === 0}
               events={eventsList.filter((ev) => nextOccurrence(ev) === day.iso)}
               onCrear={() => setCreando(day.iso)}
             />

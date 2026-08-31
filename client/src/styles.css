@@ -843,6 +843,10 @@ label { font-size: 13px; color: var(--ink-soft); font-weight: 500; display: bloc
   margin: 20px 0 -8px; display: flex; align-items: center; gap: 6px;
 }
 .prio-sub.high { color: #c92a2a; }
+/* Las que vuelven, arriba del día en curso. En tinta normal y no en rojo: son
+   lo primero del día, no una alarma. El primer subtítulo de la sección no
+   necesita el aire de arriba, que ya lo pone la cabecera del día. */
+.prio-sub.recurrente { color: var(--ink); margin-top: 12px; }
 
 /* ---------- Conmutador de vistas (Agenda) ---------- */
 .seg {

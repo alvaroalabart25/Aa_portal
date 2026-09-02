@@ -96,6 +96,7 @@ export interface Ejercicio {
   targetWeight: string | null;
   /** con valor, el peso de este ejercicio se apunta por un lado */
   barKg: string | null;
+  perSide: number;
   restSeconds: number | null;
   notes: string | null;
   sortOrder: number;
@@ -242,6 +243,7 @@ export interface CatalogoItem {
   partsSecondary: string;
   kind: 'repes' | 'tiempo';
   barKg: string | null;
+  perSide: number;
   explain: string | null;
   mine: boolean;
   /** el mejor peso apuntado; en barra, por un lado */
@@ -259,6 +261,7 @@ export interface FichaCatalogo {
   partsSecondary: string;
   kind: 'repes' | 'tiempo';
   barKg: string | null;
+  perSide: number;
   explain: string | null;
   mine: boolean;
   note: string | null;

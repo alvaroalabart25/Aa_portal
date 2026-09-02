@@ -161,13 +161,13 @@ gymModule.delete('/dias/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
 /**
  * El volumen de una sesión: peso × repeticiones, con el peso DE VERDAD.
  *
- * En los ejercicios de barra lo apuntado es un lado (ver `bar_kg`), así que el
+ * En los ejercicios de barra lo apuntado es un lado (ver `per_side`), así que el
  * peso real son los discos de los dos extremos más la barra. Sin esto, un peso
  * muerto de 40 por lado contaría 40 y no 95, y el volumen de una sesión de
  * pierna saldría por la mitad.
  */
 const VOLUMEN = sql<string | null>`(
-  select sum((case when ge.bar_kg is null then gs.weight else gs.weight * 2 + ge.bar_kg end) * gs.reps)
+  select sum(((case when ge.per_side = 1 then gs.weight * 2 else gs.weight end) + coalesce(ge.bar_kg, 0)) * gs.reps)
     from gym_sets gs
     join gym_exercises ge on ge.id = gs.exercise_id
    where gs.session_id = gym_sessions.id and gs.weight is not null and gs.reps is not null
@@ -187,6 +187,7 @@ const ejercicioInput = z.object({
   targetWeight: z.number().nullish(),
   // lo que pesa la barra; null = el peso apuntado es el total
   barKg: z.number().min(0).max(60).nullish(),
+  perSide: z.boolean().optional(),
   restSeconds: z.number().int().min(0).max(900).nullish(),
   notes: z.string().max(4000).nullish(),
 });
@@ -205,7 +206,7 @@ gymModule.post('/ejercicios', ah(async (req: AuthedRequest, res) => {
     .from(gymExercises)
     .where(and(eq(gymExercises.dayId, parsed.data.dayId), isNull(gymExercises.archivedAt)));
 
-  const { targetWeight, barKg, parts, catalogId, ...resto } = parsed.data;
+  const { targetWeight, barKg, perSide, parts, catalogId, ...resto } = parsed.data;
   // Identidad SIEMPRE: venga de la lista o escrito a mano. Es lo que evita los
   // duplicados y lo que mantiene el histórico unido cuando la rutina cambia.
   const ident = await asegurarIdentidad(req.userId!, { catalogId, name: parsed.data.name, parts, kind: parsed.data.kind });
@@ -213,9 +214,11 @@ gymModule.post('/ejercicios', ah(async (req: AuthedRequest, res) => {
   const [r] = await db.insert(gymExercises).values({
     ...resto,
     name: ident.name,
-    // la barra viaja con la identidad, como el nombre y el tipo, salvo que la
-    // pidan explícitamente (un ejercicio suelto con una barra distinta)
+    // el peso fijo y el «por lado» viajan con la identidad, como el nombre y
+    // el tipo, salvo que los pidan explícitamente (un ejercicio suelto con
+    // una barra distinta)
     barKg: barKg != null ? String(barKg) : ident.barKg,
+    perSide: perSide != null ? (perSide ? 1 : 0) : ident.perSide,
     kind: catalogId ? ident.kind : parsed.data.kind,
     catalogId: ident.id,
     parts: partes,
@@ -241,12 +244,13 @@ gymModule.post('/ejercicios', ah(async (req: AuthedRequest, res) => {
 gymModule.patch('/ejercicios/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
   const parsed = ejercicioInput.omit({ dayId: true }).partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
-  const { targetWeight, barKg, parts, ...resto } = parsed.data;
+  const { targetWeight, barKg, perSide, parts, ...resto } = parsed.data;
   const datos: Record<string, unknown> = { ...resto };
   if (targetWeight !== undefined) datos.targetWeight = targetWeight == null ? null : String(targetWeight);
   // Cambiar la barra NO reescribe lo apuntado: los kg de cada serie siguen
-  // siendo los de un lado, solo cambia lo que suma la barra al total.
+  // siendo los que se escribieron, solo cambia la cuenta del total.
   if (barKg !== undefined) datos.barKg = barKg == null ? null : String(barKg);
+  if (perSide !== undefined) datos.perSide = perSide ? 1 : 0;
   if (parts !== undefined) {
     const partes = limpiarPartes(parts);
     datos.parts = partes;

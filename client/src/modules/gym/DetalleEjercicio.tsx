@@ -30,10 +30,13 @@ export default function DetalleEjercicio({
   const [repes, setRepes] = useState(ejercicio.targetReps);
   const [peso, setPeso] = useState(numTxt(ejercicio.targetWeight));
   const [descanso, setDescanso] = useState(ejercicio.restSeconds != null ? String(ejercicio.restSeconds) : '');
-  // La barra: con valor, el peso de este ejercicio se apunta por un lado. Es
-  // editable porque no todas pesan igual —la de curl pesa menos que la
-  // olímpica— y porque el gimnasio de al lado tiene otras.
+  // El peso fijo: la barra, o el carro de una máquina. Editable porque no
+  // todas pesan igual —la de curl pesa menos que la olímpica— y porque al
+  // cambiar de gimnasio cambian las máquinas.
   const [barra, setBarra] = useState(numTxt(ejercicio.barKg));
+  // Y aparte: si lo que se apunta es UN lado. En barra sí; en la máquina de
+  // hip thrust no, porque los discos van a un solo lado aunque el carro pese.
+  const [porLado, setPorLado] = useState(Boolean(ejercicio.perSide));
   const [explica, setExplica] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [eligiendoSS, setEligiendoSS] = useState(false);
@@ -56,6 +59,7 @@ export default function DetalleEjercicio({
     repes.trim() !== ejercicio.targetReps ||
     peso.trim() !== numTxt(ejercicio.targetWeight) ||
     barra.trim() !== numTxt(ejercicio.barKg) ||
+    porLado !== Boolean(ejercicio.perSide) ||
     descanso.trim() !== (ejercicio.restSeconds != null ? String(ejercicio.restSeconds) : '');
 
   async function guardar() {
@@ -66,6 +70,7 @@ export default function DetalleEjercicio({
         targetReps: repes.trim() || ejercicio.targetReps,
         targetWeight: peso.trim() === '' ? null : Number(peso.replace(',', '.')),
         barKg: barra.trim() === '' ? null : Number(barra.replace(',', '.')),
+        perSide: porLado,
         restSeconds: descanso.trim() === '' ? null : Number(descanso),
       });
       onCambio();
@@ -94,7 +99,7 @@ export default function DetalleEjercicio({
           <input value={repes} onChange={(e) => setRepes(e.target.value)} placeholder="8-10, al fallo…" />
         </label>
         <label>
-          <span>{laBarra(barra) !== null ? 'Peso por lado' : 'Peso (kg)'}</span>
+          <span>{porLado ? 'Peso por lado' : 'Peso (kg)'}</span>
           <input inputMode="decimal" value={peso} onChange={(e) => setPeso(e.target.value)} placeholder="tú decides" />
         </label>
         <label>
@@ -102,16 +107,38 @@ export default function DetalleEjercicio({
           <input inputMode="numeric" value={descanso} onChange={(e) => setDescanso(e.target.value)} placeholder="auto" />
         </label>
         <label>
-          <span>Barra (kg)</span>
-          <input inputMode="decimal" value={barra} onChange={(e) => setBarra(e.target.value)} placeholder="sin barra" />
+          <span>Peso fijo (kg)</span>
+          <input
+            inputMode="decimal"
+            value={barra}
+            onChange={(e) => setBarra(e.target.value)}
+            placeholder="barra o carro"
+          />
         </label>
       </div>
+      {/* Dos preguntas distintas, y por eso dos controles: cuánto pesa la parte
+          fija y si lo que apuntas es un lado. La máquina de hip thrust es el
+          caso que las separó: su carro pesa, pero los discos van a un lado. */}
+      <label className="gy-porlado">
+        <input type="checkbox" checked={porLado} onChange={(e) => setPorLado(e.target.checked)} />
+        <span>El peso se apunta de UN lado (se carga por los dos extremos)</span>
+      </label>
       <p className="muted" style={{ fontSize: 12.5, margin: '10px 0 0' }}>
-        {laBarra(barra) !== null
-          ? peso.trim() !== ''
-            ? `Con barra, el peso se apunta de UN lado: ${numTxt(peso)} × 2 + ${numTxt(barra)} de barra = ${numTxt(pesoReal(peso.replace(',', '.'), barra.replace(',', '.')))} kg.`
-            : 'Con barra, el peso se apunta de un lado y el portal suma el otro más la barra.'
-          : 'Pon los kilos de la barra si este ejercicio se carga por los dos extremos: entonces el peso se apunta de un lado.'}
+        {(() => {
+          const fijo = laBarra({ barKg: barra.replace(',', '.') });
+          const cuenta = { barKg: barra.replace(',', '.'), perSide: porLado };
+          if (!porLado && fijo === null) {
+            return 'Sin peso fijo y sin lados: lo que apuntas es lo que se levanta (mancuernas, poleas).';
+          }
+          if (peso.trim() === '') {
+            return porLado
+              ? 'Apuntas un lado y el portal suma el otro, más el peso fijo si lo hay.'
+              : 'Apuntas los discos y el portal suma el peso fijo.';
+          }
+          const partes = [porLado ? `${numTxt(peso)} × 2` : numTxt(peso)];
+          if (fijo !== null) partes.push(`${numTxt(barra)} de peso fijo`);
+          return `${partes.join(' + ')} = ${numTxt(pesoReal(peso.replace(',', '.'), cuenta))} kg.`;
+        })()}
       </p>
 
       {/* la superserie: dos ejercicios independientes que se hacen alternados */}

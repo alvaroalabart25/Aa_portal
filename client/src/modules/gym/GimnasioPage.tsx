@@ -1104,7 +1104,7 @@ function FilaEjercicio({ e, onClick }: { e: Ejercicio; onClick: () => void }) {
         <span className="gy-ej-n">{e.name}</span>
         <span className="gy-ej-obj">
           {e.targetSets} × {e.targetReps}
-          {e.targetWeight ? ` · ${txtPesoKg(e.targetWeight, e.barKg)}` : ''}
+          {e.targetWeight ? ` · ${txtPesoKg(e.targetWeight, e)}` : ''}
           {e.restSeconds ? ` · ${e.restSeconds}s` : ''}
         </span>
         {listaMusculos(e.muscles).length > 0 && (

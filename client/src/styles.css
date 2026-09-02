@@ -3820,3 +3820,10 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
   .bit-dia .notes-editor,
   .pe-hoy .notes-editor { font-size: 16px; }
 }
+
+/* El interruptor de «el peso va por lado», en la ficha del ejercicio */
+.gy-porlado {
+  display: flex; align-items: center; gap: 9px; margin: 12px 0 0;
+  font-size: 13px; color: var(--ink-soft); cursor: pointer;
+}
+.gy-porlado input { width: 17px; height: 17px; margin: 0; flex-shrink: 0; }

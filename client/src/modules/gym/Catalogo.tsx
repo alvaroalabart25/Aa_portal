@@ -33,7 +33,7 @@ function Chivato({ e }: { e: CatalogoItem }) {
   if (!e.sets) return null;
   return (
     <span className="cat-chivato">
-      {e.pr ? `PR ${txtPesoKg(e.pr, e.barKg)}` : `${e.sets} series`}
+      {e.pr ? `PR ${txtPesoKg(e.pr, e)}` : `${e.sets} series`}
       {e.lastDone ? ` · ${fmtHace(e.lastDone)}` : ''}
     </span>
   );
@@ -300,7 +300,7 @@ function FichaModal({ id, onClose, onCambio }: { id: number; onClose: () => void
               <span className="muted">
                 {h.sets} {h.sets === 1 ? 'serie' : 'series'}
                 {h.mejorPeso != null
-                  ? ` · mejor ${txtPesoKg(String(h.mejorPeso), ficha.barKg)}${h.mejorReps ? ` × ${h.mejorReps}` : ''}`
+                  ? ` · mejor ${txtPesoKg(String(h.mejorPeso), ficha)}${h.mejorReps ? ` × ${h.mejorReps}` : ''}`
                   : ''}
                 {h.mejorSegs != null ? ` · ${h.mejorSegs}s` : ''}
               </span>

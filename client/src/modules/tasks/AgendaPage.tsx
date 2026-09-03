@@ -10,6 +10,7 @@ import MacroTab from '../focus/MacroTab';
 import PlanTab from '../focus/PlanTab';
 import NotasTab from '../notas/NotasTab';
 import { AddTaskModal } from './modals';
+import { esRecurrente, tocaHoy } from './types';
 import {
   daysUntil,
   fmtEventDate,
@@ -60,7 +61,7 @@ function AgendaSection({
   events = [],
   eventNote,
   onCrear,
-  recurrentesArriba = false,
+  recurrentes = [],
 }: {
   title: string;
   tasks: Task[];
@@ -70,25 +71,22 @@ function AgendaSection({
   eventNote?: (ev: ImportantEvent) => string;
   /** crear una tarea para ESTE día; sin esto, la sección no lleva botón */
   onCrear?: () => void;
-  /** Solo el día en curso: las que vuelven van primero, en su propio bloque */
-  recurrentesArriba?: boolean;
+  /** Las que vuelven y tocan hoy. Solo las trae el día en curso. */
+  recurrentes?: Task[];
 }) {
-  // Las que vuelven, arriba del todo y solo hoy: son el arranque del día
-  // —abrir el correo de Admin— y verlas mezcladas por prioridad con lo demás
-  // las escondía justo el día que tocan. En los días siguientes no se separan:
-  // ahí lo que importa es qué cae ese día, no de qué tipo es.
-  const recurrentes = recurrentesArriba ? tasks.filter((t) => t.repeatDays) : [];
-  const sueltas = recurrentes.length > 0 ? tasks.filter((t) => !t.repeatDays) : tasks;
-
-  const high = sueltas.filter((t) => t.priority === 'high');
-  const rest = sueltas.filter((t) => t.priority !== 'high');
+  // Las recurrentes van arriba del todo y solo el día en curso: son el arranque
+  // del día —abrir el correo de Admin— y mezcladas por prioridad con el resto
+  // quedaban escondidas justo el día que tocan. Vienen elegidas por el día de
+  // la semana, no por su fecha: `tasks` ya no trae ninguna.
+  const high = tasks.filter((t) => t.priority === 'high');
+  const rest = tasks.filter((t) => t.priority !== 'high');
   const split = high.length > 0 && rest.length > 0;
 
   return (
     <section className="section">
       <div className="ag-dia">
         <h2 className={titleClass}>
-          {title} · {tasks.length}
+          {title} · {tasks.length + recurrentes.length}
         </h2>
         {/* crear aquí ya sabe para qué día es: no hay que elegir la fecha */}
         {onCrear && (
@@ -114,7 +112,7 @@ function AgendaSection({
           <TaskTable tasks={rest} onChanged={onChanged} seleccionable />
         </>
       ) : (
-        sueltas.length > 0 && <TaskTable tasks={sueltas} onChanged={onChanged} seleccionable />
+        tasks.length > 0 && <TaskTable tasks={tasks} onChanged={onChanged} seleccionable />
       )}
     </section>
   );
@@ -151,8 +149,12 @@ export default function AgendaPage() {
   }, [load]);
 
   const groups = useMemo(() => {
-    const dated = tasks.filter((x) => x.dueDate);
     const todayIso = isoLocal(new Date());
+    // Las que vuelven no salen por fecha en ninguna lista: su vencimiento dice
+    // cuándo vuelven, no que haya que hacerlas ese día. Se enseñan aparte, en
+    // el bloque del día en curso, y por el día de la semana.
+    const dated = tasks.filter((x) => x.dueDate && !esRecurrente(x));
+    const recurrentesHoy = sortTasks(tasks.filter((x) => tocaHoy(x, todayIso)));
 
     const days: Array<{ iso: string; label: string; tasks: Task[] }> = [];
     for (let i = 0; i < 5; i++) {
@@ -170,6 +172,7 @@ export default function AgendaPage() {
       overdue: sortTasks(dated.filter((x) => x.dueDate! < todayIso)),
       days,
       upcoming: sortTasks(dated.filter((x) => x.dueDate! > lastIso)),
+      recurrentesHoy,
     };
   }, [tasks]);
 
@@ -227,7 +230,7 @@ export default function AgendaPage() {
               title={day.label}
               tasks={day.tasks}
               onChanged={load}
-              recurrentesArriba={i === 0}
+              recurrentes={i === 0 ? groups.recurrentesHoy : []}
               events={eventsList.filter((ev) => nextOccurrence(ev) === day.iso)}
               onCrear={() => setCreando(day.iso)}
             />

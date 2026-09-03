@@ -127,3 +127,26 @@ export function textoRepeticion(v?: string): string {
   if (nombres.length === 1) return `Los ${nombres[0]}`;
   return `Los ${nombres.slice(0, -1).join(', ')} y ${nombres[nombres.length - 1]}`;
 }
+
+/** 1 = lunes … 7 = domingo, del día de una fecha ISO. */
+export function diaDeSemana(iso: string): number {
+  // mediodía a propósito: así ningún cambio de hora mueve el día
+  const d = new Date(`${iso}T12:00:00`);
+  return ((d.getDay() + 6) % 7) + 1;
+}
+
+export const esRecurrente = (t: Task): boolean => Boolean(t.repeatDays);
+
+/**
+ * ¿Esta tarea que vuelve toca HOY y está sin hacer?
+ *
+ * Las recurrentes NO se enseñan por su fecha de vencimiento, aunque la tengan:
+ * su fecha dice cuándo vuelve, y colarla en la lista de ese día la convertía en
+ * una tarea normal del viernes. Se enseñan por el día de la semana, en su
+ * bloque, y solo el día que toca: marcarla hecha la quita hasta el siguiente.
+ */
+export function tocaHoy(t: Task, hoyIso: string): boolean {
+  if (!t.repeatDays) return false;
+  if (t.lastDoneAt === hoyIso) return false; // hecha hoy, vuelve el día que toque
+  return listaDias(t.repeatDays).includes(diaDeSemana(hoyIso));
+}

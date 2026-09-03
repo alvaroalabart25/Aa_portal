@@ -5,7 +5,7 @@ import { tasksApi } from '../tasks/api';
 import TaskTable from '../tasks/TaskTable';
 import BloqueGimnasio from '../gym/BloqueGimnasio';
 import HabitosDeHoy from '../routine/HabitosDeHoy';
-import type { Task } from '../tasks/types';
+import { esRecurrente, tocaHoy, type Task } from '../tasks/types';
 import {
   focusApi,
   nombreMes,
@@ -51,8 +51,14 @@ export default function MacroTab() {
 
   const hoy = useMemo(() => {
     const iso = isoLocal(new Date());
-    const deHoy = tareas.filter((t) => t.dueDate === iso);
-    const vencidas = tareas.filter((t) => t.dueDate && t.dueDate < iso);
+    // Las que vuelven se enseñan por el día de la semana y solo el día que
+    // tocan, aquí igual que en Agenda: su vencimiento dice cuándo vuelven, no
+    // que sean una tarea de ese día.
+    const deHoy = [
+      ...tareas.filter((t) => tocaHoy(t, iso)),
+      ...tareas.filter((t) => !esRecurrente(t) && t.dueDate === iso),
+    ];
+    const vencidas = tareas.filter((t) => !esRecurrente(t) && t.dueDate && t.dueDate < iso);
     return { deHoy: porPrioridad(deHoy), vencidas: porPrioridad(vencidas) };
   }, [tareas]);
 

@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { tasksApi } from './api';
 import { Aplazada, DueDateEdit, PrioritySelect, SpaceTag, StatusSelect } from './components';
-import { textoRepeticion, type Priority, type Task, type TaskStatus } from './types';
+import { DIAS_SEMANA, listaDias, textoRepeticion, type Priority, type Task, type TaskStatus } from './types';
 
 // Tabla de tareas reutilizable (Agenda, detalle de proyecto...).
 // En PC: tabla con columnas. En móvil: cada fila se convierte en caja (CSS).
@@ -191,21 +191,28 @@ export default function TaskTable({
             <td className="tt-nombre">
               {showProject && t.projectName && <span className="tt-proy">{t.projectName}</span>}
               {t.title}
-              {t.repeatDays && (
-                <span className="rep-marca" title={textoRepeticion(t.repeatDays)} aria-label={textoRepeticion(t.repeatDays)}>
-                  ⟳
-                </span>
-              )}
               <Aplazada veces={t.postponedCount} estado={t.status} />
             </td>
             <td>
-              <DueDateEdit
-                value={t.dueDate}
-                onChange={async (dueDate) => {
-                  await tasksApi.update(t.id, { dueDate });
-                  onChanged();
-                }}
-              />
+              {/* En una recurrente la fecha no es «para cuándo es», es cuándo
+                  vuelve, y verla en el bloque de hoy hacía pensar que era una
+                  tarea del viernes. En su sitio van sus días, que es lo que la
+                  define; la fecha la mueve la propia repetición. */}
+              {t.repeatDays ? (
+                <span className="rep-diitas" title={textoRepeticion(t.repeatDays)}>
+                  {DIAS_SEMANA.filter(([n]) => listaDias(t.repeatDays).includes(n))
+                    .map(([, corta]) => corta)
+                    .join('·')}
+                </span>
+              ) : (
+                <DueDateEdit
+                  value={t.dueDate}
+                  onChange={async (dueDate) => {
+                    await tasksApi.update(t.id, { dueDate });
+                    onChanged();
+                  }}
+                />
+              )}
             </td>
             <td>
               <PrioritySelect

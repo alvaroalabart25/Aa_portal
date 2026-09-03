@@ -8,6 +8,7 @@ import {
   avisaAplazada,
   AVISO_APLAZADA_EN_MARCHA,
   PRIORITY_LABEL,
+  proximaVuelta,
   textoRepeticion,
   type Priority,
   type Task,
@@ -148,15 +149,20 @@ export default function TaskPage() {
               ))}
             </select>
           </div>
-          <div>
-            <label htmlFor="t-due">Vencimiento</label>
-            <input
-              id="t-due"
-              type="date"
-              value={task.dueDate ?? ''}
-              onChange={(e) => update({ dueDate: e.target.value || null })}
-            />
-          </div>
+          {/* Una recurrente no vence: vuelve. Ni campo de fecha ni casilla que
+              lo cuente —lo dicen sus días, justo debajo—: tocar esa fecha se
+              contradecía con ellos. */}
+          {!task.repeatDays && (
+            <div>
+              <label htmlFor="t-due">Vencimiento</label>
+              <input
+                id="t-due"
+                type="date"
+                value={task.dueDate ?? ''}
+                onChange={(e) => update({ dueDate: e.target.value || null })}
+              />
+            </div>
+          )}
         </div>
 
         {/* Los días en los que vuelve. Debajo de la tira porque no es un dato
@@ -165,11 +171,19 @@ export default function TaskPage() {
         <div className="rep-linea">
           <DiasDeRepeticion value={task.repeatDays} onChange={(repeatDays) => update({ repeatDays })} />
           <span className="rep-texto">
-            {task.repeatDays
-              ? task.lastDoneAt === hoyMadrid()
-                ? `Hecha hoy · vuelve el ${task.dueDate ? fechaConDia(task.dueDate) : 'próximo día'}`
-                : textoRepeticion(task.repeatDays)
-              : 'Se repite: elige los días'}
+            {(() => {
+              if (!task.repeatDays) return 'Se repite: elige los días';
+              // Los días y en qué punto está, en una línea: «De lunes a sábado
+              // · hecha hoy, vuelve el viernes».
+              const hoy = hoyMadrid();
+              const dias = textoRepeticion(task.repeatDays);
+              if (task.lastDoneAt === hoy) {
+                const siguiente = proximaVuelta(task.repeatDays, hoy);
+                return `${dias} · hecha hoy, vuelve el ${siguiente ? fechaConDia(siguiente) : 'próximo día'}`;
+              }
+              const toca = proximaVuelta(task.repeatDays, hoy, true);
+              return toca === hoy ? `${dias} · toca hoy` : `${dias} · vuelve el ${toca ? fechaConDia(toca) : 'próximo día'}`;
+            })()}
           </span>
         </div>
 

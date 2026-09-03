@@ -198,7 +198,16 @@ export function AddTaskModal({
           </div>
           <div className="field">
             <label htmlFor="m-task-due">Vencimiento</label>
-            <input id="m-task-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+            {/* Con días de repetición no hay vencimiento que poner: la tarea
+                sale por sus días. Se apaga en vez de esconderse para que se
+                vea POR QUÉ no se puede. */}
+            <input
+              id="m-task-due"
+              type="date"
+              value={repeatDays ? '' : dueDate}
+              disabled={Boolean(repeatDays)}
+              onChange={(e) => setDueDate(e.target.value)}
+            />
           </div>
         </div>
         {/* Las que vuelven. Va aquí y no escondido en la ficha porque «esto lo
@@ -207,7 +216,9 @@ export function AddTaskModal({
           <label>Se repite</label>
           <DiasDeRepeticion value={repeatDays} onChange={setRepeatDays} compacto />
           <span className="rep-texto">
-            {repeatDays ? `${textoRepeticion(repeatDays)} · al marcarla hecha vuelve el siguiente` : 'Elige los días, o ninguno si es de una sola vez'}
+            {repeatDays
+              ? `${textoRepeticion(repeatDays)} · no lleva vencimiento, sale por sus días`
+              : 'Elige los días, o ninguno si es de una sola vez'}
           </span>
         </div>
 

@@ -116,14 +116,21 @@ export const DIAS_SEMANA: [number, string, string][] = [
 export const listaDias = (v?: string): number[] =>
   (v ?? '').split(',').filter(Boolean).map(Number);
 
-/** Cómo se cuenta una repetición: «todos los días», «L a V», «M y J». */
+/**
+ * Cómo se cuenta una repetición: «todos los días», «de lunes a sábado»,
+ * «los martes y jueves».
+ *
+ * Los días seguidos se dicen como un tramo. Enumerarlos —«los lunes, martes,
+ * miércoles, jueves, viernes y sábado»— era correcto y de dos renglones.
+ */
 export function textoRepeticion(v?: string): string {
-  const dias = listaDias(v);
+  const dias = listaDias(v).sort((a, b) => a - b);
   if (dias.length === 0) return 'No se repite';
   if (dias.length === 7) return 'Todos los días';
-  const laborables = [1, 2, 3, 4, 5];
-  if (dias.length === 5 && laborables.every((d) => dias.includes(d))) return 'De lunes a viernes';
-  const nombres = dias.map((d) => DIAS_SEMANA.find(([n]) => n === d)?.[2] ?? '');
+  const nombre = (d: number) => DIAS_SEMANA.find(([n]) => n === d)?.[2] ?? '';
+  const seguidos = dias.every((d, i) => i === 0 || d === dias[i - 1] + 1);
+  if (seguidos && dias.length > 2) return `De ${nombre(dias[0])} a ${nombre(dias[dias.length - 1])}`;
+  const nombres = dias.map(nombre);
   if (nombres.length === 1) return `Los ${nombres[0]}`;
   return `Los ${nombres.slice(0, -1).join(', ')} y ${nombres[nombres.length - 1]}`;
 }
@@ -149,4 +156,22 @@ export function tocaHoy(t: Task, hoyIso: string): boolean {
   if (!t.repeatDays) return false;
   if (t.lastDoneAt === hoyIso) return false; // hecha hoy, vuelve el día que toque
   return listaDias(t.repeatDays).includes(diaDeSemana(hoyIso));
+}
+
+/**
+ * El próximo día que le toca a una recurrente. Se CALCULA, no se guarda: una
+ * tarea que vuelve no tiene fecha de vencimiento, y su verdad son sus días.
+ */
+export function proximaVuelta(repeatDays: string, desdeIso: string, incluirHoy = false): string | null {
+  const dias = listaDias(repeatDays);
+  if (dias.length === 0) return null;
+  const d = new Date(`${desdeIso}T12:00:00`);
+  const iso = (x: Date) => new Intl.DateTimeFormat('en-CA', { dateStyle: 'short' }).format(x);
+  const numero = (x: Date) => ((x.getDay() + 6) % 7) + 1;
+  if (incluirHoy && dias.includes(numero(d))) return iso(d);
+  for (let i = 0; i < 7; i++) {
+    d.setDate(d.getDate() + 1);
+    if (dias.includes(numero(d))) return iso(d);
+  }
+  return null;
 }

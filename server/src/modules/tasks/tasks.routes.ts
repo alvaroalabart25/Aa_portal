@@ -140,11 +140,8 @@ tasksRouter.post('/', ah(async (req: AuthedRequest, res) => {
     .where(and(eq(projects.id, parsed.data.projectId), eq(projects.userId, req.userId!)));
   if (!project) return res.status(400).json({ error: 'El proyecto indicado no existe' });
   const valores = { ...parsed.data };
-  // Nace repitiéndose y sin fecha: se le pone la próxima que toque, hoy
-  // incluido. Si no, no saldría en ninguna lista.
-  if (valores.repeatDays && !valores.dueDate) {
-    valores.dueDate = proximaFecha(valores.repeatDays, today(), true);
-  }
+  // Nace repitiéndose: sin fecha. Sale por sus días, no por vencimiento.
+  if (valores.repeatDays) valores.dueDate = null;
   const [result] = await db.insert(tasks).values({ ...valores, userId: req.userId! });
   const [row] = await db.select().from(tasks).where(eq(tasks.id, result.insertId));
   res.status(201).json(row);
@@ -187,19 +184,24 @@ tasksRouter.patch('/:id', ah(async (req: AuthedRequest, res) => {
     data.status = 'backlog';
     data.completedAt = null;
     data.lastDoneAt = hoy;
-    data.dueDate = vuelveEl;
-  } else if (parsed.data.repeatDays && !parsed.data.dueDate && !antes.dueDate) {
-    // Al ponerle días por primera vez y no tener fecha, se le da la próxima
-    // que toque (hoy incluido): una tarea que se repite sin fecha no aparece
-    // en ninguna lista, y parecería que no se ha guardado.
-    data.dueDate = proximaFecha(parsed.data.repeatDays, today(), true);
   }
 
-  // Aplazar = empujar la fecha hacia adelante. Solo eso cuenta: adelantarla,
-  // ponerla por primera vez o quitarla no son aplazamientos, y contarlos
-  // convertiría el número en ruido en vez de en una señal de que algo se atasca.
-  // Marcar hecha una tarea que se repite tampoco: su fecha se mueve sola.
-  if (parsed.data.dueDate && !vuelveEl) {
+  /**
+   * Una tarea que vuelve NO TIENE FECHA. Nunca.
+   *
+   * Su vencimiento no significaba nada —no es «para cuándo es», es «cuándo
+   * vuelve»— y encima se podía tocar a mano, así que se contradecía con sus
+   * días. Los días son la única verdad; el día que toca se calcula, no se
+   * guarda. Se limpia aquí y no solo en la pantalla porque la fecha se cambia
+   * desde la ficha, desde la lista y desde la barra de selección.
+   */
+  if (repite) {
+    data.dueDate = null;
+  } else if (parsed.data.dueDate) {
+    // Aplazar = empujar la fecha hacia adelante. Solo eso cuenta: adelantarla,
+    // ponerla por primera vez o quitarla no son aplazamientos, y contarlos
+    // convertiría el número en ruido en vez de en una señal de que algo se
+    // atasca.
     if (antes.dueDate && parsed.data.dueDate > antes.dueDate) {
       data.postponedCount = sql`${tasks.postponedCount} + 1`;
       data.lastPostponedAt = new Date();

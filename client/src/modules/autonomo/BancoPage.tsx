@@ -87,6 +87,9 @@ export default function BancoPage() {
       setAviso(
         cuentas + (r.nuevos > 0 ? `${r.nuevos} movimientos nuevos` : 'Ya estabas al día: nada nuevo') + traspasos + '.',
       );
+      // Si alguna cuenta se ha quedado fuera, se dice cuál y por qué: el resto
+      // ha entrado igual, y saber cuál falla es lo que permite arreglarlo.
+      if (r.fallidas?.length) setError(`No pudo entrar: ${r.fallidas.join(' · ')}`);
       await cargar();
     } catch (e) {
       setError((e as Error).message);

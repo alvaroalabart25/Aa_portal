@@ -99,12 +99,12 @@ function fallo(e: unknown): { status: number; error: string } {
       error: 'El permiso de este banco ha caducado o se ha revocado. Hay que volver a autorizarlo desde aquí.',
     };
   }
-  // Recortado a propósito: este mensaje se GUARDA en `bank_connections.
-  // last_error`, que son 300 caracteres. Los errores del banco vienen largos, y
-  // al pasarse reventaba la escritura del error —un fallo tapando otro fallo,
-  // que llegaba a la pantalla como «Error interno del servidor» sin dejar
-  // rastro de la causa—.
-  const largo = (e as Error).message || 'El banco no ha respondido';
+  // La CAUSA, no el enunciado. Un error de base de datos llega envuelto en un
+  // «Failed query: insert into …» larguísimo, y al recortarlo por delante lo
+  // único que sobrevivía era la lista de columnas: cero información. Lo que
+  // importa —«Duplicate entry», «Data too long»— viaja en la causa.
+  const causa = (e as { cause?: { message?: string } }).cause?.message;
+  const largo = causa || (e as Error).message || 'El banco no ha respondido';
   return { status: 502, error: largo.length > 240 ? `${largo.slice(0, 237)}…` : largo };
 }
 
@@ -563,6 +563,7 @@ bancoRouter.post('/sincronizar/:id(\\d+)', ah(async (req: AuthedRequest, res) =>
    * llamada más, y los bancos cuentan las llamadas por días (HUB046).
    */
   let aparecidas = 0;
+  const fallidas: string[] = [];
   if (req.query.cuentas === '1' && conexion.sessionId) {
     try {
       const enElBanco = await cuentasDeSesion(conexion.sessionId);
@@ -578,41 +579,48 @@ bancoRouter.post('/sincronizar/:id(\\d+)', ah(async (req: AuthedRequest, res) =>
         .where(eq(bankAccounts.userId, req.userId!));
 
       for (const cuenta of enElBanco) {
-        const huella = cuenta.identification_hash?.slice(0, 120) ?? null;
-        const cola = cuenta.account_id?.iban ? cuenta.account_id.iban.slice(-4) : null;
-        // Tres formas de reconocerla, de la más fiable a la más apañada. La del
-        // MEDIO es la que faltaba: dentro de una misma sesión el uid sí es
-        // estable, así que una cuenta ya importada por esta conexión se
-        // reconoce por ahí. Sin eso, los pockets —que no tienen ni IBAN ni
-        // huella todavía— se intentaban insertar otra vez y la base de datos
-        // los rechazaba por duplicados.
-        const ya =
-          (huella ? suyas.find((s) => s.identHash === huella) : undefined) ??
-          suyas.find((s) => s.connectionId === id && s.accountUid === cuenta.uid) ??
-          (cola ? suyas.find((s) => s.ibanTail === cola) : undefined);
-        if (ya) {
-          // conocida: se le refresca el uid de esta sesión y la huella
+        try {
+          const huella = cuenta.identification_hash?.slice(0, 120) ?? null;
+          const cola = cuenta.account_id?.iban ? cuenta.account_id.iban.slice(-4) : null;
+          // Tres formas de reconocerla, de la más fiable a la más apañada. La del
+          // MEDIO es la que faltaba: dentro de una misma sesión el uid sí es
+          // estable, así que una cuenta ya importada por esta conexión se
+          // reconoce por ahí. Sin eso, los pockets —que no tienen ni IBAN ni
+          // huella todavía— se intentaban insertar otra vez y la base de datos
+          // los rechazaba por duplicados.
+          const ya =
+            (huella ? suyas.find((s) => s.identHash === huella) : undefined) ??
+            suyas.find((s) => s.connectionId === id && s.accountUid === cuenta.uid) ??
+            (cola ? suyas.find((s) => s.ibanTail === cola) : undefined);
+          if (ya) {
+            // conocida: se le refresca el uid de esta sesión y la huella
+            await db
+              .update(bankAccounts)
+              .set({ connectionId: id, accountUid: cuenta.uid, identHash: huella, archivedAt: null })
+              .where(eq(bankAccounts.id, ya.id));
+            continue;
+          }
           await db
-            .update(bankAccounts)
-            .set({ connectionId: id, accountUid: cuenta.uid, identHash: huella, archivedAt: null })
-            .where(eq(bankAccounts.id, ya.id));
-          continue;
+            .insert(bankAccounts)
+            .values({
+              userId: req.userId!,
+              connectionId: id,
+              accountUid: cuenta.uid,
+              identHash: huella,
+              name: cuenta.name ?? null,
+              ibanTail: cola,
+              currency: cuenta.currency ?? 'EUR',
+            })
+            // Cinturón: si aun así choca con una que ya estaba, se actualiza en
+            // vez de tumbar la búsqueda entera.
+            .onDuplicateKeyUpdate({ set: { identHash: huella, name: cuenta.name ?? null, archivedAt: null } });
+          aparecidas += 1;
+        } catch (e) {
+          // Una cuenta con problemas no puede dejar fuera a las demás: se
+          // apunta y se sigue. Antes, la primera que fallaba tiraba la
+          // búsqueda entera y el banco se quedaba sin ninguna cuenta.
+          fallidas.push(`${cuenta.name ?? cuenta.uid}: ${fallo(e).error}`);
         }
-        await db
-          .insert(bankAccounts)
-          .values({
-            userId: req.userId!,
-            connectionId: id,
-            accountUid: cuenta.uid,
-            identHash: huella,
-            name: cuenta.name ?? null,
-            ibanTail: cola,
-            currency: cuenta.currency ?? 'EUR',
-          })
-          // Cinturón: si aun así choca con una que ya estaba, se actualiza en
-          // vez de tumbar la búsqueda entera.
-          .onDuplicateKeyUpdate({ set: { identHash: huella, name: cuenta.name ?? null, archivedAt: null } });
-        aparecidas += 1;
       }
     } catch (e) {
       // Lo que diga el banco, dicho. Esta llamada estaba fuera del try grande,
@@ -767,7 +775,7 @@ bancoRouter.post('/sincronizar/:id(\\d+)', ah(async (req: AuthedRequest, res) =>
       .update(bankConnections)
       .set({ lastSyncAt: new Date(), lastError: null, retryAfter: null })
       .where(eq(bankConnections.id, id));
-    res.json({ ok: true, nuevos, traspasos, cuentasNuevas: aparecidas });
+    res.json({ ok: true, nuevos, traspasos, cuentasNuevas: aparecidas, fallidas });
   } catch (e) {
     const f = fallo(e);
     const espera = esCupoAgotado((e as Error).message ?? '')

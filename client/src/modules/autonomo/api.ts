@@ -324,7 +324,7 @@ export const bancoApi = {
   // `dias` fuerza el historial entero (90 como mucho): hace falta cuando cambia
   // la forma de clasificar y hay que repasar lo que ya estaba guardado.
   sincronizar: (id: number, dias?: number, buscarCuentas = false) =>
-    post<{ ok: boolean; nuevos: number; traspasos: number; cuentasNuevas: number }>(
+    post<{ ok: boolean; nuevos: number; traspasos: number; cuentasNuevas: number; fallidas?: string[] }>(
       `/autonomo/banco/sincronizar/${id}?${new URLSearchParams({
         ...(dias ? { dias: String(dias) } : {}),
         ...(buscarCuentas ? { cuentas: '1' } : {}),

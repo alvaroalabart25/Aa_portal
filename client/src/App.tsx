@@ -12,6 +12,7 @@ import ObligacionesPage from './modules/autonomo/ObligacionesPage';
 import ResumenPage from './modules/autonomo/ResumenPage';
 import DeudaPage from './modules/autonomo/DeudaPage';
 import BancoPage from './modules/autonomo/BancoPage';
+import VueltaDelBanco from './modules/autonomo/VueltaDelBanco';
 import RoadmapPage from './modules/roadmap/RoadmapPage';
 import RutinaPage from './modules/routine/RutinaPage';
 import PersonaPage from './modules/persona/PersonaPage';
@@ -112,10 +113,14 @@ export default function App() {
               <Route path="/autonomo/facturas" element={<AutonomoPage />} />
               <Route path="/autonomo/obligaciones" element={<ObligacionesPage />} />
               <Route path="/autonomo/obligaciones/deuda/:id" element={<DeudaPage />} />
-              {/* la vuelta del banco aterriza en /autonomo/banco/vuelta?code&state */}
               <Route path="/autonomo/banco" element={<BancoPage />} />
-              <Route path="/autonomo/banco/vuelta" element={<BancoPage />} />
             </Route>
+            {/* La vuelta del banco NO va detrás del cerrojo: llega con un
+                código de un solo uso que está caducando, y pedir Face ID justo
+                ahí mataba la autorización recién concedida. No enseña ningún
+                dato: canjea el permiso y manda a Finanzas, que sí pide la
+                cara. */}
+            <Route path="/autonomo/banco/vuelta" element={<VueltaDelBanco />} />
             <Route path="/roadmap" element={<RoadmapPage />} />
             <Route path="/rutina" element={<RutinaPage />} />
             <Route path="/suenos" element={<SuenosPage />} />

@@ -47,40 +47,6 @@ export default function BancoPage() {
     void cargar().catch((e) => setError((e as Error).message));
   }, [cargar]);
 
-  // La vuelta del banco aterriza aquí con ?code&state: se canjea y se limpia la
-  // dirección, que si no queda un código de un solo uso en el historial.
-  useEffect(() => {
-    const code = params.get('code');
-    const state = params.get('state');
-
-    // El banco también puede devolverte con un NO. Antes solo se miraba el
-    // `code`, así que ese no se perdía por el camino y la pantalla se quedaba
-    // como si no hubiera pasado nada —o con un error sin explicación—.
-    const fallo = params.get('error');
-    if (fallo) {
-      const detalle = params.get('error_description') ?? params.get('message');
-      setError(`El banco no completó la autorización: ${detalle || fallo}`);
-      setParams({}, { replace: true });
-      return;
-    }
-
-    if (!code || !state) return;
-    setBusy('vuelta');
-    bancoApi
-      .vuelta(code, state)
-      .then(async (r) => {
-        setAviso(`Banco conectado · ${r.cuentas} ${r.cuentas === 1 ? 'cuenta' : 'cuentas'}. Ya puedes sincronizar.`);
-        // Si al refrescar la lista falla algo, el banco YA quedó conectado: no
-        // se pinta un error rojo encima de algo que salió bien.
-        await cargar().catch(() => {});
-      })
-      .catch((e) => setError((e as Error).message))
-      .finally(() => {
-        setBusy('');
-        setParams({}, { replace: true });
-      });
-  }, [params, setParams, cargar]);
-
   async function elegirBanco() {
     setError('');
     setEligiendo(true);

@@ -199,8 +199,24 @@ export interface CuentaAutorizada {
  * autorizar el banco entero.
  */
 export async function cuentasDeSesion(sessionId: string): Promise<CuentaAutorizada[]> {
-  const s = (await llamar(`/sessions/${encodeURIComponent(sessionId)}`)) as { accounts?: CuentaAutorizada[] };
-  return s.accounts ?? [];
+  const s = (await llamar(`/sessions/${encodeURIComponent(sessionId)}`)) as {
+    accounts?: (CuentaAutorizada | string)[];
+    accounts_data?: CuentaAutorizada[];
+  };
+  /**
+   * OJO con la forma de la respuesta, que no es la misma que al canjear:
+   *
+   *  - al CANJEAR (`POST /sessions`), `accounts` trae las cuentas enteras;
+   *  - al PREGUNTAR por una sesión abierta, `accounts` son solo los
+   *    identificadores y las cuentas van en `accounts_data`.
+   *
+   * Leer el primero aquí devolvía una lista de textos, así que se intentaban
+   * dar de alta cuentas sin uid y la base de datos las rechazaba una por una.
+   */
+  if (s.accounts_data?.length) return s.accounts_data.filter((a) => Boolean(a?.uid));
+  return (s.accounts ?? [])
+    .map((a) => (typeof a === 'string' ? ({ uid: a } as CuentaAutorizada) : a))
+    .filter((a) => Boolean(a?.uid));
 }
 
 /** Paso 2: canjear el código de vuelta por una sesión y sus cuentas. */

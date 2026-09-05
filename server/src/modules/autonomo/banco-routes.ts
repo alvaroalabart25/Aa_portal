@@ -580,6 +580,11 @@ bancoRouter.post('/sincronizar/:id(\\d+)', ah(async (req: AuthedRequest, res) =>
 
       for (const cuenta of enElBanco) {
         try {
+          // sin identificador no hay cuenta que dar de alta: se dice y se sigue
+          if (!cuenta.uid) {
+            fallidas.push('una cuenta vino sin identificador');
+            continue;
+          }
           const huella = cuenta.identification_hash?.slice(0, 120) ?? null;
           const cola = cuenta.account_id?.iban ? cuenta.account_id.iban.slice(-4) : null;
           // Tres formas de reconocerla, de la más fiable a la más apañada. La del

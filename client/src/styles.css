@@ -3280,6 +3280,13 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
 .bk-cuenta-n { font-size: 14px; font-weight: 500; }
 .bk-iban { color: var(--ink-muted); font-weight: 400; font-size: 12.5px; }
 .bk-saldo { font-family: var(--font-title); font-size: 17px; font-weight: 600; white-space: nowrap; }
+/* Quitar una cuenta suelta. Apagado hasta que se pasa por encima: es una
+   acción destructiva y no tiene que competir con el saldo, que es el dato. */
+.bk-quitar {
+  border: 0; background: none; padding: 2px 4px; margin: -2px -4px -2px 0;
+  color: var(--line); font-size: 14px; line-height: 1; cursor: pointer; flex-shrink: 0;
+}
+.bk-quitar:hover, .bk-quitar:focus-visible { color: #c92a2a; }
 .bk-lista { display: flex; flex-direction: column; gap: 6px; max-height: 46vh; overflow-y: auto; }
 .bk-banco {
   text-align: left; font: inherit; font-size: 13.5px; color: inherit; cursor: pointer;

@@ -351,4 +351,7 @@ export const bancoApi = {
     return get<PaginaMovimientos>(`/autonomo/banco/movimientos?${q}`);
   },
   desconectar: (id: number) => del<{ ok: boolean }>(`/autonomo/banco/conexiones/${id}`),
+  // Quitar UNA cuenta: se lleva sus movimientos, que es lo que se quiere
+  // cuando la cuenta no debía estar ahí (una conjunta, por ejemplo).
+  quitarCuenta: (id: number) => del<{ ok: boolean; movimientos: number }>(`/autonomo/banco/cuentas/${id}`),
 };

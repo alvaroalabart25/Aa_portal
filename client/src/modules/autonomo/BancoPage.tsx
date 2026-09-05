@@ -203,6 +203,27 @@ export default function BancoPage() {
                           ? `${eur(Number(a.saldo))} ${a.moneda}`
                           : '—'}
                       </span>
+                      {/* Quitar UNA cuenta. Una autorización trae todas las que
+                          el banco enseña, y a veces se cuela alguna que no
+                          pinta nada aquí; desconectar el banco entero para
+                          librarse de una era demasiado. */}
+                      <button
+                        className="bk-quitar"
+                        title="Quitar esta cuenta del portal"
+                        aria-label={`Quitar ${a.nombre || 'la cuenta'} del portal`}
+                        onClick={async () => {
+                          const aviso =
+                            `¿Quitar «${a.nombre || 'esta cuenta'}» del portal?\n\n` +
+                            'Se borran también sus movimientos ya leídos. Si vuelves a ' +
+                            'autorizarla, entra de nuevo.';
+                          if (!confirm(aviso)) return;
+                          const r = await bancoApi.quitarCuenta(a.id);
+                          setAviso(`Cuenta quitada · ${r.movimientos} movimientos borrados`);
+                          await cargar();
+                        }}
+                      >
+                        ✕
+                      </button>
                     </div>
                   ))}
                 </div>

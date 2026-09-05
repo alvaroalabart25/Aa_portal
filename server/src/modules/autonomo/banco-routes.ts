@@ -412,18 +412,28 @@ bancoRouter.post('/vuelta', ah(async (req: AuthedRequest, res) => {
     // dentro.
     for (const cuenta of sesion.accounts ?? []) {
       const iban = cuenta.account_id?.iban ?? '';
-      const [ya] = await db
-        .select({ id: bankAccounts.id, alias: bankAccounts.alias })
+      // Reconocerla por su HUELLA, no por el uid: el uid cambia en cada
+      // sesión. Y si aún no tiene huella guardada —las de antes de esto—, por
+      // la cola del IBAN, que para las cuentas con IBAN también es estable.
+      const huella = cuenta.identification_hash ?? null;
+      const suyas = await db
+        .select({ id: bankAccounts.id, identHash: bankAccounts.identHash, ibanTail: bankAccounts.ibanTail })
         .from(bankAccounts)
-        .where(and(eq(bankAccounts.userId, req.userId!), eq(bankAccounts.accountUid, cuenta.uid)));
+        .where(eq(bankAccounts.userId, req.userId!));
+      const cola = iban ? iban.slice(-4) : null;
+      const ya =
+        (huella ? suyas.find((s) => s.identHash === huella) : undefined) ??
+        (cola ? suyas.find((s) => !s.identHash && s.ibanTail === cola) : undefined);
 
       if (ya) {
         await db
           .update(bankAccounts)
           .set({
             connectionId: conexion.id,
+            accountUid: cuenta.uid,
+            identHash: huella,
             name: cuenta.name ?? null,
-            ibanTail: iban ? iban.slice(-4) : null,
+            ibanTail: cola,
             archivedAt: null,
           })
           .where(eq(bankAccounts.id, ya.id));
@@ -436,8 +446,9 @@ bancoRouter.post('/vuelta', ah(async (req: AuthedRequest, res) => {
           userId: req.userId!,
           connectionId: conexion.id,
           accountUid: cuenta.uid,
+          identHash: huella,
           name: cuenta.name ?? null,
-          ibanTail: iban ? iban.slice(-4) : null,
+          ibanTail: cola,
           currency: cuenta.currency ?? 'EUR',
         })
         .onDuplicateKeyUpdate({ set: { name: cuenta.name ?? null, archivedAt: null } });
@@ -1106,6 +1117,47 @@ bancoRouter.get('/crudo/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
     const f = fallo(e);
     res.status(f.status).json({ error: f.error });
   }
+}));
+
+/**
+ * DELETE /cuentas/:id — quitar UNA cuenta, no el banco entero.
+ *
+ * Existe porque una autorización trae todas las cuentas que el banco enseña, y
+ * entre ellas puede colarse una que no pinta nada aquí —una cuenta conjunta,
+ * por ejemplo—. Desconectar el banco entero para librarse de una era matar
+ * moscas a cañonazos.
+ *
+ * Aquí sí se BORRAN sus movimientos: si la cuenta no debía estar, su histórico
+ * tampoco, y más si es compartida con otra persona. Por eso la pantalla dice
+ * cuántos son antes de preguntar.
+ */
+bancoRouter.delete('/cuentas/:id(\\d+)', ah(async (req: AuthedRequest, res) => {
+  const id = Number(req.params.id);
+  const [cuenta] = await db
+    .select()
+    .from(bankAccounts)
+    .where(and(eq(bankAccounts.id, id), eq(bankAccounts.userId, req.userId!)));
+  if (!cuenta) return res.status(404).json({ error: 'No existe esa cuenta' });
+
+  const [movs] = await db
+    .delete(bankTransactions)
+    .where(and(eq(bankTransactions.accountId, id), eq(bankTransactions.userId, req.userId!)));
+  await db.delete(bankAccounts).where(and(eq(bankAccounts.id, id), eq(bankAccounts.userId, req.userId!)));
+
+  // Si el banco se queda sin ninguna cuenta, esa conexión ya no sirve: dejarla
+  // activa solo consigue que alguien le dé a sincronizar y gaste cupo.
+  const [{ n }] = await db
+    .select({ n: sql<number>`count(*)` })
+    .from(bankAccounts)
+    .where(and(eq(bankAccounts.connectionId, cuenta.connectionId), isNull(bankAccounts.archivedAt)));
+  if (Number(n) === 0) {
+    await db
+      .update(bankConnections)
+      .set({ status: 'revocada', sessionId: null })
+      .where(eq(bankConnections.id, cuenta.connectionId));
+  }
+
+  res.json({ ok: true, movimientos: movs.affectedRows });
 }));
 
 // DELETE /conexiones/:id — desconectar el banco

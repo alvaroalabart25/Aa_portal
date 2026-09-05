@@ -1168,7 +1168,17 @@ export const bankAccounts = mysqlTable('bank_accounts', {
     .notNull()
     .references(() => users.id),
   connectionId: bigint('connection_id', { mode: 'number' }).notNull(),
+  // El uid de la cuenta EN ESTA SESIÓN. No sirve para reconocerla: Enable
+  // Banking le da uno distinto cada vez que se autoriza el banco.
   accountUid: varchar('account_uid', { length: 120 }).notNull(),
+  /**
+   * La huella que SÍ es estable entre sesiones (`identification_hash`).
+   *
+   * Es lo que permite que reautorizar un banco —para que entre una cuenta
+   * nueva— no duplique las que ya estaban: se reconocen por aquí y se mudan a
+   * la sesión nueva con su historia dentro.
+   */
+  identHash: varchar('ident_hash', { length: 120 }),
   name: varchar('name', { length: 160 }),
   ibanTail: varchar('iban_tail', { length: 8 }),
   // Cómo llama el BANCO a esta cuenta: es lo que distingue «Hacienda 💶» de

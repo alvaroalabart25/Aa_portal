@@ -541,36 +541,46 @@ bancoRouter.post('/sincronizar/:id(\\d+)', ah(async (req: AuthedRequest, res) =>
    */
   let aparecidas = 0;
   if (req.query.cuentas === '1' && conexion.sessionId) {
-    const enElBanco = await cuentasDeSesion(conexion.sessionId);
-    const suyas = await db
-      .select({ id: bankAccounts.id, identHash: bankAccounts.identHash, ibanTail: bankAccounts.ibanTail })
-      .from(bankAccounts)
-      .where(eq(bankAccounts.userId, req.userId!));
+    try {
+      const enElBanco = await cuentasDeSesion(conexion.sessionId);
+      const suyas = await db
+        .select({ id: bankAccounts.id, identHash: bankAccounts.identHash, ibanTail: bankAccounts.ibanTail })
+        .from(bankAccounts)
+        .where(eq(bankAccounts.userId, req.userId!));
 
-    for (const cuenta of enElBanco) {
-      const huella = cuenta.identification_hash ?? null;
-      const cola = cuenta.account_id?.iban ? cuenta.account_id.iban.slice(-4) : null;
-      const ya =
-        (huella ? suyas.find((s) => s.identHash === huella) : undefined) ??
-        (cola ? suyas.find((s) => s.ibanTail === cola) : undefined);
-      if (ya) {
-        // conocida: se le refresca el uid de esta sesión y la huella
-        await db
-          .update(bankAccounts)
-          .set({ connectionId: id, accountUid: cuenta.uid, identHash: huella, archivedAt: null })
-          .where(eq(bankAccounts.id, ya.id));
-        continue;
+      for (const cuenta of enElBanco) {
+        const huella = cuenta.identification_hash ?? null;
+        const cola = cuenta.account_id?.iban ? cuenta.account_id.iban.slice(-4) : null;
+        const ya =
+          (huella ? suyas.find((s) => s.identHash === huella) : undefined) ??
+          (cola ? suyas.find((s) => s.ibanTail === cola) : undefined);
+        if (ya) {
+          // conocida: se le refresca el uid de esta sesión y la huella
+          await db
+            .update(bankAccounts)
+            .set({ connectionId: id, accountUid: cuenta.uid, identHash: huella, archivedAt: null })
+            .where(eq(bankAccounts.id, ya.id));
+          continue;
+        }
+        await db.insert(bankAccounts).values({
+          userId: req.userId!,
+          connectionId: id,
+          accountUid: cuenta.uid,
+          identHash: huella,
+          name: cuenta.name ?? null,
+          ibanTail: cola,
+          currency: cuenta.currency ?? 'EUR',
+        });
+        aparecidas += 1;
       }
-      await db.insert(bankAccounts).values({
-        userId: req.userId!,
-        connectionId: id,
-        accountUid: cuenta.uid,
-        identHash: huella,
-        name: cuenta.name ?? null,
-        ibanTail: cola,
-        currency: cuenta.currency ?? 'EUR',
-      });
-      aparecidas += 1;
+    } catch (e) {
+      // Lo que diga el banco, dicho. Esta llamada estaba fuera del try grande,
+      // así que cualquier no de Revolut salía como «error interno del
+      // servidor»: un 500 que no contaba nada y hacía pensar que lo roto era
+      // el portal.
+      const f = fallo(e);
+      await db.update(bankConnections).set({ lastError: f.error }).where(eq(bankConnections.id, id));
+      return res.status(f.status).json({ error: `Al preguntar por las cuentas del permiso: ${f.error}` });
     }
   }
 

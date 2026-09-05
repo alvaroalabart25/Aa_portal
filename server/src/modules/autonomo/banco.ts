@@ -190,6 +190,19 @@ export interface CuentaAutorizada {
   identification_hash?: string;
 }
 
+/**
+ * Las cuentas que tiene AHORA una sesión ya abierta.
+ *
+ * Hace falta porque el permiso de un banco no es una foto fija: al vincular
+ * una cuenta nueva en el panel de Enable Banking, la sesión de siempre pasa a
+ * incluirla. Sin esto no había forma de enterarse más que volviendo a
+ * autorizar el banco entero.
+ */
+export async function cuentasDeSesion(sessionId: string): Promise<CuentaAutorizada[]> {
+  const s = (await llamar(`/sessions/${encodeURIComponent(sessionId)}`)) as { accounts?: CuentaAutorizada[] };
+  return s.accounts ?? [];
+}
+
 /** Paso 2: canjear el código de vuelta por una sesión y sus cuentas. */
 export async function canjearSesion(code: string): Promise<{
   session_id: string;

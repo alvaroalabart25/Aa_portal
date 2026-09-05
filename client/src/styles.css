@@ -3835,3 +3835,6 @@ button.mk { width: 100%; text-align: left; font: inherit; color: inherit; cursor
   font-size: 13px; color: var(--ink-soft); cursor: pointer;
 }
 .gy-porlado input { width: 17px; height: 17px; margin: 0; flex-shrink: 0; }
+
+/* Los dos botones de un banco: buscar cuentas y sincronizar */
+.bk-acciones { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }

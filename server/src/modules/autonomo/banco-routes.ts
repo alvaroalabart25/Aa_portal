@@ -13,6 +13,7 @@ import {
   bancosDisponibles,
   canjearSesion,
   crudo,
+  cuentasDeSesion,
   iniciarAutorizacion,
   movimientosDe,
   saldoPrincipal,
@@ -527,6 +528,52 @@ bancoRouter.post('/sincronizar/:id(\\d+)', ah(async (req: AuthedRequest, res) =>
     });
   }
 
+  /**
+   * ¿Hay cuentas nuevas en este permiso?
+   *
+   * El permiso de un banco no es una foto fija: al vincular una cuenta en el
+   * panel de Enable Banking, la sesión que ya tienes pasa a incluirla. Hasta
+   * ahora la única forma de enterarse era volver a autorizar el banco entero
+   * —con el lío de conexiones y duplicados que eso traía—.
+   *
+   * Va detrás de `?cuentas=1` y no en cada sincronización porque es una
+   * llamada más, y los bancos cuentan las llamadas por días (HUB046).
+   */
+  let aparecidas = 0;
+  if (req.query.cuentas === '1' && conexion.sessionId) {
+    const enElBanco = await cuentasDeSesion(conexion.sessionId);
+    const suyas = await db
+      .select({ id: bankAccounts.id, identHash: bankAccounts.identHash, ibanTail: bankAccounts.ibanTail })
+      .from(bankAccounts)
+      .where(eq(bankAccounts.userId, req.userId!));
+
+    for (const cuenta of enElBanco) {
+      const huella = cuenta.identification_hash ?? null;
+      const cola = cuenta.account_id?.iban ? cuenta.account_id.iban.slice(-4) : null;
+      const ya =
+        (huella ? suyas.find((s) => s.identHash === huella) : undefined) ??
+        (cola ? suyas.find((s) => s.ibanTail === cola) : undefined);
+      if (ya) {
+        // conocida: se le refresca el uid de esta sesión y la huella
+        await db
+          .update(bankAccounts)
+          .set({ connectionId: id, accountUid: cuenta.uid, identHash: huella, archivedAt: null })
+          .where(eq(bankAccounts.id, ya.id));
+        continue;
+      }
+      await db.insert(bankAccounts).values({
+        userId: req.userId!,
+        connectionId: id,
+        accountUid: cuenta.uid,
+        identHash: huella,
+        name: cuenta.name ?? null,
+        ibanTail: cola,
+        currency: cuenta.currency ?? 'EUR',
+      });
+      aparecidas += 1;
+    }
+  }
+
   const cuentas = await db
     .select()
     .from(bankAccounts)
@@ -669,7 +716,7 @@ bancoRouter.post('/sincronizar/:id(\\d+)', ah(async (req: AuthedRequest, res) =>
       .update(bankConnections)
       .set({ lastSyncAt: new Date(), lastError: null, retryAfter: null })
       .where(eq(bankConnections.id, id));
-    res.json({ ok: true, nuevos, traspasos });
+    res.json({ ok: true, nuevos, traspasos, cuentasNuevas: aparecidas });
   } catch (e) {
     const f = fallo(e);
     const espera = esCupoAgotado((e as Error).message ?? '')

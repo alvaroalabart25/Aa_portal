@@ -105,14 +105,22 @@ export default function BancoPage() {
     }
   }
 
-  async function sincronizar(id: number) {
-    setBusy(`sync-${id}`);
+  async function sincronizar(id: number, buscarCuentas = false) {
+    setBusy(buscarCuentas ? `buscar-${id}` : `sync-${id}`);
     setError('');
     setAviso('');
     try {
-      const r = await bancoApi.sincronizar(id);
+      const r = await bancoApi.sincronizar(id, undefined, buscarCuentas);
       const traspasos = r.traspasos > 0 ? ` · ${r.traspasos} traspasos entre tus cuentas` : '';
-      setAviso((r.nuevos > 0 ? `${r.nuevos} movimientos nuevos` : 'Ya estabas al día: nada nuevo') + traspasos + '.');
+      // Lo primero que se quiere saber al buscar cuentas es si apareció alguna
+      const cuentas = buscarCuentas
+        ? r.cuentasNuevas > 0
+          ? `${r.cuentasNuevas} ${r.cuentasNuevas === 1 ? 'cuenta nueva' : 'cuentas nuevas'} · `
+          : 'Ninguna cuenta nueva en este permiso · '
+        : '';
+      setAviso(
+        cuentas + (r.nuevos > 0 ? `${r.nuevos} movimientos nuevos` : 'Ya estabas al día: nada nuevo') + traspasos + '.',
+      );
       await cargar();
     } catch (e) {
       setError((e as Error).message);
@@ -188,9 +196,23 @@ export default function BancoPage() {
                       : 'cupo del día gastado · mañana vuelve'}
                   </span>
                 ) : (
-                  <button className="btn ghost sm" disabled={busy === `sync-${c.id}`} onClick={() => sincronizar(c.id)}>
-                    {busy === `sync-${c.id}` ? 'Sincronizando…' : 'Sincronizar'}
-                  </button>
+                  <span className="bk-acciones">
+                    {/* Buscar cuentas nuevas es una llamada MÁS al banco, y los
+                        bancos cuentan las llamadas por días. Por eso va aparte
+                        y no en cada sincronización: se usa el día que vinculas
+                        una cuenta, no todos los días. */}
+                    <button
+                      className="btn ghost sm"
+                      disabled={busy === `buscar-${c.id}`}
+                      title="Vuelve a preguntar al banco qué cuentas incluye este permiso"
+                      onClick={() => sincronizar(c.id, true)}
+                    >
+                      {busy === `buscar-${c.id}` ? 'Buscando…' : 'Buscar cuentas'}
+                    </button>
+                    <button className="btn ghost sm" disabled={busy === `sync-${c.id}`} onClick={() => sincronizar(c.id)}>
+                      {busy === `sync-${c.id}` ? 'Sincronizando…' : 'Sincronizar'}
+                    </button>
+                  </span>
                 )}
               </div>
 

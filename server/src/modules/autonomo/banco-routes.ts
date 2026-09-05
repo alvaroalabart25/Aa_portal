@@ -567,15 +567,28 @@ bancoRouter.post('/sincronizar/:id(\\d+)', ah(async (req: AuthedRequest, res) =>
     try {
       const enElBanco = await cuentasDeSesion(conexion.sessionId);
       const suyas = await db
-        .select({ id: bankAccounts.id, identHash: bankAccounts.identHash, ibanTail: bankAccounts.ibanTail })
+        .select({
+          id: bankAccounts.id,
+          identHash: bankAccounts.identHash,
+          ibanTail: bankAccounts.ibanTail,
+          accountUid: bankAccounts.accountUid,
+          connectionId: bankAccounts.connectionId,
+        })
         .from(bankAccounts)
         .where(eq(bankAccounts.userId, req.userId!));
 
       for (const cuenta of enElBanco) {
         const huella = cuenta.identification_hash?.slice(0, 120) ?? null;
         const cola = cuenta.account_id?.iban ? cuenta.account_id.iban.slice(-4) : null;
+        // Tres formas de reconocerla, de la más fiable a la más apañada. La del
+        // MEDIO es la que faltaba: dentro de una misma sesión el uid sí es
+        // estable, así que una cuenta ya importada por esta conexión se
+        // reconoce por ahí. Sin eso, los pockets —que no tienen ni IBAN ni
+        // huella todavía— se intentaban insertar otra vez y la base de datos
+        // los rechazaba por duplicados.
         const ya =
           (huella ? suyas.find((s) => s.identHash === huella) : undefined) ??
+          suyas.find((s) => s.connectionId === id && s.accountUid === cuenta.uid) ??
           (cola ? suyas.find((s) => s.ibanTail === cola) : undefined);
         if (ya) {
           // conocida: se le refresca el uid de esta sesión y la huella
@@ -585,15 +598,20 @@ bancoRouter.post('/sincronizar/:id(\\d+)', ah(async (req: AuthedRequest, res) =>
             .where(eq(bankAccounts.id, ya.id));
           continue;
         }
-        await db.insert(bankAccounts).values({
-          userId: req.userId!,
-          connectionId: id,
-          accountUid: cuenta.uid,
-          identHash: huella,
-          name: cuenta.name ?? null,
-          ibanTail: cola,
-          currency: cuenta.currency ?? 'EUR',
-        });
+        await db
+          .insert(bankAccounts)
+          .values({
+            userId: req.userId!,
+            connectionId: id,
+            accountUid: cuenta.uid,
+            identHash: huella,
+            name: cuenta.name ?? null,
+            ibanTail: cola,
+            currency: cuenta.currency ?? 'EUR',
+          })
+          // Cinturón: si aun así choca con una que ya estaba, se actualiza en
+          // vez de tumbar la búsqueda entera.
+          .onDuplicateKeyUpdate({ set: { identHash: huella, name: cuenta.name ?? null, archivedAt: null } });
         aparecidas += 1;
       }
     } catch (e) {

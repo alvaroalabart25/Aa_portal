@@ -478,6 +478,28 @@ bancoRouter.post('/vuelta', ah(async (req: AuthedRequest, res) => {
       }
     }
 
+    /**
+     * Una sesión sin cuentas no es una conexión: es un permiso vacío.
+     *
+     * Pasa en las aplicaciones en modo restringido —la nuestra lo está—: el
+     * banco autoriza lo que le pidas, pero Enable Banking solo deja pasar las
+     * cuentas que estén vinculadas en su panel. Si autorizas una que no lo
+     * está, la sesión vuelve sin ninguna. Decir «conectado» ahí era mentira, y
+     * dejaba una conexión fantasma en la pantalla.
+     */
+    if ((sesion.accounts ?? []).length === 0) {
+      await db
+        .update(bankConnections)
+        .set({ status: 'revocada', sessionId: null, lastError: 'La autorización volvió sin ninguna cuenta' })
+        .where(eq(bankConnections.id, conexion.id));
+      return res.status(400).json({
+        error:
+          'El banco no ha dado acceso a ninguna cuenta. Si acabas de autorizar una nueva, ' +
+          'antes hay que vincularla en el panel de Enable Banking: en modo restringido solo ' +
+          'pasan las cuentas vinculadas ahí.',
+      });
+    }
+
     res.json({ ok: true, conexionId: conexion.id, cuentas: (sesion.accounts ?? []).length });
   } catch (e) {
     const f = fallo(e);

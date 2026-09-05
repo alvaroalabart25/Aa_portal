@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
-import { and, desc, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNull, lte, ne, sql } from 'drizzle-orm';
 import { ah } from '../../lib/async';
 import { db } from '../../db';
 import { bankAccounts, bankBalanceDaily, bankCategoryRules, bankConnections, bankTransactions } from '../../db/schema';
@@ -403,8 +403,33 @@ bancoRouter.post('/vuelta', ah(async (req: AuthedRequest, res) => {
       .where(eq(bankConnections.id, conexion.id));
 
     // Las cuentas que el banco ha autorizado. Del IBAN, solo la cola.
+    //
+    // OJO con reautorizar el mismo banco: eso crea una conexión NUEVA, y la
+    // clave única de una cuenta es (conexión, uid). Sin buscarla antes por uid,
+    // cada cuenta entraría otra vez como cuenta distinta —con su saldo contado
+    // dos veces en el patrimonio y sus 90 días de movimientos duplicados—. Así
+    // que si la cuenta ya existe, se MUDA a la conexión nueva con su historia
+    // dentro.
     for (const cuenta of sesion.accounts ?? []) {
       const iban = cuenta.account_id?.iban ?? '';
+      const [ya] = await db
+        .select({ id: bankAccounts.id, alias: bankAccounts.alias })
+        .from(bankAccounts)
+        .where(and(eq(bankAccounts.userId, req.userId!), eq(bankAccounts.accountUid, cuenta.uid)));
+
+      if (ya) {
+        await db
+          .update(bankAccounts)
+          .set({
+            connectionId: conexion.id,
+            name: cuenta.name ?? null,
+            ibanTail: iban ? iban.slice(-4) : null,
+            archivedAt: null,
+          })
+          .where(eq(bankAccounts.id, ya.id));
+        continue;
+      }
+
       await db
         .insert(bankAccounts)
         .values({
@@ -416,6 +441,30 @@ bancoRouter.post('/vuelta', ah(async (req: AuthedRequest, res) => {
           currency: cuenta.currency ?? 'EUR',
         })
         .onDuplicateKeyUpdate({ set: { name: cuenta.name ?? null, archivedAt: null } });
+    }
+
+    // Las conexiones viejas del mismo banco que se han quedado sin ninguna
+    // cuenta ya no sirven para nada: dejarlas «activas» solo consigue que
+    // alguien le dé a sincronizar y gaste una consulta del cupo diario.
+    const viejas = await db
+      .select({ id: bankConnections.id })
+      .from(bankConnections)
+      .where(
+        and(
+          eq(bankConnections.userId, req.userId!),
+          eq(bankConnections.aspspName, conexion.aspspName),
+          eq(bankConnections.status, 'activa'),
+          ne(bankConnections.id, conexion.id),
+        ),
+      );
+    for (const v of viejas) {
+      const [{ n }] = await db
+        .select({ n: sql<number>`count(*)` })
+        .from(bankAccounts)
+        .where(and(eq(bankAccounts.connectionId, v.id), isNull(bankAccounts.archivedAt)));
+      if (Number(n) === 0) {
+        await db.update(bankConnections).set({ status: 'revocada' }).where(eq(bankConnections.id, v.id));
+      }
     }
 
     res.json({ ok: true, conexionId: conexion.id, cuentas: (sesion.accounts ?? []).length });

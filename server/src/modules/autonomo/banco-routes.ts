@@ -99,7 +99,30 @@ function fallo(e: unknown): { status: number; error: string } {
       error: 'El permiso de este banco ha caducado o se ha revocado. Hay que volver a autorizarlo desde aquí.',
     };
   }
-  return { status: 502, error: (e as Error).message || 'El banco no ha respondido' };
+  // Recortado a propósito: este mensaje se GUARDA en `bank_connections.
+  // last_error`, que son 300 caracteres. Los errores del banco vienen largos, y
+  // al pasarse reventaba la escritura del error —un fallo tapando otro fallo,
+  // que llegaba a la pantalla como «Error interno del servidor» sin dejar
+  // rastro de la causa—.
+  const largo = (e as Error).message || 'El banco no ha respondido';
+  return { status: 502, error: largo.length > 240 ? `${largo.slice(0, 237)}…` : largo };
+}
+
+/**
+ * Guardar por qué falló, sin que guardarlo pueda fallar.
+ *
+ * Si apuntar el motivo revienta, lo que llega al usuario es el fallo de
+ * apuntarlo y no el de verdad. Aquí el motivo real siempre gana.
+ */
+async function apuntarFallo(conexionId: number, error: string, extra: Record<string, unknown> = {}) {
+  try {
+    await db
+      .update(bankConnections)
+      .set({ lastError: error.slice(0, 280), ...extra })
+      .where(eq(bankConnections.id, conexionId));
+  } catch {
+    /* el motivo se cuenta igual, aunque no se pueda apuntar */
+  }
 }
 
 /**
@@ -416,7 +439,7 @@ bancoRouter.post('/vuelta', ah(async (req: AuthedRequest, res) => {
       // Reconocerla por su HUELLA, no por el uid: el uid cambia en cada
       // sesión. Y si aún no tiene huella guardada —las de antes de esto—, por
       // la cola del IBAN, que para las cuentas con IBAN también es estable.
-      const huella = cuenta.identification_hash ?? null;
+      const huella = cuenta.identification_hash?.slice(0, 120) ?? null;
       const suyas = await db
         .select({ id: bankAccounts.id, identHash: bankAccounts.identHash, ibanTail: bankAccounts.ibanTail })
         .from(bankAccounts)
@@ -504,7 +527,7 @@ bancoRouter.post('/vuelta', ah(async (req: AuthedRequest, res) => {
     res.json({ ok: true, conexionId: conexion.id, cuentas: (sesion.accounts ?? []).length });
   } catch (e) {
     const f = fallo(e);
-    await db.update(bankConnections).set({ lastError: f.error }).where(eq(bankConnections.id, conexion.id));
+    await apuntarFallo(conexion.id, f.error);
     res.status(f.status).json({ error: f.error });
   }
 }));
@@ -549,7 +572,7 @@ bancoRouter.post('/sincronizar/:id(\\d+)', ah(async (req: AuthedRequest, res) =>
         .where(eq(bankAccounts.userId, req.userId!));
 
       for (const cuenta of enElBanco) {
-        const huella = cuenta.identification_hash ?? null;
+        const huella = cuenta.identification_hash?.slice(0, 120) ?? null;
         const cola = cuenta.account_id?.iban ? cuenta.account_id.iban.slice(-4) : null;
         const ya =
           (huella ? suyas.find((s) => s.identHash === huella) : undefined) ??
@@ -579,7 +602,7 @@ bancoRouter.post('/sincronizar/:id(\\d+)', ah(async (req: AuthedRequest, res) =>
       // servidor»: un 500 que no contaba nada y hacía pensar que lo roto era
       // el portal.
       const f = fallo(e);
-      await db.update(bankConnections).set({ lastError: f.error }).where(eq(bankConnections.id, id));
+      await apuntarFallo(id, f.error);
       return res.status(f.status).json({ error: `Al preguntar por las cuentas del permiso: ${f.error}` });
     }
   }
@@ -734,7 +757,7 @@ bancoRouter.post('/sincronizar/:id(\\d+)', ah(async (req: AuthedRequest, res) =>
       : null;
     await db
       .update(bankConnections)
-      .set({ lastError: f.error, ...(espera ? { retryAfter: espera } : {}) })
+      .set({ lastError: f.error.slice(0, 280), ...(espera ? { retryAfter: espera } : {}) })
       .where(eq(bankConnections.id, id));
     res.status(f.status).json({ error: f.error, ...(espera ? { reintentarDesde: espera } : {}) });
   }
